@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWithEngine } from '@/lib/ai-engine';
+import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { AI_ENGINES } from '@/lib/ai-engine-config';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { idea } = body as { idea?: string };
+    const { idea, engineId: rawEngineId } = body as { idea?: string; engineId?: string };
+    const engineId: AIEngineId = AI_ENGINES.some((e) => e.id === rawEngineId) ? (rawEngineId as AIEngineId) : 'zai';
 
     if (!idea || typeof idea !== 'string' || idea.trim().length === 0) {
       return NextResponse.json(
@@ -24,7 +26,7 @@ Return ONLY the JSON, nothing else.`;
 
     let result = '';
     try {
-      result = await generateWithEngine('zai', systemPrompt, userPrompt, {
+      result = await generateWithEngine(engineId, systemPrompt, userPrompt, {
         temperature: 0.7,
         maxTokens: 2048,
       });

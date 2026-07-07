@@ -1432,7 +1432,7 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
             <Select
               value={store.generationEngine}
               onValueChange={(v) =>
-                store.setGenerationEngine(v as 'zai' | 'gemini' | 'grok')
+                store.setGenerationEngine(v as 'zai' | 'gemini' | 'grok' | 'cloudflare')
               }
               disabled={store.isAutoGenerating}
             >

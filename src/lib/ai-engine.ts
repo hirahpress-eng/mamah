@@ -1,16 +1,17 @@
 /**
  * Multi-Engine AI Abstraction Layer for Mamah
  *
- * Provides a unified chat completion interface across 3 AI engines:
+ * Provides a unified chat completion interface across 4 AI engines:
  *   1. Z.ai (z-ai-web-dev-sdk) — default, built-in
  *   2. Gemini 2.5 Flash (Google Generative AI)
- *   3. Grok (xAI) — OpenAI-compatible API
+ *   3. Grok 3 (xAI) — fast reasoning via z-ai-web-dev-sdk
+ *   4. Cloudflare (Llama 3.1 70B) — open-source model via z-ai-web-dev-sdk
  *
  * IMPORTANT: This file imports z-ai-web-dev-sdk and MUST ONLY be used
  * from server-side code (API routes). Client components should import
  * types/config from ai-engine-config.ts instead.
  *
- * Fallback order: zai → gemini → grok
+ * Fallback order: zai → gemini → grok → cloudflare
  * NEVER throws — always returns a string or fallback error message.
  */
 
@@ -32,7 +33,7 @@ export interface ChatMessage {
 export const DEFAULT_ENGINE: AIEngineId = 'zai';
 
 /** Fallback order when the selected engine fails */
-const FALLBACK_ORDER: AIEngineId[] = ['zai', 'gemini', 'grok'];
+const FALLBACK_ORDER: AIEngineId[] = ['zai', 'gemini', 'grok', 'cloudflare'];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -84,65 +85,159 @@ async function executeGemini(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
-  const { GoogleGenerativeAI } = await import('@google/generative-ai');
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    generationConfig: {
-      temperature: options?.temperature ?? 0.7,
-      maxOutputTokens: options?.maxTokens ?? 8192,
-    },
-  });
+  // Try direct Google API first if GEMINI_API_KEY is configured
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+        generationConfig: {
+          temperature: options?.temperature ?? 0.7,
+          maxOutputTokens: options?.maxTokens ?? 8192,
+        },
+      });
 
-  // Gemini systemInstruction is NOT supported with this API key (400 error even for short text).
-  // ALWAYS merge system message into user message to avoid the error.
-  const systemMsg = messages.find((m) => m.role === 'system');
-  const nonSystem = messages.filter((m) => m.role !== 'system');
+      const systemMsg = messages.find((m) => m.role === 'system');
+      const nonSystem = messages.filter((m) => m.role !== 'system');
 
-  let effectiveUserContent = nonSystem[nonSystem.length - 1]?.content || '';
-  if (systemMsg) {
-    effectiveUserContent = `[System Instructions]\n${systemMsg.content}\n\n[User Request]\n${effectiveUserContent}`;
+      let effectiveUserContent = nonSystem[nonSystem.length - 1]?.content || '';
+      if (systemMsg) {
+        effectiveUserContent = `[System Instructions]\n${systemMsg.content}\n\n[User Request]\n${effectiveUserContent}`;
+      }
+
+      const chatHistory = nonSystem.slice(0, -1).map((m) => ({
+        role: (m.role === 'assistant' ? 'model' : 'user') as 'model' | 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      if (!effectiveUserContent) throw new Error('No user message for Gemini');
+      const chat = model.startChat({ history: chatHistory });
+      const result = await chat.sendMessage(effectiveUserContent);
+      const text = result.response.text();
+      if (text && text.trim().length > 0) return text;
+    } catch {
+      // Direct API failed, fall through to SDK approach
+    }
   }
 
-  const chatHistory = nonSystem.slice(0, -1).map((m) => ({
-    role: (m.role === 'assistant' ? 'model' : 'user') as 'model' | 'user',
-    parts: [{ text: m.content }],
-  }));
+  // Fallback: use z-ai-web-dev-sdk with Gemini model
+  const zai = await getZAI();
+  if (!zai) throw new Error('Gemini engine: SDK initialization failed');
 
-  if (!effectiveUserContent) throw new Error('No user message provided for Gemini');
-
-  const chat = model.startChat({ history: chatHistory });
-  const result = await chat.sendMessage(effectiveUserContent);
-  return result.response.text();
+  const completion = await zai.chat.completions.create({
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    messages: messages.map((m) => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    })),
+    temperature: options?.temperature ?? 0.7,
+    max_tokens: options?.maxTokens ?? 8192,
+  });
+  return completion.choices[0]?.message?.content || '';
 }
 
 async function executeGrok(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
-  const baseUrl = process.env.GROK_BASE_URL || 'https://api.x.ai/v1';
+  // Try direct xAI API first if GROK_API_KEY is configured
+  const apiKey = process.env.GROK_API_KEY;
+  if (apiKey) {
+    const baseUrl = process.env.GROK_BASE_URL || 'https://api.x.ai/v1';
+    try {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: process.env.GROK_MODEL || 'grok-3',
+          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          temperature: options?.temperature ?? 0.7,
+          max_tokens: options?.maxTokens ?? 8000,
+        }),
+      });
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: process.env.GROK_MODEL || 'grok-3',
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      temperature: options?.temperature ?? 0.7,
-      max_tokens: options?.maxTokens ?? 8000,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Grok API error ${response.status}: ${errorText}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+      }
+    } catch {
+      // Direct API failed, fall through to SDK approach
+    }
   }
 
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  // Fallback: use z-ai-web-dev-sdk with Grok model
+  const zai = await getZAI();
+  if (!zai) throw new Error('Grok engine: SDK initialization failed');
+
+  const completion = await zai.chat.completions.create({
+    model: process.env.GROK_MODEL || 'grok-3',
+    messages: messages.map((m) => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    })),
+    temperature: options?.temperature ?? 0.7,
+    max_tokens: options?.maxTokens ?? 8000,
+  });
+  return completion.choices[0]?.message?.content || '';
+}
+
+async function executeCloudflare(
+  messages: ChatMessage[],
+  options?: { temperature?: number; maxTokens?: number },
+): Promise<string> {
+  // Uses z-ai-web-dev-sdk with Llama model (same model family as Cloudflare Workers AI).
+  // Falls back to direct Cloudflare API if CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN are set.
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+
+  // If Cloudflare env vars are configured, try direct Workers AI API first
+  if (accountId && apiToken) {
+    const model = process.env.CLOUDFLARE_AI_MODEL || '@cf/meta/llama-3.1-8b-instruct';
+    const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiToken}`,
+        },
+        body: JSON.stringify({
+          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          max_tokens: options?.maxTokens ?? 8192,
+          temperature: options?.temperature ?? 0.7,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.result?.response) return data.result.response;
+      }
+    } catch {
+      // Direct API failed, fall through to SDK approach
+    }
+  }
+
+  // Fallback: use z-ai-web-dev-sdk with Llama model (Cloudflare's model family)
+  const zai = await getZAI();
+  if (!zai) throw new Error('Cloudflare engine: SDK initialization failed');
+
+  const model = process.env.CLOUDFLARE_AI_MODEL?.replace('@cf/', '') || 'llama-3.1-70b-versatile';
+
+  const completion = await zai.chat.completions.create({
+    model,
+    messages: messages.map((m) => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    })),
+    temperature: options?.temperature ?? 0.7,
+    max_tokens: options?.maxTokens ?? 8192,
+  });
+  return completion.choices[0]?.message?.content || '';
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +254,7 @@ const ENGINE_EXECUTORS: Record<
   zai: executeZAI,
   gemini: executeGemini,
   grok: executeGrok,
+  cloudflare: executeCloudflare,
 };
 
 // ---------------------------------------------------------------------------
@@ -169,7 +265,7 @@ const ENGINE_EXECUTORS: Record<
  * Send a chat completion request to the specified AI engine.
  *
  * If the engine fails, it automatically falls back through the remaining
- * engines in this order: zai → gemini → grok.
+ * engines in this order: zai → gemini → grok → cloudflare.
  *
  * This function NEVER throws — it always returns a string.
  */

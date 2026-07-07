@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWithEngine } from '@/lib/ai-engine';
+import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { AI_ENGINES } from '@/lib/ai-engine-config';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title } = body as { title?: string };
+    const { title, engineId: rawEngineId } = body as { title?: string; engineId?: string };
+    const engineId: AIEngineId = AI_ENGINES.some((e) => e.id === rawEngineId) ? (rawEngineId as AIEngineId) : 'zai';
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return NextResponse.json(
@@ -28,7 +30,7 @@ Title: "${title.trim()}"
 Return ONLY a JSON array of exactly 5 strings, with no additional text, explanation, or formatting.
 Example: ["keyword 1", "keyword 2", "keyword 3", "keyword 4", "keyword 5"]`;
 
-    const result = await generateWithEngine('zai', systemPrompt, userPrompt, {
+    const result = await generateWithEngine(engineId, systemPrompt, userPrompt, {
       temperature: 0.7,
       maxTokens: 1024,
     });

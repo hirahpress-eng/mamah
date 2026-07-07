@@ -1,4 +1,5 @@
-import { generateWithEngine } from '@/lib/ai-engine';
+import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { AI_ENGINES } from '@/lib/ai-engine-config';
 
 export const maxDuration = 300;
 
@@ -95,7 +96,8 @@ ${sections}`;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { article } = body as { article: ReviewerArticle };
+    const { article, engineId: rawEngineId } = body as { article: ReviewerArticle; engineId?: string };
+    const engineId: AIEngineId = AI_ENGINES.some((e) => e.id === rawEngineId) ? (rawEngineId as AIEngineId) : 'zai';
 
     if (!article || !article.title || !article.sections || !Array.isArray(article.sections)) {
       return Response.json(
@@ -130,7 +132,7 @@ ${articleText}
 
 Provide your complete structured review as JSON. Be extremely critical and specific.`;
 
-    const rawResult = (await generateWithEngine('zai', REVIEWER_SYSTEM_PROMPT, userPrompt, {
+    const rawResult = (await generateWithEngine(engineId, REVIEWER_SYSTEM_PROMPT, userPrompt, {
       temperature: 0.3,
       maxTokens: 16000,
     })) || '';

@@ -70,8 +70,8 @@ export interface CicilStoreState {
   updateStep: (stepId: string, updates: Partial<CicilStepState>) => void;
   isAutoGenerating: boolean;
   setIsAutoGenerating: (v: boolean) => void;
-  generationEngine: 'zai' | 'gemini' | 'grok';
-  setGenerationEngine: (e: 'zai' | 'gemini' | 'grok') => void;
+  generationEngine: 'zai' | 'gemini' | 'grok' | 'cloudflare';
+  setGenerationEngine: (e: 'zai' | 'gemini' | 'grok' | 'cloudflare') => void;
 
   // Step 4: Output
   fullOutput: string;
