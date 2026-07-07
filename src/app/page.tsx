@@ -712,7 +712,7 @@ export default function ArticleGeneratorApp() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [showSuperBot, setShowSuperBot] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<string | null>('article');
   const { hasCompleted, resetOnboarding } = useOnboardingStatus();
   const tutorialTriggeredRef = useRef(false);
   // Direction tracking: transitionPrevStep lags behind currentStep by one render via useEffect,

@@ -290,7 +290,7 @@ function KeywordInput({
           <div className="relative">
             <Input
               id={`keyword-${labelNum}`}
-              placeholder={labelNum <= 3 ? `e.g., Topic ${labelNum}` : 'Optional topic'}
+              placeholder={labelNum <= 3 ? `cth., ${['Pembelajaran Mesin', 'Kecerdasan Buatan', 'Analisis Data', 'Pendidikan Digital', 'Kesehatan'][labelNum - 1]}` : 'Topik opsional'}
               value={value}
               onChange={(e) => onChange(e.target.value)}
               className={`border-border/60 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20 pr-8 transition-all duration-200 ${
@@ -484,11 +484,11 @@ interface GenerateResponse {
   error?: string;
 }
 
-async function generateFromKeywords(keywords: string[]): Promise<GenerateResponse> {
+async function generateFromKeywords(keywords: string[], engineId?: string): Promise<GenerateResponse> {
   const res = await fetch('/api/generate/titles', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ keywords }),
+    body: JSON.stringify({ keywords, engineId }),
   });
   if (!res.ok) {
     toast.error(`Server error (${res.status}). Please try again.`);
@@ -497,11 +497,11 @@ async function generateFromKeywords(keywords: string[]): Promise<GenerateRespons
   return res.json();
 }
 
-async function generateFromTitle(title: string): Promise<GenerateResponse> {
+async function generateFromTitle(title: string, engineId?: string): Promise<GenerateResponse> {
   const res = await fetch('/api/generate/keywords', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, engineId }),
   });
   if (!res.ok) {
     toast.error(`Server error (${res.status}). Please try again.`);
@@ -510,11 +510,11 @@ async function generateFromTitle(title: string): Promise<GenerateResponse> {
   return res.json();
 }
 
-async function generateFromIdea(idea: string): Promise<GenerateResponse> {
+async function generateFromIdea(idea: string, engineId?: string): Promise<GenerateResponse> {
   const res = await fetch('/api/generate/idea', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idea }),
+    body: JSON.stringify({ idea, engineId }),
   });
   if (!res.ok) {
     toast.error(`Server error (${res.status}). Please try again.`);
@@ -600,7 +600,7 @@ export default function Step1Input() {
       if (res.success && res.titles) {
         setGeneratedTitles(res.titles);
       } else {
-        toast.error('Failed to generate titles', {
+        toast.error('Gagal menghasilkan judul', {
           description: res.error || 'The server returned an unexpected response. Please try again.',
         });
       }
@@ -623,7 +623,7 @@ export default function Step1Input() {
       if (res.success && res.keywords) {
         setGeneratedKeywords(res.keywords);
       } else {
-        toast.error('Failed to extract keywords', {
+        toast.error('Gagal mengekstrak kata kunci', {
           description: res.error || 'The server returned an unexpected response. Please try again.',
         });
       }
@@ -649,7 +649,7 @@ export default function Step1Input() {
         if (res.titles) setGeneratedTitles(res.titles);
         if (res.keywords) setGeneratedKeywords(res.keywords);
       } else {
-        toast.error('Failed to analyze idea', {
+        toast.error('Gagal menganalisis ide penelitian', {
           description: res.error || 'The server returned an unexpected response. Please try again.',
         });
       }
@@ -728,7 +728,7 @@ export default function Step1Input() {
           if (data.success && data.titles) {
             setGeneratedTitles(data.titles);
           } else {
-            toast.error('Failed to generate titles from template', {
+            toast.error('Gagal menghasilkan judul dari template', {
               description: data.error || 'Please try generating manually.',
             });
           }
@@ -754,21 +754,21 @@ export default function Step1Input() {
   }[] = [
     {
       value: 'keywords',
-      label: 'Keywords',
+      label: 'Kata Kunci',
       icon: <Tags className="size-4" />,
-      description: 'Enter keywords to generate article titles',
+      description: 'Masukkan kata kunci untuk menghasilkan judul artikel ilmiah',
     },
     {
       value: 'title',
-      label: 'Title',
+      label: 'Judul',
       icon: <Type className="size-4" />,
-      description: 'Enter a title to extract keywords',
+      description: 'Masukkan judul untuk mengekstrak kata kunci penelitian',
     },
     {
       value: 'idea',
-      label: 'Idea',
+      label: 'Ide Penelitian',
       icon: <Lightbulb className="size-4" />,
-      description: 'Describe your research idea for analysis',
+      description: 'Deskripsikan ide penelitian Anda untuk dianalisis',
     },
   ];
 
@@ -796,11 +796,10 @@ export default function Step1Input() {
           <BookOpen className="size-6 text-emerald-600 dark:text-emerald-400" />
         </div>
         <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Define Your Research
+          Tentukan Topik Penelitian
         </h2>
         <p className="text-muted-foreground text-sm sm:text-base max-w-md mx-auto">
-          Start by providing keywords, a title, or a research idea. We&apos;ll help you refine
-          your topic and generate structured content.
+          Mulai dengan kata kunci, judul, atau ide penelitian. Sistem akan membantu menyempurnakan topik dan menghasilkan konten artikel ilmiah yang terstruktur.
         </p>
       </motion.div>
 
@@ -842,12 +841,12 @@ export default function Step1Input() {
                     <div className="flex items-center gap-2 mb-4">
                       <Tags className="size-4 text-emerald-500" />
                       <h3 className="text-sm font-semibold text-foreground">
-                        Enter Your Keywords
+                        Masukkan Kata Kunci Anda
                       </h3>
                     </div>
                     <p className="text-xs text-muted-foreground mb-5">
-                      Provide up to 5 keywords related to your research topic. At least one keyword is
-                      required to generate titles.
+                      Masukkan hingga 5 kata kunci terkait topik penelitian Anda. Minimal satu kata kunci diperlukan
+                      untuk menghasilkan judul.
                     </p>
 
                     {/* Responsive grid: single col mobile, 2 col desktop */}
@@ -869,7 +868,7 @@ export default function Step1Input() {
                     <div className="mt-5 pt-4 border-t border-border/40">
                       <p className="text-xs text-muted-foreground mb-2.5 flex items-center gap-1.5">
                         <Sparkles className="size-3 text-emerald-500" />
-                        Popular research areas:
+                        Bidang riset populer:
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {POPULAR_SUGGESTIONS.map((suggestion) => {
@@ -912,7 +911,7 @@ export default function Step1Input() {
                         ) : (
                           <>
                             <Sparkles className="size-4" />
-                            Generate Titles
+                            Hasilkan Judul
                           </>
                         )}
                       </Button>
@@ -1029,7 +1028,7 @@ export default function Step1Input() {
                       ) : (
                         <>
                           <Sparkles className="size-4" />
-                          Generate Keywords
+                          Hasilkan Kata Kunci
                         </>
                       )}
                     </Button>
@@ -1142,7 +1141,7 @@ export default function Step1Input() {
                       ) : (
                         <>
                           <Sparkles className="size-4" />
-                          Analyze Idea
+                          Analisis Ide
                         </>
                       )}
                     </Button>

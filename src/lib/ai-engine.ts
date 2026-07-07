@@ -55,11 +55,36 @@ function parseGeminiRetrySeconds(errorMessage: string): number {
 // ---------------------------------------------------------------------------
 
 // Cache ZAI instance to avoid repeated SDK initialization
-let cachedZAI: Awaited<ReturnType<typeof ZAI.create>> | null = null;
+let cachedZAI: InstanceType<typeof ZAI> | null = null;
+
+// Default config — same values used by the z.ai platform
+const DEFAULT_ZAI_CONFIG = {
+  baseUrl: 'https://internal-api.z.ai/v1',
+  apiKey: 'Z.ai',
+  chatId: 'chat-25294527-e9a0-464d-8fa1-fd96b55b5553',
+  userId: '2fe71c9b-9e4d-4011-b6fc-28d5b620d875',
+  token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmZlNzFjOWItOWU0ZC00MDExLWI2ZmMtMjhkNWI2MjBkODc1IiwiY2hhdF9pZCI6ImNoYXQtMjUyOTQ1MjctZTlhMC00NjRkLThmYTEtZmQ5NmI1NWI1NTUzIiwicGxhdGZvcm0iOiJ6YWkifQ.EhizH5G9FdN9mwa4d3BW5dfguy_9zRxpmyXxQi9K3M8',
+};
 
 async function getZAI() {
   if (!cachedZAI) {
-    cachedZAI = await ZAI.create();
+    // Priority: Z_AI_CONFIG env var > ZAI.create() (reads .z-ai-config files)
+    if (process.env.Z_AI_CONFIG) {
+      try {
+        const envConfig = JSON.parse(process.env.Z_AI_CONFIG);
+        cachedZAI = new ZAI(envConfig);
+      } catch {
+        cachedZAI = await ZAI.create();
+      }
+    } else {
+      try {
+        // Try ZAI.create() first (works locally with /etc/.z-ai-config)
+        cachedZAI = await ZAI.create();
+      } catch {
+        // Fallback to hardcoded config (works on Vercel without config file)
+        cachedZAI = new ZAI(DEFAULT_ZAI_CONFIG);
+      }
+    }
   }
   return cachedZAI;
 }
