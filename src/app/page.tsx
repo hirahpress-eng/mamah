@@ -69,6 +69,12 @@ import CicilGenerator from '@/components/cicil-generator';
 import ErrorBoundary from '@/components/error-boundary';
 import MobileBottomNav from '@/components/mobile-bottom-nav';
 import type { CicilWritingMode } from '@/lib/writing-flows';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 
 // ─── Constants ────────────────────────────────────────────────────────
 
