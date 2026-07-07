@@ -3,6 +3,7 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import {
   BookOpen,
@@ -1048,6 +1049,9 @@ export default function ArticleGeneratorApp() {
                       <Crown className="size-2.5 mr-0.5" />PRO
                     </Badge>
                   )}
+                  <span className="hidden sm:inline text-xs text-muted-foreground max-w-[120px] truncate" title={authUser.email}>
+                    {authUser.fullName || authUser.email}
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1158,7 +1162,7 @@ export default function ArticleGeneratorApp() {
       </header>
 
       {/* ── Promo Banner ─────────────────────────────────────────── */}
-      <PromoBanner />
+      <PromoBanner onCtaClick={() => setAuthModalOpen(true)} />
 
       {/* ── Step Navigation (sticky mobile) — article mode only ── */}
       {selectedMode === 'article' && (
@@ -1407,20 +1411,20 @@ export default function ArticleGeneratorApp() {
                 <HelpCircle className="size-3" />
                 Bantuan
               </button>
-              <button
+              <Link
+                href="/privasi"
                 className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1"
-                onClick={() => toast.info('Halaman ini sedang dalam pengembangan dan akan segera tersedia.')}
               >
                 <Shield className="size-3" />
                 Kebijakan Privasi
-              </button>
-              <button
+              </Link>
+              <Link
+                href="/ketentuan"
                 className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1"
-                onClick={() => toast.info('Halaman ini sedang dalam pengembangan dan akan segera tersedia.')}
               >
                 <FileCheck className="size-3" />
                 Ketentuan Layanan
-              </button>
+              </Link>
             </div>
           </div>
 

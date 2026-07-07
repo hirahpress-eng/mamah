@@ -105,6 +105,26 @@ function contentToParagraphs(content: string, options?: { italic?: boolean; inde
     const trimmed = line.trim();
     if (!trimmed) continue;
 
+    // Markdown headings (### → H3, ## → H2, # → H1)
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.*)/);
+    if (headingMatch) {
+      const level = headingMatch[1].length as 1 | 2 | 3;
+      const headingText = headingMatch[2].trim();
+      const headingMap: Record<number, typeof HeadingLevel.HEADING_1> = {
+        1: HeadingLevel.HEADING_1,
+        2: HeadingLevel.HEADING_2,
+        3: HeadingLevel.HEADING_3,
+      };
+      paragraphs.push(
+        new Paragraph({
+          heading: headingMap[level],
+          spacing: { before: 240, after: 120, line: 360, lineRule: LineRuleType.AUTO },
+          children: [new TextRun({ text: headingText, bold: true, font: 'Times New Roman', size: level === 1 ? 32 : level === 2 ? 28 : 26 })],
+        })
+      );
+      continue;
+    }
+
     // Numbered list
     const numberedMatch = trimmed.match(/^(\d+)[.)]\s+(.*)/);
     if (numberedMatch) {

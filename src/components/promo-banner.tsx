@@ -36,7 +36,11 @@ function setDismissed(value: boolean) {
   listeners.forEach((l) => l());
 }
 
-export default function PromoBanner() {
+interface PromoBannerProps {
+  onCtaClick?: () => void;
+}
+
+export default function PromoBanner({ onCtaClick }: PromoBannerProps) {
   const dismissed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const handleDismiss = useCallback(() => {
@@ -80,9 +84,7 @@ export default function PromoBanner() {
               {/* CTA button */}
               <button
                 className="btn-gradient flex-shrink-0 text-xs font-semibold text-white px-3 py-1 rounded-full transition-all hover:scale-105 active:scale-95"
-                onClick={() => {
-                  /* navigate to pro page */
-                }}
+                onClick={onCtaClick}
               >
                 <span className="hidden sm:inline">Coba Pro Gratis</span>
                 <span className="sm:hidden">Coba</span>
