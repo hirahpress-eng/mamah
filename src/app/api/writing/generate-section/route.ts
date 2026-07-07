@@ -1,36 +1,14 @@
 import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
 import { formatBibliography } from '@/lib/bibliography-formatter';
+import { countWords } from '@/lib/count-words';
 import type { RealReference } from '@/lib/reference-search';
+import type { Reference } from '@/lib/types';
 
 export const maxDuration = 300;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface Reference {
-  id: string;
-  authors: string;
-  title: string;
-  year: number | string;
-  journal?: string;
-  doi?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  refType: string;
-  isSelected: boolean;
-  abstract?: string;
-  keywords?: string[];
-  relevanceScore?: number;
-  source?: string;
-  pdfUrl?: string;
-  citation_count?: number;
-}
-
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function countWords(text: string): number {
-  return text.split(/\s+/).filter((w) => w.length > 0).length;
-}
 
 function formatRefList(refs: Reference[], max = 30): string {
   const sorted = [...refs]
@@ -173,7 +151,7 @@ IMPORTANT: Write MAXIMUM ${targetWords} words. Be concise but comprehensive. Do 
 
     if (!content || content.trim().length === 0) {
       return Response.json(
-        { success: false, error: `Failed to generate "${stepLabel}" after 3 attempts` },
+        { success: false, error: `Failed to generate "${rawStepLabel}" after 3 attempts` },
         { status: 500 },
       );
     }

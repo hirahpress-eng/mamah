@@ -8,7 +8,7 @@ export async function GET() {
     const session = await getSession();
 
     if (!session) {
-      return NextResponse.json({ success: false, user: null });
+      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
     }
 
     // Fetch fresh user data from DB
@@ -26,12 +26,12 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ success: false, user: null });
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 401 });
     }
 
     return NextResponse.json({ success: true, user });
   } catch (error) {
     console.error('Auth me error:', error);
-    return NextResponse.json({ success: false, user: null });
+    return NextResponse.json({ success: false, error: 'Authentication error' }, { status: 401 });
   }
 }

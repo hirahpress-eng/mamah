@@ -1,5 +1,6 @@
 import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
 import type { AIEngineId } from '@/lib/ai-engine';
+import { extractJson } from '@/lib/extract-json';
 
 // ---------------------------------------------------------------------------
 // System Prompt
@@ -46,42 +47,6 @@ Return structured JSON:
 
 Generate 2-4 AND queries, 2-3 OR queries, 3-5 combined queries, 2-3 title variants, and 4-8 expanded keywords.
 Return ONLY valid JSON. No markdown fences.`;
-
-// ---------------------------------------------------------------------------
-// Robust JSON extraction
-// ---------------------------------------------------------------------------
-
-function extractJson(raw: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {
-    // Fall through
-  }
-
-  const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-  try {
-    const parsed = JSON.parse(cleaned);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {
-    // Fall through
-  }
-
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (match) {
-    try {
-      return JSON.parse(match[0]) as Record<string, unknown>;
-    } catch {
-      // Fall through
-    }
-  }
-
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // POST: Generate Boolean queries synchronously (Vercel-compatible)

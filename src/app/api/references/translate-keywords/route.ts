@@ -1,5 +1,6 @@
 import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
 import type { AIEngineId } from '@/lib/ai-engine';
+import { extractJson } from '@/lib/extract-json';
 
 // ---------------------------------------------------------------------------
 // System Prompt
@@ -60,42 +61,6 @@ Return structured JSON:
 Return ONLY valid JSON. No markdown fences.`;
 
 // ---------------------------------------------------------------------------
-// Robust JSON extraction
-// ---------------------------------------------------------------------------
-
-function extractJson(raw: string): Record<string, unknown> | null {
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {
-    // Fall through
-  }
-
-  const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-  try {
-    const parsed = JSON.parse(cleaned);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {
-    // Fall through
-  }
-
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (match) {
-    try {
-      return JSON.parse(match[0]) as Record<string, unknown>;
-    } catch {
-      // Fall through
-    }
-  }
-
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // POST: Translate keywords synchronously (Vercel-compatible, no in-memory jobs)
 // ---------------------------------------------------------------------------
 
@@ -145,17 +110,11 @@ export async function POST(request: Request) {
     const isUnavailable = UNAVAILABLE_PATTERNS.some(p => p.test(rawResult));
 
     if (isUnavailable || !rawResult || rawResult.trim().length === 0) {
-      console.warn('[translate-keywords] AI unavailable, returning fallback');
+      console.warn('[translate-keywords] AI unavailable');
       return Response.json({
-        success: true,
-        languages: {
-          en: { name: 'English', keywordQueries: validKeywords.map(k => k).join(' AND '), titleTranslation: researchTitle || 'Untitled' },
-          zh: { name: 'Chinese', keywordQueries: validKeywords.map(k => k).join(' AND '), titleTranslation: researchTitle || 'Untitled' },
-          es: { name: 'Spanish', keywordQueries: validKeywords.map(k => k).join(' AND '), titleTranslation: researchTitle || 'Untitled' },
-          de: { name: 'German', keywordQueries: validKeywords.map(k => k).join(' AND '), titleTranslation: researchTitle || 'Untitled' },
-          fr: { name: 'French', keywordQueries: validKeywords.map(k => k).join(' AND '), titleTranslation: researchTitle || 'Untitled' },
-        },
-      });
+        success: false,
+        error: 'All AI engines are currently unavailable. Please try again later.',
+      }, { status: 503 });
     }
 
     const parsed = extractJson(rawResult);

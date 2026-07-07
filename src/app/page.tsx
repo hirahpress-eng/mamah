@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import {
   BookOpen,
@@ -38,6 +39,8 @@ import {
   Zap,
   Globe,
   ArrowLeft,
+  Quote,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,6 +49,7 @@ import { Separator } from '@/components/ui/separator';
 import { useArticleStore, type GeneratedArticle } from '@/store/article-store';
 import { toast } from 'sonner';
 import AuthModal from '@/components/auth-modal';
+import PromoBanner from '@/components/promo-banner';
 import Step1Input from '@/components/article-generator/step1-input';
 import Step2References from '@/components/article-generator/step2-references';
 import Step3Method from '@/components/article-generator/step3-method';
@@ -61,6 +65,7 @@ import {
 import SuperBotPanel from '@/components/super-bot-panel';
 import WritingModeSelector from '@/components/writing-mode-selector';
 import CicilGenerator from '@/components/cicil-generator';
+import ErrorBoundary from '@/components/error-boundary';
 import type { CicilWritingMode } from '@/lib/writing-flows';
 
 // ─── Constants ────────────────────────────────────────────────────────
@@ -94,6 +99,7 @@ const STEPS = [
 
 function StepNavigation({ currentStep }: { currentStep: number }) {
   const { setCurrentStep } = useArticleStore();
+  const progressPercent = Math.max(0, ((currentStep - 1) / (STEPS.length - 1)) * 100);
 
   return (
     <nav className="w-full" aria-label="Article generation steps">
@@ -102,6 +108,7 @@ function StepNavigation({ currentStep }: { currentStep: number }) {
         {STEPS.map((step, index) => {
           const isCompleted = currentStep > step.id;
           const isActive = currentStep === step.id;
+          const isUpcoming = !isCompleted && !isActive;
           const Icon = step.icon;
 
           return (
@@ -110,80 +117,69 @@ function StepNavigation({ currentStep }: { currentStep: number }) {
                 onClick={() => {
                   if (isCompleted || isActive) setCurrentStep(step.id);
                 }}
-                className={`flex flex-col items-center gap-1.5 group transition-all duration-300 ${
-                  isCompleted || isActive ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                className={`flex flex-col items-center gap-2 group transition-all duration-300 ${
+                  isCompleted || isActive
+                    ? 'cursor-pointer'
+                    : 'cursor-not-allowed'
                 }`}
                 aria-current={isActive ? 'step' : undefined}
               >
-                <div
-                  className={`relative flex items-center justify-center size-11 rounded-xl transition-all duration-300 ${
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-110'
-                      : isCompleted
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                        : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="size-5" />
-                  {isCompleted && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 size-4 bg-emerald-500 rounded-full flex items-center justify-center"
-                    >
-                      <svg className="size-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                {/* Step circle */}
+                <div className="relative">
+                  {/* Pulse ring for active step */}
+                  {isActive && (
+                    <span className="absolute inset-0 rounded-full animate-ping bg-emerald-400/30" />
+                  )}
+                  <motion.div
+                    className={`relative flex items-center justify-center size-11 rounded-full transition-all duration-300 ${
+                      isActive
+                        ? 'bg-white dark:bg-gray-900 ring-[2.5px] ring-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-lg shadow-emerald-500/25 scale-110'
+                        : isCompleted
+                          ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20'
+                          : 'bg-muted text-muted-foreground group-hover:ring-2 group-hover:ring-emerald-400/30 group-hover:shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                    }`}
+                    whileHover={isUpcoming ? { scale: 1.05 } : { scale: 1.1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  >
+                    {isCompleted ? (
+                      <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                    </motion.div>
-                  )}
+                    ) : isActive ? (
+                      <Icon className="size-5" />
+                    ) : (
+                      <span className="text-sm font-semibold">{step.id}</span>
+                    )}
+                  </motion.div>
                 </div>
+                {/* Step label */}
                 <span
-                  className={`text-xs font-medium text-center leading-tight transition-colors ${
+                  className={`text-xs text-center leading-tight transition-colors duration-300 ${
                     isActive
-                      ? 'text-emerald-700 dark:text-emerald-300'
+                      ? 'font-bold text-emerald-700 dark:text-emerald-300'
                       : isCompleted
-                        ? 'text-foreground/70'
-                        : 'text-muted-foreground'
+                        ? 'font-normal text-emerald-600 dark:text-emerald-400'
+                        : 'font-medium text-muted-foreground group-hover:text-foreground/60'
                   }`}
                 >
                   {step.label}
                 </span>
               </button>
+              {/* Connector line between steps */}
               {index < STEPS.length - 1 && (
-                <div className="flex-1 mx-2 mt-[-1.25rem] relative">
-                  {/* Base connector line */}
-                  <div className="absolute inset-0 h-0.5 rounded-full bg-border" />
-                  {/* Animated fill connector */}
-                  <motion.div
-                    className="h-0.5 rounded-full bg-emerald-500 absolute inset-y-0 left-0"
-                    initial={false}
-                    animate={{
-                      width: currentStep > step.id ? '100%' : '0%',
-                    }}
-                    transition={{ duration: 0.5, ease: 'easeInOut' }}
-                  />
-                  {/* Animated numbered dot at midpoint */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="flex-1 mx-3 mt-[-1.5rem] relative">
+                  {currentStep > step.id ? (
+                    /* Completed connector: emerald gradient */
                     <motion.div
-                      className={`flex items-center justify-center size-5 rounded-full text-[10px] font-bold transition-colors duration-300 ${
-                        currentStep > step.id
-                          ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/40'
-                          : 'bg-background border-2 border-border text-muted-foreground'
-                      }`}
-                      animate={{
-                        scale: currentStep > step.id ? [1, 1.15, 1] : 1,
-                      }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
-                    >
-                      {currentStep > step.id ? (
-                        <svg className="size-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        step.id + 1
-                      )}
-                    </motion.div>
-                  </div>
+                      className="absolute inset-y-0 left-0 h-[2.5px] rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                      initial={{ scaleX: 0, transformOrigin: 'left' }}
+                      animate={{ scaleX: 1, transformOrigin: 'left' }}
+                      transition={{ duration: 0.5, ease: 'easeInOut' }}
+                    />
+                  ) : (
+                    /* Upcoming connector: dashed gray */
+                    <div className="absolute inset-y-0 left-0 right-0 h-[2px] border-t-[2.5px] border-dashed border-muted-foreground/25" />
+                  )}
                 </div>
               )}
             </React.Fragment>
@@ -191,32 +187,25 @@ function StepNavigation({ currentStep }: { currentStep: number }) {
         })}
       </div>
 
-      {/* Mobile compact stepper (sticky) */}
-      <div className="flex md:hidden items-center gap-1 overflow-x-auto pb-1">
-        {STEPS.map((step) => {
-          const isCompleted = currentStep > step.id;
-          const isActive = currentStep === step.id;
-          const Icon = step.icon;
-
-          return (
-            <button
-              key={step.id}
-              onClick={() => {
-                if (isCompleted || isActive) setCurrentStep(step.id);
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                isActive
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : isCompleted
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                    : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              <Icon className="size-3.5" />
-              {step.shortLabel}
-            </button>
-          );
-        })}
+      {/* Mobile compact stepper */}
+      <div className="md:hidden">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            Langkah {currentStep}/5
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {STEPS[currentStep - 1]?.label}
+          </span>
+        </div>
+        {/* Mini progress bar with emerald gradient */}
+        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+          <motion.div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
+            initial={false}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.5, ease: 'easeInOut' }}
+          />
+        </div>
       </div>
     </nav>
   );
@@ -275,108 +264,269 @@ function StepHeader({
   );
 }
 
-// ─── Welcome Banner Component ──────────────────────────────────────
+// ─── Social Proof Section (Stats + Testimonials) ───────────────────
+
+function SocialProofSection() {
+  const stats = [
+    { value: 10000, suffix: '+', label: 'Artikel Dibuat', display: '10,000+' },
+    { value: 12, suffix: '', label: 'Mode Penulisan', display: '12' },
+    { value: 7, suffix: 'th', label: 'Edition', display: 'APA 7th', prefix: 'Format ' },
+    { value: 2, suffix: '', label: 'Export Format', display: 'PDF & DOCX' },
+  ];
+
+  const testimonials = [
+    {
+      text: 'Mamah sangat membantu saya menyelesaikan skripsi dalam 2 minggu. Referensi yang dihasilkan sangat relevan dan artikelnya sudah siap publikasi.',
+      author: 'Dr. Siti Nurhaliza',
+      title: 'Dosen Universitas Indonesia',
+      stars: 5,
+    },
+    {
+      text: 'Sebagai peneliti, saya bisa menghemat waktu hingga 80% untuk menulis artikel jurnal. Kualitas tulisan sangat akademis dan terstruktur.',
+      author: 'Ahmad Fauzi',
+      title: 'Peneliti SINTA',
+      stars: 5,
+    },
+    {
+      text: 'Fitur penulisan cicil untuk buku sangat luar biasa. Setiap bab ditulis dengan konsisten dan sesuai standar penerbitan.',
+      author: 'Prof. Budi Santoso',
+      title: 'Penerbit Buku Akademik',
+      stars: 5,
+    },
+  ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+    },
+  };
+
+  const fadeUp = {
+    hidden: { opacity: 0, y: 24 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
+  };
+
+  return (
+    <motion.section
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.2 }}
+      variants={containerVariants}
+      className="max-w-4xl mx-auto mt-12 sm:mt-16 space-y-10 sm:space-y-14"
+    >
+      {/* ── Stats Counter Row ── */}
+      <motion.div variants={fadeUp}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          {stats.map((stat) => (
+            <motion.div
+              key={stat.label}
+              variants={fadeUp}
+              className="glass-card rounded-xl p-4 sm:p-5 text-center"
+            >
+              <motion.p
+                className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-gradient-emerald"
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, type: 'spring', stiffness: 100 }}
+              >
+                {stat.prefix && <span className="text-base sm:text-lg font-bold text-muted-foreground">{stat.prefix}</span>}
+                {stat.display}
+              </motion.p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 font-medium">
+                {stat.label}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* ── Testimonial Cards ── */}
+      <motion.div variants={fadeUp}>
+        <h2 className="text-center text-lg sm:text-xl font-bold text-foreground mb-6 sm:mb-8">
+          Dipercaya oleh Ribuan Penulis Akademik
+        </h2>
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
+          {testimonials.map((t, i) => (
+            <motion.div
+              key={t.author}
+              variants={fadeUp}
+              custom={i}
+              className="glass-card rounded-xl p-5 sm:p-6 flex flex-col gap-4"
+            >
+              {/* Quote Icon */}
+              <Quote className="size-6 text-emerald-500/40 shrink-0" />
+
+              {/* Testimonial Text */}
+              <p className="text-sm leading-relaxed text-foreground/80 flex-1">
+                &ldquo;{t.text}&rdquo;
+              </p>
+
+              {/* Author */}
+              <div className="pt-2 border-t border-border/40">
+                <p className="text-sm font-bold text-foreground">{t.author}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t.title}</p>
+              </div>
+
+              {/* Star Rating */}
+              <div className="flex gap-0.5">
+                {Array.from({ length: 5 }).map((_, si) => (
+                  <Star
+                    key={si}
+                    className={`size-3.5 ${si < t.stars ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/30'}`}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.section>
+  );
+}
+
+// ─── Welcome Banner Component (Premium Hero Section) ───────────────
 
 function WelcomeBanner() {
   const features = [
     {
       icon: Sparkles,
-      title: 'Generate Titles',
-      description: 'AI-powered academic title suggestions from keywords or ideas',
+      title: 'Generate Judul Penelitian',
+      description: 'Dapatkan saran judul akademik berkualitas dari kata kunci atau ide Anda',
     },
     {
-      icon: BookMarked,
-      title: 'Find References',
-      description: 'Search and curate up to 50 scholarly references',
+      icon: Search,
+      title: 'Temukan Referensi Ilmiah',
+      description: 'Cari dan kurasi hingga 50 referensi ilmiah dari database terpercaya',
     },
     {
-      icon: PenTool,
-      title: 'Create Articles',
-      description: 'Full IMRAD articles polished to publication quality',
+      icon: FileText,
+      title: 'Buat Artikel Jurnal',
+      description: 'Artikel IMRAD lengkap yang disiapkan hingga siap publikasi',
     },
   ];
 
+  const trustBadges = [
+    { label: '12+ Mode Penulisan', icon: BookOpen },
+    { label: 'Format APA 7th', icon: Shield },
+    { label: 'Export DOCX & PDF', icon: FileCheck },
+    { label: 'AI Multi-Engine', icon: Zap },
+  ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const fadeUp = {
+    hidden: { opacity: 0, y: 24 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: 'easeOut' as const },
+    },
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="mb-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative mb-6"
     >
-      <Card className="overflow-hidden border-0 shadow-lg card-glow bg-gradient-to-br from-white via-emerald-50/40 to-teal-50/60 dark:from-slate-900 dark:via-emerald-950/20 dark:to-teal-950/30">
-        <CardContent className="p-0">
-          <div className="flex flex-col lg:flex-row items-center gap-6 p-6 sm:p-8">
-            {/* Decorative illustration area */}
-            <div className="flex-shrink-0">
+      {/* Subtle radial gradient background */}
+      <div
+        className="absolute -inset-4 rounded-3xl opacity-60 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 50% at 50% 30%, rgba(16,185,129,0.08) 0%, rgba(13,148,136,0.04) 40%, transparent 70%)',
+        }}
+      />
+
+      <div className="relative text-center px-2 sm:px-4 py-8 sm:py-12">
+        {/* Hero heading */}
+        <motion.h2
+          variants={fadeUp}
+          className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gradient-emerald leading-tight"
+        >
+          Tulis Karya Akademik dengan AI
+        </motion.h2>
+
+        {/* Subheading */}
+        <motion.p
+          variants={fadeUp}
+          className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+        >
+          Dari ide hingga publikasi — 12 mode penulisan akademik yang didukung kecerdasan buatan
+        </motion.p>
+
+        {/* Feature cards */}
+        <div className="mt-8 sm:mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 max-w-4xl mx-auto">
+          {features.map((feature) => {
+            const FeatureIcon = feature.icon;
+            return (
               <motion.div
-                className="relative flex items-center justify-center size-24 sm:size-28 rounded-full"
-                style={{
-                  background: 'linear-gradient(135deg, #10b981, #0d9488, #059669)',
-                }}
-                animate={{
-                  boxShadow: [
-                    '0 0 0 0 rgba(16, 185, 129, 0.3)',
-                    '0 0 20px 8px rgba(16, 185, 129, 0.15)',
-                    '0 0 0 0 rgba(16, 185, 129, 0.3)',
-                  ],
-                }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                key={feature.title}
+                variants={fadeUp}
+                className="glass-card rounded-2xl p-5 sm:p-6 text-left group cursor-default"
               >
-                <div className="absolute inset-1 rounded-full bg-white/20 backdrop-blur-sm" />
-                <GraduationCap className="size-10 sm:size-12 text-white relative z-10" />
+                {/* Icon in emerald circle */}
+                <div className="flex items-center justify-center size-11 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 mb-3.5 transition-transform duration-300 group-hover:scale-110">
+                  <FeatureIcon className="size-5" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">{feature.title}</h3>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
               </motion.div>
-            </div>
+            );
+          })}
+        </div>
 
-            {/* Content */}
-            <div className="flex-1 text-center lg:text-left">
-              <motion.h2
-                className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-emerald"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.4 }}
+        {/* Trust indicators row */}
+        <motion.div
+          variants={fadeUp}
+          className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
+        >
+          {trustBadges.map((badge) => {
+            const BadgeIcon = badge.icon;
+            return (
+              <span
+                key={badge.label}
+                className="badge-gradient inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
               >
-                Welcome to Mamah
-              </motion.h2>
-              <motion.p
-                className="mt-2 text-sm sm:text-base text-muted-foreground max-w-xl"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-              >
-                Your AI-powered academic writing assistant. Generate publication-ready research
-                articles with proper IMRAD structure, curated references, and professional academic
-                language in minutes.
-              </motion.p>
+                <BadgeIcon className="size-3.5" />
+                {badge.label}
+              </span>
+            );
+          })}
+        </motion.div>
 
-              {/* Feature highlights */}
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {features.map((feature, i) => {
-                  const FeatureIcon = feature.icon;
-                  return (
-                    <motion.div
-                      key={feature.title}
-                      className="flex items-start gap-3 p-3 rounded-xl bg-white/60 dark:bg-slate-800/40 border border-border/40 backdrop-blur-sm card-hover-lift transition-smooth"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 + i * 0.1, duration: 0.35 }}
-                    >
-                      <div className="flex-shrink-0 flex items-center justify-center size-8 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
-                        <FeatureIcon className="size-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{feature.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                          {feature.description}
-                        </p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* CTA button */}
+        <motion.div variants={fadeUp} className="mt-8">
+          <button
+            className="btn-gradient btn-shine px-8 py-3 rounded-xl text-sm font-semibold shadow-lg"
+            onClick={() => {
+              // Scroll to writing mode selector below
+              const el = document.getElementById('writing-modes');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <Sparkles className="size-4" />
+              Mulai Menulis Sekarang
+            </span>
+          </button>
+        </motion.div>
+      </div>
     </motion.div>
   );
 }
@@ -830,40 +980,31 @@ export default function ArticleGeneratorApp() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50/50 via-white to-emerald-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/10">
+      <ErrorBoundary>
       {/* ── Header ───────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl relative">
-        {/* Animated gradient bottom border on scroll */}
-        <motion.div
-          className="absolute bottom-0 left-0 right-0 h-[2px]"
+      <header className="glass-card sticky top-0 z-50 w-full relative rounded-none">
+        {/* Emerald gradient bottom border — always visible, intensifies on scroll */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-[2px] transition-opacity duration-400"
           style={{
-            background: isScrolled
-              ? 'linear-gradient(90deg, transparent, #10b981, #14b8a6, #059669, transparent)'
-              : 'none',
+            background: 'linear-gradient(90deg, transparent 0%, #10b981 20%, #14b8a6 50%, #059669 80%, transparent 100%)',
+            opacity: isScrolled ? 0.9 : 0.35,
           }}
-          initial={false}
-          animate={{
-            opacity: isScrolled ? 1 : 0,
-          }}
-          transition={{ duration: 0.4 }}
         />
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-3">
-              <motion.div
-                className="flex items-center justify-center size-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm btn-glow"
-                animate={
-                  mounted
-                    ? {
-                        scale: [1, 1.1, 1],
-                      }
-                    : {}
-                }
-                transition={{ duration: 0.8, ease: 'easeInOut' }}
-              >
-                <GraduationCap className="size-4.5" />
-              </motion.div>
+            {/* Logo + App Name */}
+            <div className="flex items-center gap-2.5">
+              <Image
+                src="/logo.png"
+                alt="Mamah"
+                width={32}
+                height={32}
+                className="rounded-lg shadow-sm"
+                priority
+              />
               <div className="hidden sm:block">
-                <h1 className="text-sm font-bold tracking-tight text-foreground leading-none">
+                <h1 className="text-sm font-bold tracking-tight leading-none text-gradient-emerald">
                   Mamah
                 </h1>
                 <p className="text-[10px] text-muted-foreground leading-none mt-0.5">
@@ -871,7 +1012,8 @@ export default function ArticleGeneratorApp() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            {/* Action buttons — grouped by role */}
+            <div className="flex items-center gap-1">
               {/* Back to Mode Selector */}
               {selectedMode !== null && (
                 <Button
@@ -1014,6 +1156,9 @@ export default function ArticleGeneratorApp() {
         </div>
       </header>
 
+      {/* ── Promo Banner ─────────────────────────────────────────── */}
+      <PromoBanner />
+
       {/* ── Step Navigation (sticky mobile) — article mode only ── */}
       {selectedMode === 'article' && (
         <div className="sticky top-14 md:static z-40 border-b border-border/40 bg-white/80 dark:bg-slate-900/80 md:bg-white/50 md:dark:bg-slate-900/50 backdrop-blur-sm md:backdrop-blur-sm">
@@ -1039,7 +1184,9 @@ export default function ArticleGeneratorApp() {
                 transition={{ duration: 0.35, ease: 'easeOut' }}
                 className="max-w-4xl mx-auto"
               >
-                <WritingModeSelector onSelect={handleSelectMode} />
+                <div id="writing-modes">
+                  <WritingModeSelector onSelect={handleSelectMode} />
+                </div>
               </motion.div>
             )}
 
@@ -1215,63 +1362,63 @@ export default function ArticleGeneratorApp() {
         />
       )}
 
+      {/* ── Social Proof Section (landing page only) ── */}
+      {selectedMode === null && <SocialProofSection />}
+
       {/* ── Word Count Goal Progress (footer, when article exists, article mode only) ── */}
       {selectedMode === 'article' && generatedArticle && (
         <WordCountGoalBar article={generatedArticle} />
       )}
 
       {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer className="mt-auto border-t border-border/40 bg-white/50 dark:bg-slate-900/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+      <footer className="mt-auto glass-card rounded-none border-t-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5">
           {/* Keyboard Shortcuts Collapsible (desktop: expanded, mobile: collapsed) */}
           <KeyboardShortcutsSection
             isOpen={shortcutsOpen}
             onToggle={() => setShortcutsOpen((v) => !v)}
           />
 
-          <Separator className="opacity-40 mb-4" />
+          <div className="divider-gradient" />
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
             {/* Left: copyright & version */}
             <div className="flex items-center gap-2">
-              <p>© 2025 Mamah</p>
+              <p>© 2025 <span className="font-semibold text-foreground">HirahPress</span>. Hak cipta dilindungi.</p>
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
                 {APP_VERSION}
               </Badge>
             </div>
 
-            {/* Center: made with love */}
+            {/* Center: branding */}
             <p className="flex items-center gap-1">
-              Made with{' '}
-              <Heart className="size-3 text-red-400 fill-red-400" /> using{' '}
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Asisten Penulis</span>
+              Dibuat dengan{' '}
+              <Heart className="size-3 text-red-400 fill-red-400" /> oleh{' '}
+              <span className="font-semibold text-gradient-emerald">Mamah</span>
             </p>
 
-            {/* Right: links with hover effects */}
-            <div className="flex items-center gap-3">
+            {/* Right: links */}
+            <div className="flex items-center gap-4">
               <button
                 className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1"
-                onClick={() => {
-                  resetOnboarding();
-                  setTutorialOpen(true);
-                }}
+                onClick={() => setTutorialOpen(true)}
               >
                 <HelpCircle className="size-3" />
-                Tutorial
+                Bantuan
               </button>
               <button
-                className="hover:text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 flex items-center gap-1 group"
-                onClick={() => toast.info('This page is coming soon!')}
+                className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1"
+                onClick={() => toast.info('Halaman ini sedang dalam pengembangan dan akan segera tersedia.')}
               >
-                <Shield className="size-3 group-hover:scale-110 transition-transform duration-200" />
-                <span className="group-hover:underline underline-offset-2">Privacy</span>
+                <Shield className="size-3" />
+                Kebijakan Privasi
               </button>
               <button
-                className="hover:text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 flex items-center gap-1 group"
-                onClick={() => toast.info('This page is coming soon!')}
+                className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1"
+                onClick={() => toast.info('Halaman ini sedang dalam pengembangan dan akan segera tersedia.')}
               >
-                <FileCheck className="size-3 group-hover:scale-110 transition-transform duration-200" />
-                <span className="group-hover:underline underline-offset-2">Terms</span>
+                <FileCheck className="size-3" />
+                Ketentuan Layanan
               </button>
             </div>
           </div>
@@ -1280,6 +1427,7 @@ export default function ArticleGeneratorApp() {
           <MobileQuickActions />
         </div>
       </footer>
+      </ErrorBoundary>
     </div>
   );
 }

@@ -1,29 +1,11 @@
 import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { formatBibliography } from '@/lib/bibliography-formatter';
+import { countWords } from '@/lib/count-words';
+import type { Reference } from '@/lib/types';
 
 export const maxDuration = 300;
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
-interface Reference {
-  id: string;
-  authors: string;
-  title: string;
-  year: number | string;
-  journal?: string;
-  doi?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  refType: string;
-  isSelected: boolean;
-  abstract?: string;
-  keywords?: string[];
-  relevanceScore?: number;
-  source?: string;
-  pdfUrl?: string;
-  citation_count?: number;
-}
 
 type StageId = 'abstract' | 'introduction' | 'methodology' | 'results_discussion' | 'conclusion' | 'bibliography';
 
@@ -37,10 +19,6 @@ const STAGE_WORD_TARGETS: Record<StageId, number> = {
   conclusion: 800,
   bibliography: 0,
 };
-
-function countWords(text: string): number {
-  return text.split(/\s+/).filter((w) => w.length > 0).length;
-}
 
 // ─── Visual Placeholder Parser ────────────────────────────────────────────────
 

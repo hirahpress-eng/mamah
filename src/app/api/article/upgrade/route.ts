@@ -1,29 +1,12 @@
 import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { AI_ENGINES } from '@/lib/ai-engine-config';
 import { formatBibliography } from '@/lib/bibliography-formatter';
+import { countWords } from '@/lib/count-words';
+import type { Reference } from '@/lib/types';
 
 export const maxDuration = 300;
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
-interface Reference {
-  id: string;
-  authors: string;
-  title: string;
-  year: number | string;
-  journal?: string;
-  doi?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  refType: string;
-  isSelected: boolean;
-  abstract?: string;
-  keywords?: string[];
-  relevanceScore?: number;
-  source?: string;
-  pdfUrl?: string;
-}
 
 interface ArticleSection {
   type: string;
@@ -56,10 +39,6 @@ CRITICAL RULES:
 const FALLBACK_PATTERN = /all ai engines are currently unavailable/i;
 const RETRY_DELAYS = [3000, 6000, 12000];
 const MAX_SECTION_RETRIES = 3;
-
-function countWords(text: string): number {
-  return text.split(/\s+/).filter((w) => w.length > 0).length;
-}
 
 function isContentValid(content: string): boolean {
   if (!content || content.trim().length === 0) return false;

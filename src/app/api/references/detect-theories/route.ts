@@ -1,5 +1,6 @@
 import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
 import type { AIEngineId } from '@/lib/ai-engine';
+import { extractJson } from '@/lib/extract-json';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,45 +45,6 @@ Return structured JSON:
 }
 
 Return ONLY valid JSON. No markdown fences. Be thorough and specific. Every theory identified must be grounded in the actual references provided.`;
-
-// ---------------------------------------------------------------------------
-// Robust JSON extraction
-// ---------------------------------------------------------------------------
-
-function extractJson(raw: string): Record<string, unknown> | null {
-  // Try direct parse first
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {
-    // Fall through
-  }
-
-  // Strip markdown code fences if present
-  const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-  try {
-    const parsed = JSON.parse(cleaned);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {
-    // Fall through
-  }
-
-  // Try finding a JSON object in the text
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (match) {
-    try {
-      return JSON.parse(match[0]) as Record<string, unknown>;
-    } catch {
-      // Fall through
-    }
-  }
-
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // Build formatted reference list for prompt

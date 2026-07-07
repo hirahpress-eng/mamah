@@ -29,13 +29,15 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Mamah" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.ico",
+    apple: "/logo.png",
   },
   openGraph: {
     title: "Mamah — AI Academic Writing Assistant",
     description:
-      "Generate publication-ready academic articles with AI-powered research assistance.",
+      "Generate publication-ready academic articles with AI-powered research assistance. Supports 12 writing modes: articles, theses, books, and more.",
     type: "website",
+    images: ["/og-image.png"],
   },
 };
 
@@ -45,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased bg-background text-foreground`}
         style={{

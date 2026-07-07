@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateWithEngine } from '@/lib/ai-engine';
 import { AI_ENGINES, type AIEngineId } from '@/lib/ai-engine-config';
 
+export const maxDuration = 300;
+
 // ─── Mode-specific system prompts ───────────────────────────────────
 
 const MODE_PROMPTS: Record<string, string> = {

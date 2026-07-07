@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -15,6 +15,9 @@ import {
   Library,
   Languages,
   BookMarked,
+  PenLine,
+  BookCopy,
+  Lightbulb,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +32,7 @@ interface WritingMode {
   id: string;
   title: string;
   description: string;
+  shortDesc: string;
   icon: React.ElementType;
   badge?: { label: string; variant: 'popular' | 'new' };
   gradient: string;
@@ -39,6 +43,47 @@ interface WritingMode {
   category?: string;
 }
 
+interface CategoryConfig {
+  key: string;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+  badgeGradient: string;
+}
+
+// ─── Category Definitions ──────────────────────────────────────────
+
+const CATEGORIES: CategoryConfig[] = [
+  {
+    key: 'Artikel',
+    label: 'Artikel',
+    icon: PenLine,
+    description: 'Artikel ilmiah & jurnal',
+    badgeGradient: 'from-emerald-500/10 to-teal-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 dark:border-emerald-500/15',
+  },
+  {
+    key: 'Akademik',
+    label: 'Akademik',
+    icon: GraduationCap,
+    description: 'Skripsi, tesis & disertasi',
+    badgeGradient: 'from-amber-500/10 to-orange-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 dark:border-amber-500/15',
+  },
+  {
+    key: 'Buku',
+    label: 'Buku',
+    icon: BookCopy,
+    description: 'Buku ilmiah & akademik',
+    badgeGradient: 'from-blue-500/10 to-sky-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20 dark:border-blue-500/15',
+  },
+  {
+    key: 'Lainnya',
+    label: 'Lainnya',
+    icon: Lightbulb,
+    description: 'Proposal, esai & makalah',
+    badgeGradient: 'from-rose-500/10 to-pink-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20 dark:border-rose-500/15',
+  },
+];
+
 // ─── Mode Definitions ──────────────────────────────────────────────
 
 const WRITING_MODES: WritingMode[] = [
@@ -48,6 +93,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Artikel Jurnal',
     description:
       'Artikel ilmiah dengan struktur IMRAD lengkap, referensi Scopus, siap publikasi. Mencicil: Abstrak → Pendahuluan → Metode → Hasil & Diskusi → Kesimpulan → Bibliografi',
+    shortDesc: 'Artikel ilmiah IMRAD, siap publikasi jurnal',
     icon: FileText,
     badge: { label: 'Popular', variant: 'popular' },
     gradient:
@@ -65,6 +111,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Skripsi (S1)',
     description:
       'BAB 1-5 + Referensi, 5-7 sub-tahapan per BAB. Latar belakang, tinjauan pustaka, metodologi, hasil, kesimpulan.',
+    shortDesc: 'Skripsi S1 dengan BAB 1-5 lengkap',
     icon: GraduationCap,
     badge: { label: 'Baru', variant: 'new' },
     gradient:
@@ -81,6 +128,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Tesis (S2)',
     description:
       'BAB 1-5 + Referensi, 5-8 sub-tahapan per BAB. Lebih mendalam dari skripsi dengan analisis model dan studi literatur sistematis.',
+    shortDesc: 'Tesis S2 dengan analisis mendalam',
     icon: GraduationCap,
     gradient:
       'from-orange-50 via-orange-50/50 to-red-50/40 dark:from-orange-950/30 dark:via-orange-950/15 dark:to-red-950/20',
@@ -96,6 +144,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Disertasi (S3)',
     description:
       'BAB 1-5 + Referensi, 8-11 sub-tahapan per BAB. Penelitian orisinal paling komprehensif dengan analisis mediasi/moderasi.',
+    shortDesc: 'Disertasi S3, penelitian orisinal komprehensif',
     icon: BookMarked,
     gradient:
       'from-red-50 via-red-50/50 to-rose-50/40 dark:from-red-950/30 dark:via-red-950/15 dark:to-rose-950/20',
@@ -112,6 +161,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Buku Ilmiah Indonesia',
     description:
       'Buku akademik berbahasa Indonesia. Kata pengantar, BAB 1-5, daftar pustaka. Mencicil per sub-bab maks 1500 kata.',
+    shortDesc: 'Buku akademik berbahasa Indonesia',
     icon: BookOpen,
     gradient:
       'from-blue-50 via-blue-50/50 to-sky-50/40 dark:from-blue-950/30 dark:via-blue-950/15 dark:to-sky-950/20',
@@ -126,6 +176,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Buku Ilmiah English',
     description:
       'Academic book in English. Preface, Chapters 1-5, References. Professional English academic writing.',
+    shortDesc: 'Academic book in English, profesional',
     icon: Globe,
     gradient:
       'from-sky-50 via-sky-50/50 to-cyan-50/40 dark:from-sky-950/30 dark:via-sky-950/15 dark:to-cyan-950/20',
@@ -140,6 +191,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Buku Bahasa Arab',
     description:
       'كتاب باللغة العربية — Arabic academic book. Pendahuluan, al-Fashl, al-Khatimah.',
+    shortDesc: 'كتاب باللغة العربية — Arabic academic book',
     icon: Languages,
     gradient:
       'from-teal-50 via-teal-50/50 to-emerald-50/40 dark:from-teal-950/30 dark:via-teal-950/15 dark:to-emerald-950/20',
@@ -154,6 +206,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Buku Eksakta/Matematika',
     description:
       'Buku sains, matematika, bidang eksakta. Definisi, teorema, proof, contoh numerik. Notasi matematika formal.',
+    shortDesc: 'Buku sains & matematika dengan notasi formal',
     icon: Calculator,
     gradient:
       'from-violet-50 via-violet-50/50 to-purple-50/40 dark:from-violet-950/30 dark:via-violet-950/15 dark:to-purple-950/20',
@@ -169,6 +222,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Buku Keislaman',
     description:
       'Kajian keislaman: Al-Quran, Hadits, Fiqih, perspektif ulama & mazhab. Tafsir tematik dan analisis komparatif.',
+    shortDesc: 'Kajian keislaman, Al-Quran, Hadits & Fiqih',
     icon: Library,
     gradient:
       'from-emerald-50 via-emerald-50/50 to-green-50/40 dark:from-emerald-950/30 dark:via-emerald-950/15 dark:to-green-950/20',
@@ -185,6 +239,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Proposal Penelitian',
     description:
       'BAB I-III + Referensi. Latar belakang, tinjauan pustaka, metodologi, jadwal Gantt chart, anggaran biaya.',
+    shortDesc: 'Proposal penelitian lengkap dengan Gantt chart',
     icon: Target,
     gradient:
       'from-rose-50 via-rose-50/50 to-pink-50/40 dark:from-rose-950/30 dark:via-rose-950/15 dark:to-pink-950/20',
@@ -198,6 +253,7 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Esai Beasiswa',
     description:
       'Personal statement, motivasi, visi, kontribusi masa depan. Persuasif dan memikat untuk pengajuan beasiswa.',
+    shortDesc: 'Esai persuasif untuk pengajuan beasiswa',
     icon: Award,
     gradient:
       'from-pink-50 via-pink-50/50 to-fuchsia-50/40 dark:from-pink-950/30 dark:via-pink-950/15 dark:to-fuchsia-950/20',
@@ -213,12 +269,13 @@ const WRITING_MODES: WritingMode[] = [
     title: 'Makalah',
     description:
       'BAB I-III + Referensi. Pendahuluan, pembahasan, kesimpulan. Format rapi untuk tugas akademik.',
+    shortDesc: 'Makalah akademik rapi untuk tugas kuliah',
     icon: ScrollText,
     gradient:
       'from-cyan-50 via-cyan-50/50 to-teal-50/40 dark:from-cyan-950/30 dark:via-cyan-950/15 dark:to-teal-950/20',
     iconBg: 'bg-gradient-to-br from-cyan-500 to-teal-600 shadow-cyan-500/25',
     iconColor: 'text-white',
-    borderHover: 'hover:border-cyan-400/60 dark:hover:border-cyan-600/60',
+    borderHover: 'hover:border-cyan-400/60 dark:hover:border-teal-600/60',
     category: 'Lainnya',
   },
 ];
@@ -245,38 +302,109 @@ function ModeBadge({
   );
 }
 
+// ─── Category Header Component ─────────────────────────────────────
+
+function CategoryHeader({
+  category,
+  index,
+}: {
+  category: CategoryConfig;
+  index: number;
+}) {
+  const CatIcon = category.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{
+        duration: 0.45,
+        delay: index * 0.12,
+        ease: [0.25, 0.1, 0.25, 1],
+      }}
+      className="flex items-center gap-3 pt-4 sm:pt-6 first:pt-0"
+    >
+      <div className="flex items-center justify-center size-8 rounded-lg bg-gradient-to-br from-emerald-500/10 to-teal-500/10 dark:from-emerald-500/15 dark:to-teal-500/15 border border-emerald-500/15 dark:border-emerald-500/10">
+        <CatIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
+      </div>
+      <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground tracking-tight">
+            {category.label}
+          </h3>
+          <span className="text-[11px] text-muted-foreground/60 font-normal">
+            {category.description}
+          </span>
+        </div>
+        <div className="h-px flex-1 mt-1.5 bg-gradient-to-r from-border via-border/50 to-transparent" />
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Mode Card ─────────────────────────────────────────────────────
 
 function ModeCard({
   mode,
   index,
+  isSelected,
   onSelect,
 }: {
   mode: WritingMode;
   index: number;
+  isSelected: boolean;
   onSelect: (mode: string) => void;
 }) {
   const Icon = mode.icon;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.96 }}
+      initial={{ opacity: 0, y: 20, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
         duration: 0.4,
-        delay: index * 0.06,
+        delay: index * 0.055,
         ease: [0.25, 0.1, 0.25, 1],
       }}
-      className={mode.featured ? 'col-span-2 md:col-span-1 lg:col-span-2' : ''}
     >
       <Card
         onClick={() => onSelect(mode.id)}
-        className={`group relative cursor-pointer border-border/40 bg-gradient-to-br ${mode.gradient} ${mode.borderHover} transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.99] overflow-hidden`}
+        role="button"
+        className={[
+          'group relative cursor-pointer overflow-hidden',
+          'border transition-all duration-300',
+          'card-hover-lift card-glow',
+          'glass-card',
+          // Selected state: prominent emerald glow
+          isSelected
+            ? [
+                'border-emerald-500/60 dark:border-emerald-400/50',
+                'ring-2 ring-emerald-500/25 dark:ring-emerald-400/20',
+                'shadow-[0_0_20px_rgba(16,185,129,0.15),0_0_40px_rgba(16,185,129,0.05)]',
+                'dark:shadow-[0_0_20px_rgba(52,211,153,0.12),0_0_40px_rgba(52,211,153,0.04)]',
+                'scale-[1.02]',
+              ].join(' ')
+            : 'border-border/40',
+          mode.borderHover,
+          mode.featured ? 'col-span-2 md:col-span-1 lg:col-span-2' : '',
+        ].join(' ')}
       >
         {/* Subtle animated shimmer on hover */}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
         </div>
+
+        {/* Selected indicator bar */}
+        {isSelected && (
+          <motion.div
+            layoutId="selected-indicator"
+            className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-emerald-500 via-teal-500 to-emerald-600 rounded-r-full"
+            initial={{ opacity: 0, scaleY: 0 }}
+            animate={{ opacity: 1, scaleY: 1 }}
+            transition={{ duration: 0.3, ease: 'easeOut' as const }}
+          />
+        )}
+
         <CardContent className="relative p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3 mb-2.5">
             <div
@@ -287,22 +415,25 @@ function ModeCard({
             <div className="flex flex-col items-end gap-1">
               {mode.badge && <ModeBadge badge={mode.badge} />}
               {mode.category && (
-                <span className="text-[10px] text-muted-foreground/70 font-medium">
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 font-medium border bg-gradient-to-r ${CATEGORIES.find((c) => c.key === mode.category)?.badgeGradient ?? ''}`}
+                >
                   {mode.category}
-                </span>
+                </Badge>
               )}
             </div>
           </div>
           <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 tracking-tight">
             {mode.title}
           </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2">
-            {mode.description}
+          <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed line-clamp-1">
+            {mode.shortDesc}
           </p>
 
-          {/* Arrow indicator on hover */}
-          <div className="mt-3 flex items-center text-xs font-medium text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors duration-200">
-            <span>Mulai menulis</span>
+          {/* Arrow indicator on hover / selected */}
+          <div className={`mt-3 flex items-center text-xs font-medium transition-colors duration-200 ${isSelected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400'}`}>
+            <span>{isSelected ? 'Dipilih' : 'Mulai menulis'}</span>
             <svg
               className="ml-1.5 size-3.5 transform group-hover:translate-x-1 transition-transform duration-200"
               fill="none"
@@ -328,13 +459,26 @@ function ModeCard({
 export default function WritingModeSelector({
   onSelect,
 }: WritingModeSelectorProps) {
+  const [selectedMode, setSelectedMode] = useState<string | null>(null);
+
+  const handleSelect = (mode: string) => {
+    setSelectedMode(mode);
+    onSelect(mode);
+  };
+
+  // Group modes by category in order
+  const groupedModes = CATEGORIES.map((cat) => ({
+    category: cat,
+    modes: WRITING_MODES.filter((m) => m.category === cat.key),
+  }));
+
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
+        transition={{ duration: 0.5, ease: 'easeOut' as const }}
         className="text-center space-y-2"
       >
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -342,29 +486,41 @@ export default function WritingModeSelector({
         </h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
           Pilih format tulisan akademik yang sesuai dengan kebutuhan Anda.
-          Semua mode menggunakan sistem <span className="font-semibold text-emerald-600 dark:text-emerald-400">penulisan mencicil</span> per tahapan.
+          Semua mode menggunakan sistem{' '}
+          <span className="font-semibold text-gradient-emerald">
+            penulisan mencicil
+          </span>{' '}
+          per tahapan.
         </p>
       </motion.div>
 
-      {/* Category Labels */}
-      <div className="flex flex-wrap gap-2 justify-center">
-        {['Artikel', 'Akademik', 'Buku', 'Lainnya'].map((cat) => (
-          <Badge key={cat} variant="outline" className="text-xs font-medium">
-            {cat === 'Artikel' ? '✨ ' : cat === 'Akademik' ? '🎓 ' : cat === 'Buku' ? '📚 ' : '📝 '}{cat}
-          </Badge>
-        ))}
-      </div>
+      {/* Mode Cards grouped by category */}
+      <div className="space-y-6 sm:space-y-8">
+        {groupedModes.map((group, catIdx) => {
+          const startIndex = groupedModes
+            .slice(0, catIdx)
+            .reduce((sum, g) => sum + g.modes.length, 0);
 
-      {/* Mode Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-        {WRITING_MODES.map((mode, index) => (
-          <ModeCard
-            key={mode.id}
-            mode={mode}
-            index={index}
-            onSelect={onSelect}
-          />
-        ))}
+          return (
+            <div key={group.category.key} className="space-y-3 sm:space-y-4">
+              <CategoryHeader
+                category={group.category}
+                index={catIdx}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {group.modes.map((mode, i) => (
+                  <ModeCard
+                    key={mode.id}
+                    mode={mode}
+                    index={startIndex + i}
+                    isSelected={selectedMode === mode.id}
+                    onSelect={handleSelect}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

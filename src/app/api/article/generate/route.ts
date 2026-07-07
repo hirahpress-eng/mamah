@@ -2,27 +2,12 @@ import { NextResponse } from 'next/server';
 import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { AI_ENGINES } from '@/lib/ai-engine-config';
 import { formatBibliography } from '@/lib/bibliography-formatter';
+import { countWords } from '@/lib/count-words';
+import type { Reference } from '@/lib/types';
+
+export const maxDuration = 300;
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-
-interface Reference {
-  id: string;
-  authors: string;
-  title: string;
-  year: number | string;
-  journal?: string;
-  doi?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  refType: string;
-  isSelected: boolean;
-  abstract?: string;
-  keywords?: string[];
-  relevanceScore?: number;
-  source?: string;
-  pdfUrl?: string;
-}
 
 // ─── Per-Section Retry with Exponential Backoff ────────────────────────────────
 
@@ -54,10 +39,6 @@ const SECTION_TARGET_WORDS: Record<string, number> = {
   discussion: 3250,
   conclusion: 800,
 };
-
-function countWords(text: string): number {
-  return text.split(/\s+/).filter((w) => w.length > 0).length;
-}
 
 function isSectionValid(content: string): boolean {
   if (!content || content.trim().length === 0) return false;

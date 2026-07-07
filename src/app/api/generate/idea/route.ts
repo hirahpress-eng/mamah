@@ -32,30 +32,22 @@ Return ONLY the JSON, nothing else.`;
       });
     } catch {
       return NextResponse.json({
-        success: true,
-        keywords: ['Research Methodology', 'Data Analysis', 'Systematic Review', 'Empirical Study', 'Literature Analysis'],
-        titles: [
-          'A Comprehensive Investigation into Current Research Trends',
-          'Exploring Novel Approaches in the Field: A Systematic Review',
-          'Insights and Implications for Future Research Directions',
-          'Advancing the Understanding Through Integrated Analysis',
-          'Critical Examination of Methodologies and Outcomes',
-        ],
-      });
+        success: false,
+        isFallback: true,
+        error: 'All AI engines are currently unavailable. Please try again later.',
+        keywords: [],
+        titles: [],
+      }, { status: 503 });
     }
 
     if (!result || result.includes('All AI engines are currently unavailable')) {
       return NextResponse.json({
-        success: true,
-        keywords: ['Research Methodology', 'Data Analysis', 'Systematic Review', 'Empirical Study', 'Literature Analysis'],
-        titles: [
-          'A Comprehensive Investigation into Current Research Trends',
-          'Exploring Novel Approaches in the Field: A Systematic Review',
-          'Insights and Implications for Future Research Directions',
-          'Advancing the Understanding Through Integrated Analysis',
-          'Critical Examination of Methodologies and Outcomes',
-        ],
-      });
+        success: false,
+        isFallback: true,
+        error: 'All AI engines are currently unavailable. Please try again later.',
+        keywords: [],
+        titles: [],
+      }, { status: 503 });
     }
 
     let keywords: string[] = [];
@@ -76,10 +68,12 @@ Return ONLY the JSON, nothing else.`;
         .filter((l: string) => l.length > 10).slice(0, 5);
     }
 
-    if (keywords.length === 0) keywords = ['Research Methodology', 'Data Analysis', 'Systematic Review', 'Empirical Study', 'Literature Analysis'];
-    if (titles.length === 0) titles = ['A Comprehensive Investigation into Current Research Trends', 'Exploring Novel Approaches in the Field: A Systematic Review', 'Insights and Implications for Future Research Directions', 'Advancing the Understanding Through Integrated Analysis', 'Critical Examination of Methodologies and Outcomes'];
+    let isFallback = false;
 
-    return NextResponse.json({ success: true, keywords, titles });
+    if (keywords.length === 0) { keywords = ['Research Methodology', 'Data Analysis', 'Systematic Review', 'Empirical Study', 'Literature Analysis']; isFallback = true; }
+    if (titles.length === 0) { titles = ['A Comprehensive Investigation into Current Research Trends', 'Exploring Novel Approaches in the Field: A Systematic Review', 'Insights and Implications for Future Research Directions', 'Advancing the Understanding Through Integrated Analysis', 'Critical Examination of Methodologies and Outcomes']; isFallback = true; }
+
+    return NextResponse.json({ success: true, keywords, titles, ...(isFallback ? { isFallback: true, warning: 'AI response could not be fully parsed. Results may not accurately reflect your idea.' } : {}) });
   } catch (error) {
     console.error('[generate/idea] Error:', error);
     return NextResponse.json({ success: false, error: 'Failed to analyze idea' }, { status: 500 });
