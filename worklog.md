@@ -694,3 +694,26 @@ Stage Summary:
 - Word counter glass-card bar added at top of output phase, above the compiled text display
 - No existing code deleted
 - All existing functionality preserved
+
+---
+Task ID: s2-recovery
+Agent: Auto-Recovery Monitor
+Task: Dev server restart, TS error fix, Sprint 2 work
+
+Work Log:
+- Restarted dev server (was dead)
+- Found and pushed uncommitted sprint 1 changes (loading skeletons, mobile nav)
+- Fixed framer-motion Variants type error: ease: [0.25,0.1,0.25,1] → 'easeOut' as const
+- Fixed critical dark mode: body had hardcoded light gradient in inline style
+- Added body-gradient CSS class with dark mode variant
+- Added word counter to CicilGenerator output (kata/karakter/halaman/progress)
+- Verified all components have proper dark mode styling
+- All changes committed and pushed (d94070a)
+
+Stage Summary:
+- 3 commits pushed to GitHub (6dee618, 636df30, d94070a)
+- Vercel auto-deploying latest changes
+- Lint: 0 errors throughout
+- App-critical TypeScript errors: 0
+- Dark mode now fully functional
+- Sprint 2 started: 2 tasks completed
