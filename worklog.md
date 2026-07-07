@@ -751,3 +751,25 @@ Stage Summary:
 - BLOCKER RESOLVED: GEMINI_API_KEY now in Vercel env vars
 - Production AI features (Gemini) should work after next Vercel redeploy
 - Dev server healthy, codebase clean, all committed
+
+---
+Task ID: s2-faq-howitworks
+Agent: Main Agent (Z.ai Chat)
+Task: Add FAQ Accordion and How It Works section to landing page
+
+Work Log:
+- Installed @radix-ui/react-accordion package
+- Created src/components/ui/accordion.tsx (shadcn pattern with Radix)
+- Added accordion-down/accordion-up keyframes to globals.css
+- Added HowItWorksSection: 3-step visual timeline with alternating layout (desktop) and stacked cards (mobile)
+- Added FAQSection: 7 FAQ items covering pricing, speed, references, export formats, modes, security, multi-language
+- Both sections render only on landing page (selectedMode === null)
+- Version bumped to v2.2.0
+- Lint: 0 errors
+- Pushed to GitHub (d95468a) — Vercel auto-deploying
+
+Stage Summary:
+- 3 new files modified: page.tsx (+174 lines), globals.css (+18 lines), accordion.tsx (new)
+- Landing page now has: Writing Mode Selector → Social Proof → How It Works → FAQ → Footer
+- GEMINI_API_KEY confirmed added by user to Vercel env vars
+- Next: Continue Sprint 2 with more features (pricing, floating hero elements, etc.)
