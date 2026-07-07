@@ -78,7 +78,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────
 
-const APP_VERSION = 'v2.1.0';
+const APP_VERSION = 'v2.2.0';
 
 const MODE_TITLES: Record<string, string> = {
   article: 'Artikel Jurnal',
