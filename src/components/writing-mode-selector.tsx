@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -521,6 +522,55 @@ export default function WritingModeSelector({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Skeleton Component ────────────────────────────────────────────
+
+export function WritingModeSelectorSkeleton() {
+  return (
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header skeleton */}
+      <div className="text-center space-y-2">
+        <Skeleton className="h-8 w-64 mx-auto" />
+        <Skeleton className="h-4 w-80 mx-auto" />
+      </div>
+      {/* Category groups skeleton */}
+      <div className="space-y-6 sm:space-y-8">
+        {Array.from({ length: 4 }).map((_, catIdx) => (
+          <div key={catIdx} className="space-y-3 sm:space-y-4">
+            {/* Category header */}
+            <div className="flex items-center gap-3 pt-4 sm:pt-6">
+              <Skeleton className="size-8 rounded-lg" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-px w-full" />
+              </div>
+            </div>
+            {/* Cards grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {Array.from({ length: catIdx === 0 ? 1 : catIdx === 1 ? 3 : catIdx === 2 ? 5 : 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border p-4 sm:p-5 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <Skeleton className="size-10 rounded-xl" />
+                    <div className="flex flex-col items-end gap-1">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                      <Skeleton className="h-5 w-14 rounded-full" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

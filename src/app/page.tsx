@@ -66,6 +66,7 @@ import SuperBotPanel from '@/components/super-bot-panel';
 import WritingModeSelector from '@/components/writing-mode-selector';
 import CicilGenerator from '@/components/cicil-generator';
 import ErrorBoundary from '@/components/error-boundary';
+import MobileBottomNav from '@/components/mobile-bottom-nav';
 import type { CicilWritingMode } from '@/lib/writing-flows';
 
 // ─── Constants ────────────────────────────────────────────────────────
@@ -992,7 +993,7 @@ export default function ArticleGeneratorApp() {
           }}
         />
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14">
+          <div className="flex items-center justify-between h-12 sm:h-14">
             {/* Logo + App Name */}
             <div className="flex items-center gap-2.5">
               <Image
@@ -1171,7 +1172,7 @@ export default function ArticleGeneratorApp() {
       )}
 
       {/* ── Main Content ─────────────────────────────────────────── */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20 lg:pb-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <AnimatePresence mode="wait">
             {/* ── Mode: null → Show Mode Selector ── */}
@@ -1427,6 +1428,20 @@ export default function ArticleGeneratorApp() {
           <MobileQuickActions />
         </div>
       </footer>
+
+      {/* ── Mobile Bottom Navigation ──────────────────────────────── */}
+      <MobileBottomNav
+        onHome={selectedMode !== null ? handleBackToModes : () => {}}
+        onHistory={() => {
+          const historyBtn = document.querySelector('[aria-label="Article history"]') as HTMLButtonElement | null;
+          if (historyBtn) historyBtn.click();
+        }}
+        onThemeToggle={toggleTheme}
+        isDark={isDark}
+        isLoggedIn={!!authUser}
+        onAuth={() => setAuthModalOpen(true)}
+      />
+
       </ErrorBoundary>
     </div>
   );
