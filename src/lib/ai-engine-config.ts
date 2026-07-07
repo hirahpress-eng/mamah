@@ -13,40 +13,42 @@ export interface AIEngineConfig {
   icon: string; // emoji icon for display
 }
 
+const IS_PROD = typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
+
 export const AI_ENGINES: AIEngineConfig[] = [
   {
     id: 'zai',
-    name: process.env.NODE_ENV === 'production' ? 'Tim 1 (Z.ai — lokal)' : 'Tim 1 (Default)',
-    description: process.env.NODE_ENV === 'production'
-      ? 'Hanya tersedia di lingkungan z.ai lokal'
+    name: 'Tim 1 (Z.ai)',
+    description: IS_PROD
+      ? 'Tidak tersedia di server publik'
       : 'Tim utama, andal dan terintegrasi penuh',
-    bestFor: 'Pembuatan artikel, judul & kata kunci',
-    isDefault: process.env.NODE_ENV !== 'production',
+    bestFor: IS_PROD ? '—' : 'Pembuatan artikel, judul & kata kunci',
+    isDefault: !IS_PROD,
     icon: '🟢',
   },
   {
     id: 'gemini',
-    name: 'Tim 2',
-    description: 'Konteks panjang hingga 1 juta token',
-    bestFor: 'Analisis referensi, konten panjang, generasi cadangan',
-    isDefault: false,
+    name: IS_PROD ? 'Tim 1 (Default)' : 'Tim 2 (Gemini)',
+    description: 'Google Gemini 2.5 Flash — konteks panjang, akurat',
+    bestFor: 'Pembuatan artikel, judul, kata kunci, konten panjang',
+    isDefault: IS_PROD,
     icon: '🔵',
   },
   {
     id: 'grok',
-    name: process.env.NODE_ENV === 'production' ? 'Tim 3 (Default)' : 'Tim 3',
+    name: 'Tim 2 (Groq)',
     description: 'Groq Llama 3.3 70B — inferensi super cepat',
-    bestFor: process.env.NODE_ENV === 'production'
-      ? 'Pembuatan artikel, judul & kata kunci'
-      : 'Draf cepat, generasi ringkas, mesin alternatif',
-    isDefault: process.env.NODE_ENV === 'production',
+    bestFor: 'Draf cepat, generasi ringkas, mesin alternatif',
+    isDefault: false,
     icon: '🟠',
   },
   {
     id: 'cloudflare',
-    name: 'Tim 4 (Llama 3.1)',
-    description: 'Meta Llama 3.1 70B — model open-source besar',
-    bestFor: 'Generasi cadangan, distribusi beban, fallback andal',
+    name: 'Tim 3 (Llama)',
+    description: IS_PROD
+      ? 'Tidak tersedia di server publik'
+      : 'Meta Llama 3.1 70B — model open-source besar',
+    bestFor: IS_PROD ? '—' : 'Generasi cadangan, distribusi beban',
     isDefault: false,
     icon: '🟡',
   },
