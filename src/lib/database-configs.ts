@@ -1043,3 +1043,7 @@ export function getDatabasesByCategory(): Record<string, DatabaseConfig[]> {
 export function getDatabaseConfig(id: string): DatabaseConfig | undefined {
   return DATABASE_CONFIGS[id];
 }
+
+export function getDatabasesByIds(ids: string[]): DatabaseConfig[] {
+  return ids.map((id) => DATABASE_CONFIGS[id]).filter((db): db is DatabaseConfig => db != null);
+}
