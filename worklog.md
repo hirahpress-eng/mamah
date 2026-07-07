@@ -650,3 +650,47 @@ Stage Summary:
 - Files modified: 1 (writing-mode-selector.tsx — added import + WritingModeSelectorSkeleton export)
 - No existing code deleted or modified
 - Lint: clean
+
+---
+Task ID: s2-1
+Agent: Sub Agent
+Task: Fix dark mode inconsistencies and improve dark mode experience
+
+Work Log:
+- Audited all components for dark mode styling issues
+- **Fixed layout.tsx body background** (critical): Removed hardcoded light-mode inline gradient `style={{ background: 'linear-gradient(180deg, oklch(0.985...) }}` from body element. Replaced with CSS class `body-gradient` defined in globals.css with light AND dark mode variants. Dark mode gradient: `oklch(0.16 0.003 155) → oklch(0.13 0 0) → oklch(0.17 0.002 155)` — subtle dark teal-tinted gradient.
+- **Verified page.tsx root container**: Already has proper dark mode classes `dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/10` ✅
+- **Verified promo-banner.tsx**: Already has `dark:from-emerald-800/80 dark:via-teal-800/80 dark:to-emerald-900/80` ✅
+- **Verified mobile-bottom-nav.tsx**: Uses `glass-card` class (has `.dark .glass-card` in globals.css), buttons have `dark:hover:text-emerald-400` ✅
+- **Verified SocialProofSection**: Uses `glass-card` (dark-aware), theme-aware text variables (`text-foreground`, `text-muted-foreground`, `border-border`), `text-emerald-500/40` for quote icon, `text-amber-400` for stars — all look correct in dark mode ✅
+
+Stage Summary:
+- 1 file modified: layout.tsx (removed inline style, added body-gradient class)
+- 1 file modified: globals.css (added .body-gradient and .dark .body-gradient CSS rules)
+- No code deleted — only styling changes
+- All other components already had proper dark mode variants
+- Lint: clean (0 errors)
+
+---
+Task ID: s2-2
+Agent: Sub-agent
+Task: Add real-time word counter to CicilGenerator output phase
+
+Work Log:
+- Read cicil-generator.tsx — identified output phase (renderOutputPhase, line 1665)
+- Replaced existing 3-card stats grid with a single glass-card bar containing 4 stat items:
+  1. **Kata** (word count) — computed from compiled output via `text.trim().split(/\s+/).filter(Boolean).length`, displayed with `text-gradient-emerald`
+  2. **Karakter** (character count) — `outputText.length` (with spaces)
+  3. **Halaman** (estimated pages) — `Math.ceil(wordCount / 250)`
+  4. **Bagian Selesai** (steps progress) — `completedSteps/totalSteps` with a `Progress` bar
+- Changed renderOutputPhase from arrow-return to block-return to accommodate local variable computation
+- Used existing CSS classes: `glass-card`, `text-gradient-emerald`, `bg-emerald-100`, `text-emerald-600`
+- Responsive: `grid-cols-2` on mobile, `sm:grid-cols-4` on larger screens
+- Copy/download functionality left intact
+- Lint: clean (0 errors)
+
+Stage Summary:
+- 1 file modified: src/components/cicil-generator.tsx
+- Word counter glass-card bar added at top of output phase, above the compiled text display
+- No existing code deleted
+- All existing functionality preserved

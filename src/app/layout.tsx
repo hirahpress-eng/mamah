@@ -49,10 +49,7 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased bg-background text-foreground`}
-        style={{
-          background: 'linear-gradient(180deg, oklch(0.985 0.003 155) 0%, oklch(1 0 0) 30%, oklch(0.995 0.002 155) 100%)',
-        }}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased bg-background text-foreground body-gradient`}
       >
         <ThemeProvider
           attribute="class"

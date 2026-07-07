@@ -1662,7 +1662,18 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
     </motion.div>
   );
 
-  const renderOutputPhase = () => (
+  const renderOutputPhase = () => {
+    // Compute word/char/page stats from compiled output
+    const outputText = store.fullOutput || '';
+    const wordCount = outputText.trim()
+      ? outputText.trim().split(/\s+/).filter(Boolean).length
+      : 0;
+    const charCount = outputText.length;
+    const estimatedPages = wordCount > 0 ? Math.ceil(wordCount / 250) : 0;
+    const totalSteps = store.steps.length;
+    const stepsProgress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+    return (
     <motion.div
       key="output"
       {...fadeSlideUp}
@@ -1684,32 +1695,39 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
         <div className="w-20" /> {/* Spacer for centering */}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-emerald-600">
-              {completedSteps}
+      {/* Word Counter Glass Card */}
+      <div className="glass-card rounded-xl p-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {/* Word Count */}
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gradient-emerald">
+              {formatNumber(wordCount)}
             </p>
-            <p className="text-xs text-gray-500">Bagian Selesai</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-emerald-600">
-              {formatNumber(store.totalWordsWritten)}
+            <p className="text-xs font-medium text-gray-500">Kata</p>
+          </div>
+          {/* Character Count */}
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-800">
+              {formatNumber(charCount)}
             </p>
-            <p className="text-xs text-gray-500">Total Kata</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xl font-bold text-emerald-600">
-              {store.steps.length}
+            <p className="text-xs font-medium text-gray-500">Karakter</p>
+          </div>
+          {/* Estimated Pages */}
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-800">
+              ~{estimatedPages}
             </p>
-            <p className="text-xs text-gray-500">Total Bagian</p>
-          </CardContent>
-        </Card>
+            <p className="text-xs font-medium text-gray-500">Halaman</p>
+          </div>
+          {/* Steps Progress */}
+          <div className="text-center">
+            <p className="text-2xl font-bold text-emerald-600">
+              {completedSteps}/{totalSteps}
+            </p>
+            <p className="text-xs font-medium text-gray-500 mb-1.5">Bagian Selesai</p>
+            <Progress value={stepsProgress} className="h-1.5 bg-emerald-100" />
+          </div>
+        </div>
       </div>
 
       {/* Output Content */}
@@ -1804,7 +1822,8 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
         </Button>
       </div>
     </motion.div>
-  );
+    );
+  };
 
   // ─── Main Render ──────────────────────────────────────────────────────
 

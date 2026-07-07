@@ -121,6 +121,24 @@
   }
 }
 
+/* ─── Body Background Gradient (light/dark) ────────────── */
+.body-gradient {
+  background: linear-gradient(
+    180deg,
+    oklch(0.985 0.003 155) 0%,
+    oklch(1 0 0) 30%,
+    oklch(0.995 0.002 155) 100%
+  );
+}
+.dark .body-gradient {
+  background: linear-gradient(
+    180deg,
+    oklch(0.16 0.003 155) 0%,
+    oklch(0.13 0 0) 30%,
+    oklch(0.17 0.002 155) 100%
+  );
+}
+
 html {
   scroll-behavior: smooth;
 }
