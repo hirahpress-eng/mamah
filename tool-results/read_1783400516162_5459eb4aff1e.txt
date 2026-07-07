@@ -1,0 +1,1895 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useCallback, useRef, useEffect } from 'react';
+     4→     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→     5→import { toast } from 'sonner';
+     6→     6→import { useCicilStore, type CicilStepState } from '@/store/cicil-writing-store';
+     7→     7→import {
+     8→     8→  WRITING_FLOWS,
+     9→     9→  getTotalSteps,
+    10→    10→  getTotalTargetWords,
+    11→    11→  type CicilWritingMode,
+    12→    12→} from '@/lib/writing-flows';
+    13→    13→import { AI_ENGINES } from '@/lib/ai-engine-config';
+    14→    14→
+    15→    15→import { Card, CardContent } from '@/components/ui/card';
+    16→    16→import { Button } from '@/components/ui/button';
+    17→    17→import { Input } from '@/components/ui/input';
+    18→    18→import { Textarea } from '@/components/ui/textarea';
+    19→    19→import { Badge } from '@/components/ui/badge';
+    20→    20→import { Progress } from '@/components/ui/progress';
+    21→    21→import {
+    22→    22→  Accordion,
+    23→    23→  AccordionItem,
+    24→    24→  AccordionTrigger,
+    25→    25→  AccordionContent,
+    26→    26→} from '@/components/ui/accordion';
+    27→    27→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    28→    28→import {
+    29→    29→  Select,
+    30→    30→  SelectContent,
+    31→    31→  SelectItem,
+    32→    32→  SelectTrigger,
+    33→    33→  SelectValue,
+    34→    34→} from '@/components/ui/select';
+    35→    35→import { Checkbox } from '@/components/ui/checkbox';
+    36→    36→import { Separator } from '@/components/ui/separator';
+    37→    37→import { ScrollArea } from '@/components/ui/scroll-area';
+    38→    38→import { Skeleton } from '@/components/ui/skeleton';
+    39→    39→
+    40→    40→import {
+    41→    41→  ArrowLeft,
+    42→    42→  Play,
+    43→    43→  Check,
+    44→    44→  Loader2,
+    45→    45→  Copy,
+    46→    46→  BookOpen,
+    47→    47→  ChevronRight,
+    48→    48→  Sparkles,
+    49→    49→  RotateCcw,
+    50→    50→  FileText,
+    51→    51→  Library,
+    52→    52→  Search,
+    53→    53→  Globe,
+    54→    54→  Download,
+    55→    55→  ChevronDown,
+    56→    56→  AlertCircle,
+    57→    57→  CheckCircle2,
+    58→    58→  CircleDot,
+    59→    59→  XCircle,
+    60→    60→  Eye,
+    61→    61→} from 'lucide-react';
+    62→    62→
+    63→    63→// ─── Types ──────────────────────────────────────────────────────────────────
+    64→    64→
+    65→    65→interface CicilGeneratorProps {
+    66→    66→  mode: CicilWritingMode;
+    67→    67→  onBack: () => void;
+    68→    68→}
+    69→    69→
+    70→    70→interface ReferenceSearchResult {
+    71→    71→  id: string;
+    72→    72→  authors: string;
+    73→    73→  title: string;
+    74→    74→  year: number | string;
+    75→    75→  journal?: string;
+    76→    76→  doi?: string;
+    77→    77→  volume?: string;
+    78→    78→  issue?: string;
+    79→    79→  pages?: string;
+    80→    80→  refType: string;
+    81→    81→  isSelected: boolean;
+    82→    82→  abstract?: string;
+    83→    83→  keywords?: string[];
+    84→    84→  relevanceScore?: number;
+    85→    85→  source?: string;
+    86→    86→}
+    87→    87→
+    88→    88→// ─── Helpers ────────────────────────────────────────────────────────────────
+    89→    89→
+    90→    90→function countWords(text: string): number {
+    91→    91→  if (!text || !text.trim()) return 0;
+    92→    92→  return text.trim().split(/\s+/).length;
+    93→    93→}
+    94→    94→
+    95→    95→function formatNumber(n: number): string {
+    96→    96→  return new Intl.NumberFormat('id-ID').format(n);
+    97→    97→}
+    98→    98→
+    99→    99→/** Poll a job-based API until done or error */
+   100→   100→async function pollJobApi(
+   101→   101→  baseUrl: string,
+   102→   102→  jobId: string,
+   103→   103→  maxAttempts = 200,
+   104→   104→  intervalMs = 3000,
+   105→   105→): Promise<Record<string, unknown> | null> {
+   106→   106→  for (let i = 0; i < maxAttempts; i++) {
+   107→   107→    try {
+   108→   108→      const res = await fetch(`${baseUrl}?jobId=${encodeURIComponent(jobId)}`);
+   109→   109→      if (!res.ok) {
+   110→   110→        await new Promise((r) => setTimeout(r, intervalMs));
+   111→   111→        continue;
+   112→   112→      }
+   113→   113→      const data = await res.json();
+   114→   114→      if (data.status === 'done') return data.result ?? data;
+   115→   115→      if (data.status === 'error') return null;
+   116→   116→      // still running
+   117→   117→      await new Promise((r) => setTimeout(r, intervalMs));
+   118→   118→    } catch {
+   119→   119→      await new Promise((r) => setTimeout(r, intervalMs));
+   120→   120→    }
+   121→   121→  }
+   122→   122→  return null;
+   123→   123→}
+   124→   124→
+   125→   125→const fadeSlideUp = {
+   126→   126→  initial: { opacity: 0, y: 20 },
+   127→   127→  animate: { opacity: 1, y: 0 },
+   128→   128→  exit: { opacity: 0, y: -10 },
+   129→   129→  transition: { duration: 0.3, ease: 'easeOut' as const },
+   130→   130→};
+   131→   131→
+   132→   132→// ─── Component ──────────────────────────────────────────────────────────────
+   133→   133→
+   134→   134→export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
+   135→   135→  const store = useCicilStore();
+   136→   136→  const flowConfig = WRITING_FLOWS[mode];
+   137→   137→
+   138→   138→  // Local UI state
+   139→   139→  const [inputTab, setInputTab] = useState<string>('keywords');
+   140→   140→  const [keywordsInput, setKeywordsInput] = useState(store.keywords.join(', '));
+   141→   141→  const [titleInput, setTitleInput] = useState(store.title);
+   142→   142→  const [ideaInput, setIdeaInput] = useState(store.idea);
+   143→   143→  const [isGeneratingKeywords, setIsGeneratingKeywords] = useState(false);
+   144→   144→  const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+   145→   145→  const [generatedTitles, setGeneratedTitles] = useState<string[]>([]);
+   146→   146→  const [translatedKeywords, setTranslatedKeywords] = useState<
+   147→   147→    Record<string, string[]>
+   148→   148→  >({});
+   149→   149→  const [booleanQueries, setBooleanQueries] = useState<string[]>([]);
+   150→   150→  const [searchStats, setSearchStats] = useState<{
+   151→   151→    totalRaw: number;
+   152→   152→    duplicates: number;
+   153→   153→    afterDedupe: number;
+   154→   154→    included: number;
+   155→   155→    excluded: number;
+   156→   156→    include: string[];
+   157→   157→    exclude: string[];
+   158→   158→    criteriaReasoning: string;
+   159→   159→  } | null>(null);
+   160→   160→  const [refPipelineStep, setRefPipelineStep] = useState(0);
+   161→   161→  // 0=idle, 1=translating, 2=boolean, 3=searching, 4=reporting, 5=analyzing criteria, 6=applying filter, 7=done
+   162→   162→  const [activeChapter, setActiveChapter] = useState<string>(
+   163→   163→    flowConfig.chapters[0]?.id ?? ''
+   164→   164→  );
+   165→   165→  const abortRef = useRef<AbortController | null>(null);
+   166→   166→  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+   167→   167→  const autoGenRef = useRef(false);
+   168→   168→
+   169→   169→  // Sync local state from store on mount
+   170→   170→  useEffect(() => {
+   171→   171→    setKeywordsInput(store.keywords.join(', '));
+   172→   172→    setTitleInput(store.title);
+   173→   173→    setIdeaInput(store.idea);
+   174→   174→  }, []);
+   175→   175→
+   176→   176→  // Cleanup polling on unmount
+   177→   177→  useEffect(() => {
+   178→   178→    return () => {
+   179→   179→      if (pollingRef.current) clearInterval(pollingRef.current);
+   180→   180→      if (abortRef.current) abortRef.current.abort();
+   181→   181→    };
+   182→   182→  }, []);
+   183→   183→
+   184→   184→  // ─── Phase 1: INPUT ─────────────────────────────────────────────────────
+   185→   185→
+   186→   186→  const handleGenerateKeywords = useCallback(async () => {
+   187→   187→    const idea = ideaInput.trim();
+   188→   188→    if (!idea) {
+   189→   189→      toast.error('Masukkan ide penelitian terlebih dahulu');
+   190→   190→      return;
+   191→   191→    }
+   192→   192→    setIsGeneratingKeywords(true);
+   193→   193→    try {
+   194→   194→      const res = await fetch('/api/generate/idea', {
+   195→   195→        method: 'POST',
+   196→   196→        headers: { 'Content-Type': 'application/json' },
+   197→   197→        body: JSON.stringify({ idea }),
+   198→   198→      });
+   199→   199→      if (!res.ok) throw new Error('Gagal menghasilkan kata kunci');
+   200→   200→      const data = await res.json();
+   201→   201→      const kws: string[] = data.keywords ?? [];
+   202→   202→      if (kws.length > 0) {
+   203→   203→        setKeywordsInput(kws.join(', '));
+   204→   204→        store.setKeywords(kws);
+   205→   205→        toast.success(`${kws.length} kata kunci berhasil dihasilkan`);
+   206→   206→      } else {
+   207→   207→        toast.warning('Tidak ada kata kunci yang dihasilkan');
+   208→   208→      }
+   209→   209→    } catch (err: unknown) {
+   210→   210→      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan';
+   211→   211→      toast.error(msg);
+   212→   212→    } finally {
+   213→   213→      setIsGeneratingKeywords(false);
+   214→   214→    }
+   215→   215→  }, [ideaInput, mode, store]);
+   216→   216→
+   217→   217→  const handleGenerateTitles = useCallback(async () => {
+   218→   218→    const kws = keywordsInput
+   219→   219→      .split(',')
+   220→   220→      .map((k) => k.trim())
+   221→   221→      .filter(Boolean);
+   222→   222→    if (kws.length === 0) {
+   223→   223→      toast.error('Masukkan kata kunci terlebih dahulu');
+   224→   224→      return;
+   225→   225→    }
+   226→   226→    setIsGeneratingTitles(true);
+   227→   227→    try {
+   228→   228→      const res = await fetch('/api/generate/titles', {
+   229→   229→        method: 'POST',
+   230→   230→        headers: { 'Content-Type': 'application/json' },
+   231→   231→        body: JSON.stringify({ keywords: kws, mode }),
+   232→   232→      });
+   233→   233→      if (!res.ok) throw new Error('Gagal menghasilkan judul');
+   234→   234→      const data = await res.json();
+   235→   235→      const titles: string[] = data.titles ?? [];
+   236→   236→      setGeneratedTitles(titles);
+   237→   237→      if (titles.length > 0) {
+   238→   238→        toast.success(`${titles.length} judul berhasil dihasilkan`);
+   239→   239→      } else {
+   240→   240→        toast.warning('Tidak ada judul yang dihasilkan');
+   241→   241→      }
+   242→   242→    } catch (err: unknown) {
+   243→   243→      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan';
+   244→   244→      toast.error(msg);
+   245→   245→    } finally {
+   246→   246→      setIsGeneratingTitles(false);
+   247→   247→    }
+   248→   248→  }, [keywordsInput, mode]);
+   249→   249→
+   250→   250→  const handleProceedToReferences = useCallback(() => {
+   251→   251→    const kws = keywordsInput
+   252→   252→      .split(',')
+   253→   253→      .map((k) => k.trim())
+   254→   254→      .filter(Boolean);
+   255→   255→    const title = titleInput.trim();
+   256→   256→
+   257→   257→    if (!title && kws.length === 0) {
+   258→   258→      toast.error('Masukkan judul atau kata kunci terlebih dahulu');
+   259→   259→      return;
+   260→   260→    }
+   261→   261→
+   262→   262→    store.setKeywords(kws);
+   263→   263→    store.setTitle(title);
+   264→   264→    store.setIdea(ideaInput.trim());
+   265→   265→    store.setPhase('references');
+   266→   266→  }, [keywordsInput, titleInput, ideaInput, store]);
+   267→   267→
+   268→   268→  // ─── Phase 2: REFERENCES ───────────────────────────────────────────────
+   269→   269→
+   270→   270→  const handleSearchReferences = useCallback(async () => {
+   271→   271→    let title = store.title.trim();
+   272→   272→    let keywords = [...store.keywords];
+   273→   273→    if (!title && keywords.length === 0) {
+   274→   274→      toast.error('Judul dan kata kunci diperlukan untuk pencarian');
+   275→   275→      return;
+   276→   276→    }
+   277→   277→
+   278→   278→    // Auto-generate keywords from title if keywords is empty
+   279→   279→    if (keywords.length === 0 && title) {
+   280→   280→      store.setIsSearchingRefs(true);
+   281→   281→      store.setRefSearchProgress(2);
+   282→   282→      store.setRefSearchMessage('Mengekstrak kata kunci dari judul...');
+   283→   283→      try {
+   284→   284→        const kwRes = await fetch('/api/generate/keywords', {
+   285→   285→          method: 'POST',
+   286→   286→          headers: { 'Content-Type': 'application/json' },
+   287→   287→          body: JSON.stringify({ title }),
+   288→   288→        });
+   289→   289→        if (kwRes.ok) {
+   290→   290→          const kwData = await kwRes.json();
+   291→   291→          const generated: string[] = kwData.keywords ?? [];
+   292→   292→          if (generated.length > 0) {
+   293→   293→            keywords = generated;
+   294→   294→            store.setKeywords(keywords);
+   295→   295→            setKeywordsInput(keywords.join(', '));
+   296→   296→            toast.success(`${keywords.length} kata kunci diekstrak dari judul`);
+   297→   297→          }
+   298→   298→        }
+   299→   299→      } catch {
+   300→   300→        // Fallback: split title into meaningful words as keywords
+   301→   301→        keywords = title
+   302→   302→          .split(/[\s:;\-,.]+/)
+   303→   303→          .filter((w) => w.length > 3)
+   304→   304→          .slice(0, 5);
+   305→   305→        if (keywords.length > 0) {
+   306→   306→          store.setKeywords(keywords);
+   307→   307→          setKeywordsInput(keywords.join(', '));
+   308→   308→        }
+   309→   309→      }
+   310→   310→      if (keywords.length === 0) {
+   311→   311→        store.setIsSearchingRefs(false);
+   312→   312→        toast.error('Gagal mengekstrak kata kunci dari judul. Coba masukkan kata kunci manual.');
+   313→   313→        return;
+   314→   314→      }
+   315→   315→    }
+   316→   316→
+   317→   317→    store.setIsSearchingRefs(true);
+   318→   318→    store.setRefSearchProgress(0);
+   319→   319→    store.setRefSearchMessage('Memulai pipeline pencarian referensi...');
+   320→   320→
+   321→   321→    // Collect all translated queries to pass to search
+   322→   322→    let allTranslatedQueries: string[][] = [];
+   323→   323→
+   324→   324→    try {
+   325→   325→      // ═══ PIPELINE STEP 1: Translate keywords to 5 languages ═══
+   326→   326→      setRefPipelineStep(1);
+   327→   327→      store.setRefSearchProgress(5);
+   328→   328→      store.setRefSearchMessage('Langkah 1/6: Menerjemahkan kata kunci ke 5 bahasa populer...');
+   329→   329→      try {
+   330→   330→        const translateRes = await fetch('/api/references/translate-keywords', {
+   331→   331→          method: 'POST',
+   332→   332→          headers: { 'Content-Type': 'application/json' },
+   333→   333→          body: JSON.stringify({ keywords, title }),
+   334→   334→        });
+   335→   335→        if (translateRes.ok) {
+   336→   336→          const translateData = await translateRes.json();
+   337→   337→          let translateResult: Record<string, unknown> | null = null;
+   338→   338→
+   339→   339→          // Synchronous mode: result is directly in the response
+   340→   340→          if (translateData.languages && typeof translateData.languages === 'object') {
+   341→   341→            translateResult = translateData;
+   342→   342→          }
+   343→   343→          // Legacy job mode: poll for result
+   344→   344→          else if (translateData.jobId) {
+   345→   345→            store.setRefSearchMessage('Langkah 1/6: Menunggu terjemahan kata kunci...');
+   346→   346→            translateResult = await pollJobApi('/api/references/translate-keywords', translateData.jobId, 60, 3000);
+   347→   347→          }
+   348→   348→
+   349→   349→          if (translateResult?.languages && typeof translateResult.languages === 'object') {
+   350→   350→            const langs = translateResult.languages as Record<string, Record<string, unknown>>;
+   351→   351→            const mapped: Record<string, string[]> = {};
+   352→   352→            for (const [code, langData] of Object.entries(langs)) {
+   353→   353→              const name = (langData.name as string) || code;
+   354→   354→              const queries = (langData.keywordQueries as string[]) || [];
+   355→   355→              mapped[name] = queries;
+   356→   356→              if (queries.length > 0) allTranslatedQueries.push(queries);
+   357→   357→            }
+   358→   358→            setTranslatedKeywords(mapped);
+   359→   359→          }
+   360→   360→        }
+   361→   361→      } catch {
+   362→   362→        // Non-critical, continue pipeline
+   363→   363→      }
+   364→   364→
+   365→   365→      // ═══ PIPELINE STEP 2: Generate boolean queries ═══
+   366→   366→      setRefPipelineStep(2);
+   367→   367→      store.setRefSearchProgress(15);
+   368→   368→      store.setRefSearchMessage('Langkah 2/6: Membuat boolean query untuk pencarian paling relevan...');
+   369→   369→      try {
+   370→   370→        const boolRes = await fetch('/api/references/generate-boolean', {
+   371→   371→          method: 'POST',
+   372→   372→          headers: { 'Content-Type': 'application/json' },
+   373→   373→          body: JSON.stringify({ keywords, title }),
+   374→   374→        });
+   375→   375→        if (boolRes.ok) {
+   376→   376→          const boolData = await boolRes.json();
+   377→   377→          let boolResult: Record<string, unknown> | null = null;
+   378→   378→
+   379→   379→          // Synchronous mode: result is directly in the response
+   380→   380→          if (boolData.booleanQueries && typeof boolData.booleanQueries === 'object') {
+   381→   381→            boolResult = boolData;
+   382→   382→          }
+   383→   383→          // Legacy job mode: poll for result
+   384→   384→          else if (boolData.jobId) {
+   385→   385→            store.setRefSearchMessage('Langkah 2/6: Menunggu boolean query...');
+   386→   386→            boolResult = await pollJobApi('/api/references/generate-boolean', boolData.jobId, 60, 3000);
+   387→   387→          }
+   388→   388→
+   389→   389→          if (boolResult?.booleanQueries && typeof boolResult.booleanQueries === 'object') {
+   390→   390→            const bq = boolResult.booleanQueries as Record<string, string[]>;
+   391→   391→            const allQueries: string[] = [];
+   392→   392→            for (const [, queries] of Object.entries(bq)) {
+   393→   393→              if (Array.isArray(queries)) allQueries.push(...queries);
+   394→   394→            }
+   395→   395→            setBooleanQueries(allQueries);
+   396→   396→          }
+   397→   397→        }
+   398→   398→      } catch {
+   399→   399→        // Non-critical, continue pipeline
+   400→   400→      }
+   401→   401→
+   402→   402→      // ═══ PIPELINE STEP 3: Search references (with translated queries) ═══
+   403→   403→      setRefPipelineStep(3);
+   404→   404→      store.setRefSearchProgress(25);
+   405→   405→      store.setRefSearchMessage('Langkah 3/6: Mencari referensi di 11 database akademik...');
+   406→   406→
+   407→   407→      const searchPayload: Record<string, unknown> = { title, keywords, maxResults: 80 };
+   408→   408→      if (allTranslatedQueries.length > 0) {
+   409→   409→        searchPayload.translatedQueries = allTranslatedQueries;
+   410→   410→      }
+   411→   411→
+   412→   412→      const searchRes = await fetch('/api/references/search', {
+   413→   413→        method: 'POST',
+   414→   414→        headers: { 'Content-Type': 'application/json' },
+   415→   415→        body: JSON.stringify(searchPayload),
+   416→   416→      });
+   417→   417→
+   418→   418→      if (!searchRes.ok) throw new Error('Gagal mencari referensi');
+   419→   419→      const searchData = await searchRes.json();
+   420→   420→      if (!searchData.jobId) throw new Error('JobId tidak ditemukan dalam respons pencarian');
+   421→   421→
+   422→   422→      store.setRefSearchMessage('Langkah 3/6: Mencari di 11 database akademik (ini membutuhkan waktu)...');
+   423→   423→      const searchResult = await pollJobApi('/api/references/search', searchData.jobId, 300, 5000);
+   424→   424→      if (!searchResult) throw new Error('Pencarian referensi gagal atau timeout');
+   425→   425→
+   426→   426→      const rawRefs = (searchResult.references ?? []) as Record<string, unknown>[];
+   427→   427→      const meta = (searchResult.meta ?? {}) as Record<string, unknown>;
+   428→   428→      const totalRaw = Number(meta.totalRaw ?? rawRefs.length);
+   429→   429→      const afterDedupe = Number(meta.afterDedupe ?? rawRefs.length);
+   430→   430→      const duplicates = totalRaw - afterDedupe;
+   431→   431→
+   432→   432→      const refs: ReferenceSearchResult[] = rawRefs.map(
+   433→   433→        (r, i) => ({
+   434→   434→          id: (r.id as string) ?? `ref-${i}`,
+   435→   435→          authors: (r.authors as string) ?? '',
+   436→   436→          title: (r.title as string) ?? '',
+   437→   437→          year: (r.year as number | string) ?? '',
+   438→   438→          journal: r.journal as string | undefined,
+   439→   439→          doi: r.doi as string | undefined,
+   440→   440→          volume: r.volume as string | undefined,
+   441→   441→          issue: r.issue as string | undefined,
+   442→   442→          pages: r.pages as string | undefined,
+   443→   443→          refType: (r.refType as string) ?? 'article',
+   444→   444→          isSelected: false,
+   445→   445→          abstract: r.abstract as string | undefined,
+   446→   446→          keywords: r.keywords as string[] | undefined,
+   447→   447→          relevanceScore: r.relevanceScore as number | undefined,
+   448→   448→          source: r.source as string | undefined,
+   449→   449→        })
+   450→   450→      );
+   451→   451→
+   452→   452→      store.setReferences(refs);
+   453→   453→
+   454→   454→      // ═══ PIPELINE STEP 4: Report total & duplicates ═══
+   455→   455→      setRefPipelineStep(4);
+   456→   456→      store.setRefSearchProgress(55);
+   457→   457→      store.setRefSearchMessage(`Langkah 4/6: Mencatat hasil — ${totalRaw} ditemukan, ${duplicates} duplikat dihapus, ${afterDedupe} unik tersisa.`);
+   458→   458→
+   459→   459→      // Show interim stats
+   460→   460→      setSearchStats({
+   461→   461→        totalRaw,
+   462→   462→        duplicates,
+   463→   463→        afterDedupe,
+   464→   464→        included: 0,
+   465→   465→        excluded: 0,
+   466→   466→        include: [],
+   467→   467→        exclude: [],
+   468→   468→        criteriaReasoning: '',
+   469→   469→      });
+   470→   470→
+   471→   471→      toast.info(`${totalRaw} referensi ditemukan, ${duplicates} duplikat dihapus`);
+   472→   472→
+   473→   473→      // ═══ PIPELINE STEP 5: AI Generate include/exclude criteria ═══
+   474→   474→      setRefPipelineStep(5);
+   475→   475→      store.setRefSearchProgress(60);
+   476→   476→      store.setRefSearchMessage('Langkah 5/6: AI menganalisis referensi & menghasilkan kriteria include/exclude...');
+   477→   477→
+   478→   478→      let includeCriteria: string[] = [];
+   479→   479→      let excludeCriteria: string[] = [];
+   480→   480→      let criteriaReasoning = '';
+   481→   481→
+   482→   482→      try {
+   483→   483→        const analyzeRes = await fetch('/api/references/analyze-criteria', {
+   484→   484→          method: 'POST',
+   485→   485→          headers: { 'Content-Type': 'application/json' },
+   486→   486→          body: JSON.stringify({
+   487→   487→            title,
+   488→   488→            keywords,
+   489→   489→            references: refs.slice(0, 80).map((r) => ({
+   490→   490→              id: r.id,
+   491→   491→              title: r.title,
+   492→   492→              abstract: r.abstract?.slice(0, 200),
+   493→   493→              year: r.year,
+   494→   494→              journal: r.journal,
+   495→   495→              source: r.source,
+   496→   496→            })),
+   497→   497→          }),
+   498→   498→        });
+   499→   499→
+   500→   500→        if (analyzeRes.ok) {
+   501→   501→          const analyzeData = await analyzeRes.json();
+   502→   502→          // Synchronous mode: result is directly in the response
+   503→   503→          if (analyzeData.success && (analyzeData.include || analyzeData.exclude)) {
+   504→   504→            includeCriteria = analyzeData.include ?? [];
+   505→   505→            excludeCriteria = analyzeData.exclude ?? [];
+   506→   506→            criteriaReasoning = analyzeData.reasoning ?? '';
+   507→   507→          }
+   508→   508→          // Legacy job mode: poll for result
+   509→   509→          else if (analyzeData.jobId) {
+   510→   510→            store.setRefSearchMessage('Langkah 5/6: Menunggu analisis kriteria...');
+   511→   511→            const analyzeResult = await pollJobApi('/api/references/analyze-criteria', analyzeData.jobId, 90, 3000);
+   512→   512→            if (analyzeResult?.result) {
+   513→   513→              const result = analyzeResult.result as { include?: string[]; exclude?: string[]; reasoning?: string };
+   514→   514→              includeCriteria = result.include ?? [];
+   515→   515→              excludeCriteria = result.exclude ?? [];
+   516→   516→              criteriaReasoning = result.reasoning ?? '';
+   517→   517→            }
+   518→   518→          }
+   519→   519→        }
+   520→   520→      } catch {
+   521→   521→        // Non-critical, continue with empty criteria
+   522→   522→      }
+   523→   523→
+   524→   524→      // ═══ PIPELINE STEP 6: Apply include/exclude filtering ═══
+   525→   525→      setRefPipelineStep(6);
+   526→   526→      store.setRefSearchProgress(80);
+   527→   527→      store.setRefSearchMessage('Langkah 6/6: Menerapkan filter include/exclude pada referensi...');
+   528→   528→
+   529→   529→      // Build lowercase keyword sets for matching
+   530→   530→      const includeLower = includeCriteria.map((c) => c.toLowerCase());
+   531→   531→      const excludeLower = excludeCriteria.map((c) => c.toLowerCase());
+   532→   532→      const kwLower = keywords.map((k) => k.toLowerCase());
+   533→   533→
+   534→   534→      // Score each reference: check title, abstract, journal against criteria
+   535→   535→      const scoredRefs = refs.map((ref) => {
+   536→   536→        const refText = [
+   537→   537→          ref.title,
+   538→   538→          ref.abstract ?? '',
+   539→   539→          ref.journal ?? '',
+   540→   540→          ref.authors,
+   541→   541→        ].join(' ').toLowerCase();
+   542→   542→
+   543→   543→        let includeScore = 0;
+   544→   544→        let excludeScore = 0;
+   545→   545→
+   546→   546→        // Check against AI-generated criteria
+   547→   547→        for (const criterion of includeLower) {
+   548→   548→          if (criterion.length > 3 && refText.includes(criterion)) includeScore++;
+   549→   549→        }
+   550→   550→        for (const criterion of excludeLower) {
+   551→   551→          if (criterion.length > 3 && refText.includes(criterion)) excludeScore++;
+   552→   552→        }
+   553→   553→
+   554→   554→        // Also boost by keyword overlap in title
+   555→   555→        for (const kw of kwLower) {
+   556→   556→          if (kw.length > 2 && ref.title.toLowerCase().includes(kw)) includeScore += 2;
+   557→   557→        }
+   558→   558→
+   559→   559→        // Relevance score boost
+   560→   560→        if (ref.relevanceScore != null) includeScore += ref.relevanceScore * 3;
+   561→   561→
+   562→   562→        return { ref, includeScore, excludeScore };
+   563→   563→      });
+   564→   564→
+   565→   565→      // Sort by includeScore desc, excludeScore asc
+   566→   566→      scoredRefs.sort((a, b) => {
+   567→   567→        if (b.includeScore !== a.includeScore) return b.includeScore - a.includeScore;
+   568→   568→        return a.excludeScore - b.excludeScore;
+   569→   569→      });
+   570→   570→
+   571→   571→      // Apply selection: top 60% get auto-selected, or those with includeScore > 0
+   572→   572→      const autoSelectCount = Math.max(Math.ceil(scoredRefs.length * 0.6), 5);
+   573→   573→      const finalRefs = scoredRefs.map((s, i) => ({
+   574→   574→        ...s.ref,
+   575→   575→        isSelected: i < autoSelectCount && s.excludeScore === 0,
+   576→   576→      }));
+   577→   577→
+   578→   578→      const includedCount = finalRefs.filter((r) => r.isSelected).length;
+   579→   579→      const excludedCount = finalRefs.length - includedCount;
+   580→   580→
+   581→   581→      store.setReferences(finalRefs);
+   582→   582→
+   583→   583→      // Final stats
+   584→   584→      setSearchStats({
+   585→   585→        totalRaw,
+   586→   586→        duplicates,
+   587→   587→        afterDedupe,
+   588→   588→        included: includedCount,
+   589→   589→        excluded: excludedCount,
+   590→   590→        include: includeCriteria,
+   591→   591→        exclude: excludeCriteria,
+   592→   592→        criteriaReasoning,
+   593→   593→      });
+   594→   594→
+   595→   595→      setRefPipelineStep(7);
+   596→   596→      store.setRefSearchProgress(100);
+   597→   597→      store.setRefSearchMessage(
+   598→   598→        `Pipeline selesai! ${includedCount} referensi relevan terpilih dari ${afterDedupe} unik.`
+   599→   599→      );
+   600→   600→      toast.success(`Pipeline selesai: ${totalRaw} ditemukan → ${afterDedupe} unik → ${includedCount} terpilih`);
+   601→   601→    } catch (err: unknown) {
+   602→   602→      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan';
+   603→   603→      toast.error(msg);
+   604→   604→      store.setRefSearchMessage(msg);
+   605→   605→    } finally {
+   606→   606→      store.setIsSearchingRefs(false);
+   607→   607→    }
+   608→   608→  }, [store, setKeywordsInput]);
+   609→   609→
+   610→   610→  const handleStartWriting = useCallback(() => {
+   611→   611→    const selectedRefs = store.references.filter((r) => r.isSelected);
+   612→   612→    if (selectedRefs.length === 0) {
+   613→   613→      toast.error('Pilih minimal satu referensi');
+   614→   614→      return;
+   615→   615→    }
+   616→   616→    store.initSteps(mode);
+   617→   617→  }, [store, mode]);
+   618→   618→
+   619→   619→  // ─── Phase 3: WRITING ──────────────────────────────────────────────────
+   620→   620→
+   621→   621→  const generateSingleStep = useCallback(
+   622→   622→    async (step: CicilStepState) => {
+   623→   623→      store.updateStep(step.stepId, {
+   624→   624→        status: 'generating',
+   625→   625→        startedAt: new Date().toISOString(),
+   626→   626→        jobId: undefined,
+   627→   627→        error: undefined,
+   628→   628→      });
+   629→   629→
+   630→   630→      try {
+   631→   631→        const selectedRefs = store.references.filter((r) => r.isSelected);
+   632→   632→
+   633→   633→        const res = await fetch('/api/writing/generate-section', {
+   634→   634→          method: 'POST',
+   635→   635→          headers: { 'Content-Type': 'application/json' },
+   636→   636→          body: JSON.stringify({
+   637→   637→            stepId: step.stepId,
+   638→   638→            label: step.label,
+   639→   639→            labelId: step.labelId,
+   640→   640→            targetWords: step.targetWords,
+   641→   641→            promptFocus: step.promptFocus,
+   642→   642→            engineId: store.generationEngine,
+   643→   643→            title: store.title || 'Untitled Document',
+   644→   644→            keywords: store.keywords,
+   645→   645→            references: selectedRefs.map((r) => ({
+   646→   646→              authors: r.authors,
+   647→   647→              title: r.title,
+   648→   648→              year: r.year,
+   649→   649→              journal: r.journal,
+   650→   650→              doi: r.doi,
+   651→   651→              refType: r.refType,
+   652→   652→              isSelected: r.isSelected,
+   653→   653→            })),
+   654→   654→            systemPrompt: flowConfig.systemPrompt,
+   655→   655→          }),
+   656→   656→        });
+   657→   657→
+   658→   658→        if (!res.ok) {
+   659→   659→          const errBody = await res.json().catch(() => ({}));
+   660→   660→          throw new Error(
+   661→   661→            (errBody as Record<string, string>).error ??
+   662→   662→              `HTTP ${res.status}: Gagal memulai generasi`
+   663→   663→          );
+   664→   664→        }
+   665→   665→
+   666→   666→        const data = await res.json();
+   667→   667→        const jobId = data.jobId;
+   668→   668→
+   669→   669→        if (!jobId) {
+   670→   670→          throw new Error('JobId tidak ditemukan dalam respons');
+   671→   671→        }
+   672→   672→
+   673→   673→        store.updateStep(step.stepId, { jobId });
+   674→   674→        return jobId;
+   675→   675→      } catch (err: unknown) {
+   676→   676→        const msg =
+   677→   677→          err instanceof Error ? err.message : 'Gagal memulai generasi';
+   678→   678→        store.updateStep(step.stepId, {
+   679→   679→          status: 'error',
+   680→   680→          error: msg,
+   681→   681→        });
+   682→   682→        toast.error(`${step.label}: ${msg}`);
+   683→   683→        return null;
+   684→   684→      }
+   685→   685→    },
+   686→   686→    [store, mode, flowConfig]
+   687→   687→  );
+   688→   688→
+   689→   689→  const pollJob = useCallback(
+   690→   690→    (jobId: string, stepId: string): Promise<string | null> => {
+   691→   691→      return new Promise((resolve) => {
+   692→   692→        let attempts = 0;
+   693→   693→        const maxAttempts = 200; // 200 * 3s = 10 minutes max
+   694→   694→
+   695→   695→        const poll = async () => {
+   696→   696→          attempts++;
+   697→   697→          if (attempts > maxAttempts) {
+   698→   698→            store.updateStep(stepId, {
+   699→   699→              status: 'error',
+   700→   700→              error: 'Timeout: generasi terlalu lama',
+   701→   701→            });
+   702→   702→            toast.error('Timeout: generasi terlalu lama');
+   703→   703→            resolve(null);
+   704→   704→            return;
+   705→   705→          }
+   706→   706→
+   707→   707→          try {
+   708→   708→            const res = await fetch(
+   709→   709→              `/api/writing/generate-section?jobId=${encodeURIComponent(jobId)}`
+   710→   710→            );
+   711→   711→
+   712→   712→            if (!res.ok) {
+   713→   713→              // Server error — retry
+   714→   714→              pollingRef.current = setTimeout(poll, 3000);
+   715→   715→              return;
+   716→   716→            }
+   717→   717→
+   718→   718→            const data = await res.json();
+   719→   719→
+   720→   720→            if (data.status === 'done') {
+   721→   721→              const result = data.result ?? {};
+   722→   722→              const content = result.content ?? '';
+   723→   723→              const wc = countWords(content);
+   724→   724→              store.updateStep(stepId, {
+   725→   725→                status: 'done',
+   726→   726→                content,
+   727→   727→                wordCount: wc,
+   728→   728→                completedAt: new Date().toISOString(),
+   729→   729→              });
+   730→   730→              resolve(content);
+   731→   731→            } else if (data.status === 'error') {
+   732→   732→              store.updateStep(stepId, {
+   733→   733→                status: 'error',
+   734→   734→                error: data.error ?? 'Gagal menghasilkan bagian ini',
+   735→   735→              });
+   736→   736→              toast.error(
+   737→   737→                `Error: ${data.error ?? 'Gagal menghasilkan bagian ini'}`
+   738→   738→              );
+   739→   739→              resolve(null);
+   740→   740→            } else {
+   741→   741→              // Still processing
+   742→   742→              pollingRef.current = setTimeout(poll, 3000);
+   743→   743→            }
+   744→   744→          } catch {
+   745→   745→            // Network error — retry
+   746→   746→            pollingRef.current = setTimeout(poll, 3000);
+   747→   747→          }
+   748→   748→        };
+   749→   749→
+   750→   750→        poll();
+   751→   751→      });
+   752→   752→    },
+   753→   753→    [store]
+   754→   754→  );
+   755→   755→
+   756→   756→  const handleGenerateStep = useCallback(
+   757→   757→    async (step: CicilStepState) => {
+   758→   758→      if (step.status === 'generating' || step.status === 'done') return;
+   759→   759→
+   760→   760→      const jobId = await generateSingleStep(step);
+   761→   761→      if (!jobId) return;
+   762→   762→
+   763→   763→      await pollJob(jobId, step.stepId);
+   764→   764→    },
+   765→   765→    [generateSingleStep, pollJob]
+   766→   766→  );
+   767→   767→
+   768→   768→  const handleAutoGenerateAll = useCallback(async () => {
+   769→   769→    if (store.isAutoGenerating) return;
+   770→   770→
+   771→   771→    autoGenRef.current = true;
+   772→   772→    store.setIsAutoGenerating(true);
+   773→   773→
+   774→   774→    try {
+   775→   775→      const pendingSteps = store.steps.filter(
+   776→   776→        (s) => s.status === 'pending' || s.status === 'error'
+   777→   777→      );
+   778→   778→
+   779→   779→      if (pendingSteps.length === 0) {
+   780→   780→        toast.info('Semua bagian sudah selesai');
+   781→   781→        store.setIsAutoGenerating(false);
+   782→   782→        autoGenRef.current = false;
+   783→   783→        return;
+   784→   784→      }
+   785→   785→
+   786→   786→      toast.info(
+   787→   787→        `Memulai auto-generate ${pendingSteps.length} bagian...`
+   788→   788→      );
+   789→   789→
+   790→   790→      for (const step of pendingSteps) {
+   791→   791→        if (!autoGenRef.current) {
+   792→   792→          toast.info('Auto-generate dihentikan');
+   793→   793→          break;
+   794→   794→        }
+   795→   795→
+   796→   796→        // Set current step index
+   797→   797→        const idx = store.steps.findIndex((s) => s.stepId === step.stepId);
+   798→   798→        if (idx >= 0) store.setCurrentStepIndex(idx);
+   799→   799→
+   800→   800→        const jobId = await generateSingleStep(step);
+   801→   801→        if (!jobId) continue;
+   802→   802→
+   803→   803→        const content = await pollJob(jobId, step.stepId);
+   804→   804→        if (content === null) continue;
+   805→   805→
+   806→   806→        toast.success(`✅ ${step.labelId} selesai`);
+   807→   807→      }
+   808→   808→
+   809→   809→      // Check if all done
+   810→   810→      const allDone = store.steps.every(
+   811→   811→        (s) => s.status === 'done' || s.status === 'error'
+   812→   812→      );
+   813→   813→      if (allDone && autoGenRef.current) {
+   814→   814→        const doneCount = store.steps.filter((s) => s.status === 'done').length;
+   815→   815→        toast.success(`🎉 Semua ${doneCount} bagian selesai digenerasi!`);
+   816→   816→      }
+   817→   817→    } catch (err: unknown) {
+   818→   818→      const msg =
+   819→   819→        err instanceof Error ? err.message : 'Terjadi kesalahan saat auto-generate';
+   820→   820→      toast.error(msg);
+   821→   821→    } finally {
+   822→   822→      store.setIsAutoGenerating(false);
+   823→   823→      autoGenRef.current = false;
+   824→   824→    }
+   825→   825→  }, [store, generateSingleStep, pollJob]);
+   826→   826→
+   827→   827→  const handleStopAutoGenerate = useCallback(() => {
+   828→   828→    autoGenRef.current = false;
+   829→   829→    if (pollingRef.current) {
+   830→   830→      clearTimeout(pollingRef.current);
+   831→   831→      pollingRef.current = null;
+   832→   832→    }
+   833→   833→    store.setIsAutoGenerating(false);
+   834→   834→    toast.info('Auto-generate dihentikan');
+   835→   835→  }, [store]);
+   836→   836→
+   837→   837→  const handleViewResult = useCallback(() => {
+   838→   838→    store.compileFullOutput();
+   839→   839→  }, [store]);
+   840→   840→
+   841→   841→  // ─── Phase 4: OUTPUT ───────────────────────────────────────────────────
+   842→   842→
+   843→   843→  const handleCopyOutput = useCallback(async () => {
+   844→   844→    if (!store.fullOutput) return;
+   845→   845→    try {
+   846→   846→      await navigator.clipboard.writeText(store.fullOutput);
+   847→   847→      toast.success('Berhasil disalin ke clipboard');
+   848→   848→    } catch {
+   849→   849→      toast.error('Gagal menyalin ke clipboard');
+   850→   850→    }
+   851→   851→  }, [store.fullOutput]);
+   852→   852→
+   853→   853→  // ─── Render Helpers ─────────────────────────────────────────────────────
+   854→   854→
+   855→   855→  const progressPercent = store.getProgressPercent();
+   856→   856→  const totalSteps = getTotalSteps(mode);
+   857→   857→  const totalTargetWords = getTotalTargetWords(mode);
+   858→   858→  const completedSteps = store.steps.filter((s) => s.status === 'done').length;
+   859→   859→  const totalWordsWritten = store.steps.reduce(
+   860→   860→    (sum, s) => sum + s.wordCount,
+   861→   861→    0
+   862→   862→  );
+   863→   863→  const allDone =
+   864→   864→    store.steps.length > 0 &&
+   865→   865→    store.steps.every((s) => s.status === 'done' || s.status === 'error');
+   866→   866→
+   867→   867→  // Group steps by chapter
+   868→   868→  const chapters = flowConfig.chapters.map((ch) => ({
+   869→   869→    ...ch,
+   870→   870→    steps: store.steps.filter((s) => s.chapterId === ch.id),
+   871→   871→  }));
+   872→   872→
+   873→   873→  // ─── Phase Renderers ───────────────────────────────────────────────────
+   874→   874→
+   875→   875→  const renderInputPhase = () => (
+   876→   876→    <motion.div
+   877→   877→      key="input"
+   878→   878→      {...fadeSlideUp}
+   879→   879→      className="flex flex-1 flex-col gap-6"
+   880→   880→    >
+   881→   881→      {/* Header */}
+   882→   882→      <div className="text-center">
+   883→   883→        <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+   884→   884→          Mulai Menulis {flowConfig.title}
+   885→   885→        </h2>
+   886→   886→        <p className="mt-2 text-sm text-gray-500">
+   887→   887→          {flowConfig.description} • {formatNumber(totalTargetWords)} kata
+   888→   888→          target • {totalSteps} bagian
+   889→   889→        </p>
+   890→   890→      </div>
+   891→   891→
+   892→   892→      {/* Input Tabs */}
+   893→   893→      <Tabs value={inputTab} onValueChange={setInputTab} className="w-full">
+   894→   894→        <TabsList className="grid w-full grid-cols-3">
+   895→   895→          <TabsTrigger value="keywords" className="text-xs sm:text-sm">
+   896→   896→            <Sparkles className="mr-1.5 hidden size-4 sm:inline-block" />
+   897→   897→            Keywords
+   898→   898→          </TabsTrigger>
+   899→   899→          <TabsTrigger value="judul" className="text-xs sm:text-sm">
+   900→   900→            <FileText className="mr-1.5 hidden size-4 sm:inline-block" />
+   901→   901→            Judul
+   902→   902→          </TabsTrigger>
+   903→   903→          <TabsTrigger value="ide" className="text-xs sm:text-sm">
+   904→   904→            <BookOpen className="mr-1.5 hidden size-4 sm:inline-block" />
+   905→   905→            Ide
+   906→   906→          </TabsTrigger>
+   907→   907→        </TabsList>
+   908→   908→
+   909→   909→        {/* Keywords Tab */}
+   910→   910→        <TabsContent value="keywords" className="mt-4 space-y-4">
+   911→   911→          <Card>
+   912→   912→            <CardContent className="p-4 sm:p-6 space-y-4">
+   913→   913→              <div className="space-y-2">
+   914→   914→                <label className="text-sm font-medium text-gray-700">
+   915→   915→                  Kata Kunci (pisahkan dengan koma)
+   916→   916→                </label>
+   917→   917→                <Input
+   918→   918→                  placeholder="contoh: pembelajaran, matematika, media digital, motivasi siswa"
+   919→   919→                  value={keywordsInput}
+   920→   920→                  onChange={(e) => setKeywordsInput(e.target.value)}
+   921→   921→                  className="w-full"
+   922→   922→                />
+   923→   923→                <p className="text-xs text-gray-400">
+   924→   924→                  Minimal 3 kata kunci untuk hasil optimal
+   925→   925→                </p>
+   926→   926→              </div>
+   927→   927→              <Button
+   928→   928→                onClick={handleGenerateKeywords}
+   929→   929→                disabled={isGeneratingKeywords || !ideaInput.trim()}
+   930→   930→                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+   931→   931→              >
+   932→   932→                {isGeneratingKeywords ? (
+   933→   933→                  <Loader2 className="mr-2 size-4 animate-spin" />
+   934→   934→                ) : (
+   935→   935→                  <Sparkles className="mr-2 size-4" />
+   936→   936→                )}
+   937→   937→                Generate Kata Kunci dari Ide
+   938→   938→              </Button>
+   939→   939→              {store.keywords.length > 0 && (
+   940→   940→                <div className="flex flex-wrap gap-2">
+   941→   941→                  {store.keywords.map((kw, i) => (
+   942→   942→                    <Badge
+   943→   943→                      key={i}
+   944→   944→                      variant="secondary"
+   945→   945→                      className="bg-emerald-50 text-emerald-700 border-emerald-200"
+   946→   946→                    >
+   947→   947→                      {kw}
+   948→   948→                    </Badge>
+   949→   949→                  ))}
+   950→   950→                </div>
+   951→   951→              )}
+   952→   952→            </CardContent>
+   953→   953→          </Card>
+   954→   954→        </TabsContent>
+   955→   955→
+   956→   956→        {/* Judul Tab */}
+   957→   957→        <TabsContent value="judul" className="mt-4 space-y-4">
+   958→   958→          <Card>
+   959→   959→            <CardContent className="p-4 sm:p-6 space-y-4">
+   960→   960→              <div className="space-y-2">
+   961→   961→                <label className="text-sm font-medium text-gray-700">
+   962→   962→                  Judul Penelitian
+   963→   963→                </label>
+   964→   964→                <Input
+   965→   965→                  placeholder="Masukkan judul penelitian Anda..."
+   966→   966→                  value={titleInput}
+   967→   967→                  onChange={(e) => setTitleInput(e.target.value)}
+   968→   968→                  className="w-full"
+   969→   969→                />
+   970→   970→              </div>
+   971→   971→              <Button
+   972→   972→                onClick={handleGenerateTitles}
+   973→   973→                disabled={isGeneratingTitles || store.keywords.length === 0}
+   974→   974→                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+   975→   975→              >
+   976→   976→                {isGeneratingTitles ? (
+   977→   977→                  <Loader2 className="mr-2 size-4 animate-spin" />
+   978→   978→                ) : (
+   979→   979→                  <Sparkles className="mr-2 size-4" />
+   980→   980→                )}
+   981→   981→                Generate Judul
+   982→   982→              </Button>
+   983→   983→              {generatedTitles.length > 0 && (
+   984→   984→                <div className="space-y-2">
+   985→   985→                  <p className="text-xs font-medium text-gray-500">
+   986→   986→                    Pilih salah satu judul atau tulis sendiri:
+   987→   987→                  </p>
+   988→   988→                  <ScrollArea className="max-h-48 w-full">
+   989→   989→                    <div className="space-y-2 pr-2">
+   990→   990→                      {generatedTitles.map((t, i) => (
+   991→   991→                        <button
+   992→   992→                          key={i}
+   993→   993→                          onClick={() => {
+   994→   994→                            setTitleInput(t);
+   995→   995→                            toast.success('Judul dipilih');
+   996→   996→                          }}
+   997→   997→                          className="w-full rounded-lg border border-gray-200 p-3 text-left text-sm text-gray-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50/50"
+   998→   998→                        >
+   999→   999→                          <span className="mr-2 font-medium text-emerald-600">
+  1000→  1000→                            {i + 1}.
+  1001→  1001→                          </span>
+  1002→  1002→                          {t}
+  1003→  1003→                        </button>
+  1004→  1004→                      ))}
+  1005→  1005→                    </div>
+  1006→  1006→                  </ScrollArea>
+  1007→  1007→                </div>
+  1008→  1008→              )}
+  1009→  1009→            </CardContent>
+  1010→  1010→          </Card>
+  1011→  1011→        </TabsContent>
+  1012→  1012→
+  1013→  1013→        {/* Ide Tab */}
+  1014→  1014→        <TabsContent value="ide" className="mt-4 space-y-4">
+  1015→  1015→          <Card>
+  1016→  1016→            <CardContent className="p-4 sm:p-6 space-y-4">
+  1017→  1017→              <div className="space-y-2">
+  1018→  1018→                <label className="text-sm font-medium text-gray-700">
+  1019→  1019→                  Ide / Topik Penelitian
+  1020→  1020→                </label>
+  1021→  1021→                <Textarea
+  1022→  1022→                  placeholder="Jelaskan ide atau topik penelitian Anda secara detail. Semakin detail, semakin baik hasilnya..."
+  1023→  1023→                  value={ideaInput}
+  1024→  1024→                  onChange={(e) => setIdeaInput(e.target.value)}
+  1025→  1025→                  className="min-h-[150px] w-full resize-y"
+  1026→  1026→                />
+  1027→  1027→                <p className="text-xs text-gray-400">
+  1028→  1028→                  Deskripsi yang detail membantu AI menghasilkan konten yang lebih
+  1029→  1029→                  relevan
+  1030→  1030→                </p>
+  1031→  1031→              </div>
+  1032→  1032→            </CardContent>
+  1033→  1033→          </Card>
+  1034→  1034→        </TabsContent>
+  1035→  1035→      </Tabs>
+  1036→  1036→
+  1037→  1037→      {/* Footer */}
+  1038→  1038→      <div className="mt-auto pt-4">
+  1039→  1039→        <Button
+  1040→  1040→          onClick={handleProceedToReferences}
+  1041→  1041→          disabled={!titleInput.trim() && store.keywords.length === 0}
+  1042→  1042→          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base font-semibold"
+  1043→  1043→        >
+  1044→  1044→          Lanjut ke Referensi
+  1045→  1045→          <ChevronRight className="ml-2 size-5" />
+  1046→  1046→        </Button>
+  1047→  1047→      </div>
+  1048→  1048→    </motion.div>
+  1049→  1049→  );
+  1050→  1050→
+  1051→  1051→  const renderReferencesPhase = () => (
+  1052→  1052→    <motion.div
+  1053→  1053→      key="references"
+  1054→  1054→      {...fadeSlideUp}
+  1055→  1055→      className="flex flex-1 flex-col gap-5"
+  1056→  1056→    >
+  1057→  1057→      {/* Header */}
+  1058→  1058→      <div>
+  1059→  1059→        <button
+  1060→  1060→          onClick={() => store.setPhase('input')}
+  1061→  1061→          className="mb-3 flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-emerald-600"
+  1062→  1062→        >
+  1063→  1063→          <ArrowLeft className="size-4" />
+  1064→  1064→          Kembali ke Input
+  1065→  1065→        </button>
+  1066→  1066→        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+  1067→  1067→          <Library className="mr-2 inline-block size-6 text-emerald-600" />
+  1068→  1068→          Cari Referensi
+  1069→  1069→        </h2>
+  1070→  1070→      </div>
+  1071→  1071→
+  1072→  1072→      {/* Title & Keywords Summary */}
+  1073→  1073→      <Card className="border-emerald-100 bg-emerald-50/50">
+  1074→  1074→        <CardContent className="p-4">
+  1075→  1075→          <div className="space-y-2">
+  1076→  1076→            <div>
+  1077→  1077→              <span className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+  1078→  1078→                Judul
+  1079→  1079→              </span>
+  1080→  1080→              <p className="text-sm font-semibold text-gray-800">
+  1081→  1081→                {store.title || '(belum ada judul)'}
+  1082→  1082→              </p>
+  1083→  1083→            </div>
+  1084→  1084→            {store.keywords.length > 0 && (
+  1085→  1085→              <div>
+  1086→  1086→                <span className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+  1087→  1087→                  Kata Kunci
+  1088→  1088→                </span>
+  1089→  1089→                <div className="mt-1 flex flex-wrap gap-1.5">
+  1090→  1090→                  {store.keywords.map((kw, i) => (
+  1091→  1091→                    <Badge
+  1092→  1092→                      key={i}
+  1093→  1093→                      variant="outline"
+  1094→  1094→                      className="border-emerald-200 text-emerald-700 text-xs"
+  1095→  1095→                    >
+  1096→  1096→                      {kw}
+  1097→  1097→                    </Badge>
+  1098→  1098→                  ))}
+  1099→  1099→                </div>
+  1100→  1100→              </div>
+  1101→  1101→            )}
+  1102→  1102→          </div>
+  1103→  1103→        </CardContent>
+  1104→  1104→      </Card>
+  1105→  1105→
+  1106→  1106→      {/* Search Button */}
+  1107→  1107→      {!store.isSearchingRefs && store.references.length === 0 && (
+  1108→  1108→        <Button
+  1109→  1109→          onClick={handleSearchReferences}
+  1110→  1110→          className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+  1111→  1111→        >
+  1112→  1112→          <Search className="mr-2 size-5" />
+  1113→  1113→          Cari Referensi
+  1114→  1114→        </Button>
+  1115→  1115→      )}
+  1116→  1116→
+  1117→  1117→      {/* Search Progress — Pipeline Steps */}
+  1118→  1118→      {store.isSearchingRefs && (
+  1119→  1119→        <Card>
+  1120→  1120→          <CardContent className="p-4 sm:p-6 space-y-4">
+  1121→  1121→            <div className="flex items-center gap-3">
+  1122→  1122→              <Loader2 className="size-5 animate-spin text-emerald-600" />
+  1123→  1123→              <span className="text-sm font-medium text-gray-700">
+  1124→  1124→                {store.refSearchMessage}
+  1125→  1125→              </span>
+  1126→  1126→            </div>
+  1127→  1127→            <Progress
+  1128→  1128→              value={store.refSearchProgress}
+  1129→  1129→              className="h-2.5 bg-emerald-100"
+  1130→  1130→            />
+  1131→  1131→            {/* Pipeline Step Indicator */}
+  1132→  1132→            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+  1133→  1133→              {[
+  1134→  1134→                { label: 'Terjemah', step: 1 },
+  1135→  1135→                { label: 'Boolean', step: 2 },
+  1136→  1136→                { label: 'Search', step: 3 },
+  1137→  1137→                { label: 'Laporan', step: 4 },
+  1138→  1138→                { label: 'Analisis', step: 5 },
+  1139→  1139→                { label: 'Filter', step: 6 },
+  1140→  1140→              ].map((s) => {
+  1141→  1141→                const isDone = refPipelineStep > s.step;
+  1142→  1142→                const isActive = refPipelineStep === s.step;
+  1143→  1143→                return (
+  1144→  1144→                  <div
+  1145→  1145→                    key={s.step}
+  1146→  1146→                    className={`flex items-center justify-center rounded-lg py-1.5 text-xs font-medium transition-colors ${
+  1147→  1147→                      isDone
+  1148→  1148→                        ? 'bg-emerald-100 text-emerald-700'
+  1149→  1149→                        : isActive
+  1150→  1150→                          ? 'bg-emerald-600 text-white'
+  1151→  1151→                          : 'bg-gray-100 text-gray-400'
+  1152→  1152→                    }`}
+  1153→  1153→                  >
+  1154→  1154→                    {isDone ? (
+  1155→  1155→                      <Check className="mr-1 size-3" />
+  1156→  1156→                    ) : isActive ? (
+  1157→  1157→                      <Loader2 className="mr-1 size-3 animate-spin" />
+  1158→  1158→                    ) : null}
+  1159→  1159→                    {s.label}
+  1160→  1160→                  </div>
+  1161→  1161→                );
+  1162→  1162→              })}
+  1163→  1163→            </div>
+  1164→  1164→            <div className="flex justify-between text-xs text-gray-400">
+  1165→  1165→              <span>Pipeline Referensi</span>
+  1166→  1166→              <span>{store.refSearchProgress}%</span>
+  1167→  1167→            </div>
+  1168→  1168→          </CardContent>
+  1169→  1169→        </Card>
+  1170→  1170→      )}
+  1171→  1171→
+  1172→  1172→      {/* Search Stats — Pipeline Report */}
+  1173→  1173→      {searchStats && !store.isSearchingRefs && (
+  1174→  1174→        <Card>
+  1175→  1175→          <CardContent className="p-4 space-y-3">
+  1176→  1176→            <div className="flex items-center justify-between">
+  1177→  1177→              <h3 className="text-sm font-semibold text-gray-800">
+  1178→  1178→                <FileText className="mr-1.5 inline-block size-4 text-emerald-600" />
+  1179→  1179→                Hasil Pipeline Pencarian
+  1180→  1180→              </h3>
+  1181→  1181→              <Badge className="bg-emerald-600 text-white">
+  1182→  1182→                {searchStats.included} terpilih
+  1183→  1183→              </Badge>
+  1184→  1184→            </div>
+  1185→  1185→
+  1186→  1186→            {/* Pipeline flow visualization */}
+  1187→  1187→            <div className="flex items-center justify-center gap-1 text-xs sm:gap-2">
+  1188→  1188→              <div className="rounded-lg bg-blue-50 px-2.5 py-2 text-center">
+  1189→  1189→                <p className="text-base font-bold text-blue-700">{searchStats.totalRaw}</p>
+  1190→  1190→                <p className="text-blue-500">Ditemukan</p>
+  1191→  1191→              </div>
+  1192→  1192→              <ChevronRight className="size-4 shrink-0 text-gray-300" />
+  1193→  1193→              <div className="rounded-lg bg-amber-50 px-2.5 py-2 text-center">
+  1194→  1194→                <p className="text-base font-bold text-amber-600">{searchStats.duplicates}</p>
+  1195→  1195→                <p className="text-amber-500/70">Duplikat</p>
+  1196→  1196→              </div>
+  1197→  1197→              <ChevronRight className="size-4 shrink-0 text-gray-300" />
+  1198→  1198→              <div className="rounded-lg bg-gray-50 px-2.5 py-2 text-center">
+  1199→  1199→                <p className="text-base font-bold text-gray-700">{searchStats.afterDedupe}</p>
+  1200→  1200→                <p className="text-gray-500">Unik</p>
+  1201→  1201→              </div>
+  1202→  1202→              <ChevronRight className="size-4 shrink-0 text-gray-300" />
+  1203→  1203→              <div className="rounded-lg bg-emerald-50 px-2.5 py-2 text-center">
+  1204→  1204→                <p className="text-base font-bold text-emerald-600">{searchStats.included}</p>
+  1205→  1205→                <p className="text-emerald-600/70">Terpilih</p>
+  1206→  1206→              </div>
+  1207→  1207→              <ChevronRight className="size-4 shrink-0 text-gray-300" />
+  1208→  1208→              <div className="rounded-lg bg-red-50 px-2.5 py-2 text-center">
+  1209→  1209→                <p className="text-base font-bold text-red-500">{searchStats.excluded}</p>
+  1210→  1210→                <p className="text-red-400">Dikecualikan</p>
+  1211→  1211→              </div>
+  1212→  1212→            </div>
+  1213→  1213→
+  1214→  1214→            {/* Criteria Reasoning */}
+  1215→  1215→            {searchStats.criteriaReasoning && (
+  1216→  1216→              <div className="rounded-lg border border-emerald-100 bg-emerald-50/30 p-3">
+  1217→  1217→                <p className="text-xs font-medium text-emerald-700 mb-1">
+  1218→  1218→                  <Sparkles className="mr-1 inline-block size-3" />
+  1219→  1219→                  Analisis AI
+  1220→  1220→                </p>
+  1221→  1221→                <p className="text-xs text-gray-600 leading-relaxed">
+  1222→  1222→                  {searchStats.criteriaReasoning}
+  1223→  1223→                </p>
+  1224→  1224→              </div>
+  1225→  1225→            )}
+  1226→  1226→
+  1227→  1227→            {/* Include Criteria */}
+  1228→  1228→            {searchStats.include.length > 0 && (
+  1229→  1229→              <div className="space-y-1.5">
+  1230→  1230→                <p className="text-xs font-medium text-emerald-600">
+  1231→  1231→                  <CheckCircle2 className="mr-1 inline-block size-3" />
+  1232→  1232→                  Kriteria Include ({searchStats.include.length})
+  1233→  1233→                </p>
+  1234→  1234→                <div className="flex flex-wrap gap-1">
+  1235→  1235→                  {searchStats.include.map((c, i) => (
+  1236→  1236→                    <Badge
+  1237→  1237→                      key={i}
+  1238→  1238→                      variant="outline"
+  1239→  1239→                      className="text-xs border-emerald-200 text-emerald-700"
+  1240→  1240→                    >
+  1241→  1241→                      + {c}
+  1242→  1242→                    </Badge>
+  1243→  1243→                  ))}
+  1244→  1244→                </div>
+  1245→  1245→              </div>
+  1246→  1246→            )}
+  1247→  1247→            {/* Exclude Criteria */}
+  1248→  1248→            {searchStats.exclude.length > 0 && (
+  1249→  1249→              <div className="space-y-1.5">
+  1250→  1250→                <p className="text-xs font-medium text-red-500">
+  1251→  1251→                  <XCircle className="mr-1 inline-block size-3" />
+  1252→  1252→                  Kriteria Exclude ({searchStats.exclude.length})
+  1253→  1253→                </p>
+  1254→  1254→                <div className="flex flex-wrap gap-1">
+  1255→  1255→                  {searchStats.exclude.map((c, i) => (
+  1256→  1256→                    <Badge
+  1257→  1257→                      key={i}
+  1258→  1258→                      variant="outline"
+  1259→  1259→                      className="text-xs border-red-200 text-red-600"
+  1260→  1260→                    >
+  1261→  1261→                      - {c}
+  1262→  1262→                    </Badge>
+  1263→  1263→                  ))}
+  1264→  1264→                </div>
+  1265→  1265→              </div>
+  1266→  1266→            )}
+  1267→  1267→          </CardContent>
+  1268→  1268→        </Card>
+  1269→  1269→      )}
+  1270→  1270→
+  1271→  1271→      {/* Boolean Queries */}
+  1272→  1272→      {booleanQueries.length > 0 && !store.isSearchingRefs && (
+  1273→  1273→        <Card>
+  1274→  1274→          <CardContent className="p-4 space-y-2">
+  1275→  1275→            <div className="flex items-center gap-2">
+  1276→  1276→              <Globe className="size-4 text-emerald-600" />
+  1277→  1277→              <h3 className="text-sm font-semibold text-gray-800">
+  1278→  1278→                Boolean Queries (Multi-bahasa)
+  1279→  1279→              </h3>
+  1280→  1280→            </div>
+  1281→  1281→            <ScrollArea className="max-h-32">
+  1282→  1282→              <div className="space-y-1.5 pr-2">
+  1283→  1283→                {booleanQueries.map((q, i) => (
+  1284→  1284→                  <div
+  1285→  1285→                    key={i}
+  1286→  1286→                    className="rounded bg-gray-50 px-3 py-1.5 text-xs font-mono text-gray-600 break-all"
+  1287→  1287→                  >
+  1288→  1288→                    {q}
+  1289→  1289→                  </div>
+  1290→  1290→                ))}
+  1291→  1291→              </div>
+  1292→  1292→            </ScrollArea>
+  1293→  1293→          </CardContent>
+  1294→  1294→        </Card>
+  1295→  1295→      )}
+  1296→  1296→
+  1297→  1297→      {/* Translated Keywords */}
+  1298→  1298→      {Object.keys(translatedKeywords).length > 0 && !store.isSearchingRefs && (
+  1299→  1299→        <Card>
+  1300→  1300→          <CardContent className="p-4 space-y-2">
+  1301→  1301→            <div className="flex items-center gap-2">
+  1302→  1302→              <Globe className="size-4 text-emerald-600" />
+  1303→  1303→              <h3 className="text-sm font-semibold text-gray-800">
+  1304→  1304→                Terjemahan Kata Kunci
+  1305→  1305→              </h3>
+  1306→  1306→            </div>
+  1307→  1307→            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+  1308→  1308→              {Object.entries(translatedKeywords).map(([lang, words]) => (
+  1309→  1309→                <div
+  1310→  1310→                  key={lang}
+  1311→  1311→                  className="rounded-lg border border-gray-100 bg-gray-50/50 p-2.5"
+  1312→  1312→                >
+  1313→  1313→                  <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+  1314→  1314→                    {lang}
+  1315→  1315→                  </p>
+  1316→  1316→                  <div className="flex flex-wrap gap-1">
+  1317→  1317→                    {words.map((w, i) => (
+  1318→  1318→                      <Badge key={i} variant="secondary" className="text-xs">
+  1319→  1319→                        {w}
+  1320→  1320→                      </Badge>
+  1321→  1321→                    ))}
+  1322→  1322→                  </div>
+  1323→  1323→                </div>
+  1324→  1324→              ))}
+  1325→  1325→            </div>
+  1326→  1326→          </CardContent>
+  1327→  1327→        </Card>
+  1328→  1328→      )}
+  1329→  1329→
+  1330→  1330→      {/* Reference List */}
+  1331→  1331→      {store.references.length > 0 && !store.isSearchingRefs && (
+  1332→  1332→        <Card>
+  1333→  1333→          <CardContent className="p-4 space-y-3">
+  1334→  1334→            <div className="flex items-center justify-between">
+  1335→  1335→              <h3 className="text-sm font-semibold text-gray-800">
+  1336→  1336→                Daftar Referensi
+  1337→  1337→              </h3>
+  1338→  1338→              <div className="flex gap-2">
+  1339→  1339→                <Button
+  1340→  1340→                  variant="outline"
+  1341→  1341→                  size="sm"
+  1342→  1342→                  onClick={store.selectAllReferences}
+  1343→  1343→                  className="text-xs h-7"
+  1344→  1344→                >
+  1345→  1345→                  Pilih Semua
+  1346→  1346→                </Button>
+  1347→  1347→                <Button
+  1348→  1348→                  variant="outline"
+  1349→  1349→                  size="sm"
+  1350→  1350→                  onClick={store.deselectAllReferences}
+  1351→  1351→                  className="text-xs h-7"
+  1352→  1352→                >
+  1353→  1353→                  Batal Semua
+  1354→  1354→                </Button>
+  1355→  1355→              </div>
+  1356→  1356→            </div>
+  1357→  1357→            <ScrollArea className="max-h-96 w-full">
+  1358→  1358→              <div className="space-y-2 pr-2">
+  1359→  1359→                {store.references.map((ref) => (
+  1360→  1360→                  <div
+  1361→  1361→                    key={ref.id}
+  1362→  1362→                    className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+  1363→  1363→                      ref.isSelected
+  1364→  1364→                        ? 'border-emerald-200 bg-emerald-50/50'
+  1365→  1365→                        : 'border-gray-100 bg-white'
+  1366→  1366→                    }`}
+  1367→  1367→                  >
+  1368→  1368→                    <Checkbox
+  1369→  1369→                      checked={ref.isSelected}
+  1370→  1370→                      onCheckedChange={() => store.toggleReference(ref.id)}
+  1371→  1371→                      className="mt-0.5 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+  1372→  1372→                    />
+  1373→  1373→                    <div className="flex-1 min-w-0">
+  1374→  1374→                      <p className="text-sm font-medium text-gray-800 leading-snug">
+  1375→  1375→                        {ref.title}
+  1376→  1376→                      </p>
+  1377→  1377→                      <p className="mt-1 text-xs text-gray-500">
+  1378→  1378→                        {ref.authors}
+  1379→  1379→                        {ref.year ? ` (${ref.year})` : ''}
+  1380→  1380→                        {ref.journal ? ` — ${ref.journal}` : ''}
+  1381→  1381→                      </p>
+  1382→  1382→                      {ref.refType && (
+  1383→  1383→                        <Badge
+  1384→  1384→                          variant="outline"
+  1385→  1385→                          className="mt-1.5 text-xs"
+  1386→  1386→                        >
+  1387→  1387→                          {ref.refType}
+  1388→  1388→                        </Badge>
+  1389→  1389→                      )}
+  1390→  1390→                      {ref.relevanceScore != null && (
+  1391→  1391→                        <Badge
+  1392→  1392→                          variant="secondary"
+  1393→  1393→                          className="ml-1.5 mt-1.5 text-xs"
+  1394→  1394→                        >
+  1395→  1395→                          Relevansi: {Math.round(ref.relevanceScore * 100)}%
+  1396→  1396→                        </Badge>
+  1397→  1397→                      )}
+  1398→  1398→                    </div>
+  1399→  1399→                  </div>
+  1400→  1400→                ))}
+  1401→  1401→              </div>
+  1402→  1402→            </ScrollArea>
+  1403→  1403→          </CardContent>
+  1404→  1404→        </Card>
+  1405→  1405→      )}
+  1406→  1406→
+  1407→  1407→      {/* Footer */}
+  1408→  1408→      <div className="mt-auto pt-4">
+  1409→  1409→        {store.references.length > 0 && !store.isSearchingRefs && (
+  1410→  1410→          <Button
+  1411→  1411→            onClick={handleStartWriting}
+  1412→  1412→            disabled={
+  1413→  1413→              store.references.filter((r) => r.isSelected).length === 0
+  1414→  1414→            }
+  1415→  1415→            className="w-full h-12 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+  1416→  1416→          >
+  1417→  1417→            <Play className="mr-2 size-5" />
+  1418→  1418→            Mulai Menulis Cicil
+  1419→  1419→            <ChevronRight className="ml-2 size-5" />
+  1420→  1420→          </Button>
+  1421→  1421→        )}
+  1422→  1422→        {store.references.length > 0 && !store.isSearchingRefs && (
+  1423→  1423→          <Button
+  1424→  1424→            variant="outline"
+  1425→  1425→            onClick={handleSearchReferences}
+  1426→  1426→            className="mt-2 w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+  1427→  1427→          >
+  1428→  1428→            <RotateCcw className="mr-2 size-4" />
+  1429→  1429→            Cari Ulang Referensi
+  1430→  1430→          </Button>
+  1431→  1431→        )}
+  1432→  1432→      </div>
+  1433→  1433→    </motion.div>
+  1434→  1434→  );
+  1435→  1435→
+  1436→  1436→  const renderStepStatusIcon = (status: CicilStepState['status']) => {
+  1437→  1437→    switch (status) {
+  1438→  1438→      case 'pending':
+  1439→  1439→        return <CircleDot className="size-4 text-gray-300" />;
+  1440→  1440→      case 'generating':
+  1441→  1441→        return <Loader2 className="size-4 animate-spin text-emerald-500" />;
+  1442→  1442→      case 'done':
+  1443→  1443→        return <CheckCircle2 className="size-4 text-emerald-500" />;
+  1444→  1444→      case 'error':
+  1445→  1445→        return <XCircle className="size-4 text-red-500" />;
+  1446→  1446→      default:
+  1447→  1447→        return <CircleDot className="size-4 text-gray-300" />;
+  1448→  1448→    }
+  1449→  1449→  };
+  1450→  1450→
+  1451→  1451→  const renderStepStatusLabel = (status: CicilStepState['status']) => {
+  1452→  1452→    switch (status) {
+  1453→  1453→      case 'pending':
+  1454→  1454→        return (
+  1455→  1455→          <Badge variant="secondary" className="text-xs">
+  1456→  1456→            Menunggu
+  1457→  1457→          </Badge>
+  1458→  1458→        );
+  1459→  1459→      case 'generating':
+  1460→  1460→        return (
+  1461→  1461→          <Badge className="bg-emerald-100 text-emerald-700 text-xs border-emerald-200">
+  1462→  1462→            <Loader2 className="mr-1 size-3 animate-spin" />
+  1463→  1463→            Generating
+  1464→  1464→          </Badge>
+  1465→  1465→        );
+  1466→  1466→      case 'done':
+  1467→  1467→        return (
+  1468→  1468→          <Badge className="bg-emerald-600 text-white text-xs">
+  1469→  1469→            <Check className="mr-1 size-3" />
+  1470→  1470→            Selesai
+  1471→  1471→          </Badge>
+  1472→  1472→        );
+  1473→  1473→      case 'error':
+  1474→  1474→        return (
+  1475→  1475→          <Badge variant="destructive" className="text-xs">
+  1476→  1476→            <AlertCircle className="mr-1 size-3" />
+  1477→  1477→            Error
+  1478→  1478→          </Badge>
+  1479→  1479→        );
+  1480→  1480→      default:
+  1481→  1481→        return null;
+  1482→  1482→    }
+  1483→  1483→  };
+  1484→  1484→
+  1485→  1485→  const renderWritingPhase = () => (
+  1486→  1486→    <motion.div
+  1487→  1487→      key="writing"
+  1488→  1488→      {...fadeSlideUp}
+  1489→  1489→      className="flex flex-1 flex-col gap-4"
+  1490→  1490→    >
+  1491→  1491→      {/* Top Bar: Progress & Controls */}
+  1492→  1492→      <div className="space-y-3">
+  1493→  1493→        <div className="flex items-center justify-between">
+  1494→  1494→          <button
+  1495→  1495→            onClick={() => store.setPhase('references')}
+  1496→  1496→            className="flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-emerald-600"
+  1497→  1497→          >
+  1498→  1498→            <ArrowLeft className="size-4" />
+  1499→  1499→            Referensi
+  1500→  1500→          </button>
+  1501→  1501→          <div className="flex items-center gap-3">
+  1502→  1502→            {/* Engine Selector */}
+  1503→  1503→            <Select
+  1504→  1504→              value={store.generationEngine}
+  1505→  1505→              onValueChange={(v) =>
+  1506→  1506→                store.setGenerationEngine(v as 'zai' | 'gemini' | 'grok')
+  1507→  1507→              }
+  1508→  1508→              disabled={store.isAutoGenerating}
+  1509→  1509→            >
+  1510→  1510→              <SelectTrigger className="w-[160px] h-8 text-xs">
+  1511→  1511→                <SelectValue />
+  1512→  1512→              </SelectTrigger>
+  1513→  1513→              <SelectContent>
+  1514→  1514→                {AI_ENGINES.map((engine) => (
+  1515→  1515→                  <SelectItem key={engine.id} value={engine.id}>
+  1516→  1516→                    <span className="mr-1.5">{engine.icon}</span>
+  1517→  1517→                    {engine.name}
+  1518→  1518→                  </SelectItem>
+  1519→  1519→                ))}
+  1520→  1520→              </SelectContent>
+  1521→  1521→            </Select>
+  1522→  1522→          </div>
+  1523→  1523→        </div>
+  1524→  1524→
+  1525→  1525→        {/* Progress Bar */}
+  1526→  1526→        <Card>
+  1527→  1527→          <CardContent className="p-4 space-y-2">
+  1528→  1528→            <div className="flex items-center justify-between text-sm">
+  1529→  1529→              <span className="font-medium text-gray-700">Progres Menulis</span>
+  1530→  1530→              <span className="font-bold text-emerald-600">
+  1531→  1531→                {completedSteps}/{store.steps.length} bagian • {progressPercent}%
+  1532→  1532→              </span>
+  1533→  1533→            </div>
+  1534→  1534→            <Progress
+  1535→  1535→              value={progressPercent}
+  1536→  1536→              className="h-2.5 bg-emerald-100"
+  1537→  1537→            />
+  1538→  1538→            <div className="flex justify-between text-xs text-gray-400">
+  1539→  1539→              <span>
+  1540→  1540→                {formatNumber(totalWordsWritten)} / {formatNumber(totalTargetWords)}{' '}
+  1541→  1541→                kata
+  1542→  1542→              </span>
+  1543→  1543→              <span>{flowConfig.title}</span>
+  1544→  1544→            </div>
+  1545→  1545→          </CardContent>
+  1546→  1546→        </Card>
+  1547→  1547→
+  1548→  1548→        {/* Auto Generate Controls */}
+  1549→  1549→        <div className="flex gap-2">
+  1550→  1550→          {!store.isAutoGenerating && !allDone && (
+  1551→  1551→            <>
+  1552→  1552→              <Button
+  1553→  1553→                onClick={handleAutoGenerateAll}
+  1554→  1554→                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+  1555→  1555→              >
+  1556→  1556→                <Play className="mr-2 size-4" />
+  1557→  1557→                Auto Generate Semua
+  1558→  1558→              </Button>
+  1559→  1559→              {/* Generate Next Step */}
+  1560→  1560→              {(() => {
+  1561→  1561→                const nextPending = store.steps.find(
+  1562→  1562→                  (s) => s.status === 'pending' || s.status === 'error'
+  1563→  1563→                );
+  1564→  1564→                return nextPending ? (
+  1565→  1565→                  <Button
+  1566→  1566→                    variant="outline"
+  1567→  1567→                    onClick={() => handleGenerateStep(nextPending)}
+  1568→  1568→                    className="h-11 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+  1569→  1569→                  >
+  1570→  1570→                    <ChevronRight className="mr-1.5 size-4" />
+  1571→  1571→                    Generate Berikutnya
+  1572→  1572→                  </Button>
+  1573→  1573→                ) : null;
+  1574→  1574→              })()}
+  1575→  1575→            </>
+  1576→  1576→          )}
+  1577→  1577→          {store.isAutoGenerating && (
+  1578→  1578→            <Button
+  1579→  1579→              onClick={handleStopAutoGenerate}
+  1580→  1580→              variant="destructive"
+  1581→  1581→              className="flex-1 h-11"
+  1582→  1582→            >
+  1583→  1583→              <RotateCcw className="mr-2 size-4" />
+  1584→  1584→              Hentikan
+  1585→  1585→            </Button>
+  1586→  1586→          )}
+  1587→  1587→          {allDone && (
+  1588→  1588→            <Button
+  1589→  1589→              onClick={handleViewResult}
+  1590→  1590→              className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+  1591→  1591→            >
+  1592→  1592→              <Eye className="mr-2 size-4" />
+  1593→  1593→              Lihat Hasil
+  1594→  1594→            </Button>
+  1595→  1595→          )}
+  1596→  1596→        </div>
+  1597→  1597→      </div>
+  1598→  1598→
+  1599→  1599→      {/* Chapters Accordion */}
+  1600→  1600→      <ScrollArea className="flex-1">
+  1601→  1601→        <Accordion
+  1602→  1602→          type="multiple"
+  1603→  1603→          defaultValue={[activeChapter]}
+  1604→  1604→          onValueChange={(vals) => {
+  1605→  1605→            if (vals.length > 0) setActiveChapter(vals[0]);
+  1606→  1606→          }}
+  1607→  1607→          className="w-full"
+  1608→  1608→        >
+  1609→  1609→          {chapters.map((chapter) => {
+  1610→  1610→            const chapterDone = chapter.steps.filter(
+  1611→  1611→              (s) => s.status === 'done'
+  1612→  1612→            ).length;
+  1613→  1613→            const chapterTotal = chapter.steps.length;
+  1614→  1614→            const chapterWords = chapter.steps.reduce(
+  1615→  1615→              (sum, s) => sum + s.wordCount,
+  1616→  1616→              0
+  1617→  1617→            );
+  1618→  1618→            const chapterTargetWords = chapter.steps.reduce(
+  1619→  1619→              (sum, s) => sum + s.targetWords,
+  1620→  1620→              0
+  1621→  1621→            );
+  1622→  1622→
+  1623→  1623→            return (
+  1624→  1624→              <AccordionItem key={chapter.id} value={chapter.id}>
+  1625→  1625→                <AccordionTrigger className="hover:no-underline">
+  1626→  1626→                  <div className="flex flex-1 items-center gap-3 pr-2">
+  1627→  1627→                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+  1628→  1628→                      <BookOpen className="size-4" />
+  1629→  1629→                    </div>
+  1630→  1630→                    <div className="min-w-0 flex-1 text-left">
+  1631→  1631→                      <div className="flex items-center gap-2">
+  1632→  1632→                        <p className="truncate text-sm font-semibold text-gray-800">
+  1633→  1633→                          {chapter.label}
+  1634→  1634→                        </p>
+  1635→  1635→                        <Badge
+  1636→  1636→                          variant="secondary"
+  1637→  1637→                          className="text-xs shrink-0"
+  1638→  1638→                        >
+  1639→  1639→                          {chapterDone}/{chapterTotal}
+  1640→  1640→                        </Badge>
+  1641→  1641→                      </div>
+  1642→  1642→                      <p className="text-xs text-gray-400">
+  1643→  1643→                        {formatNumber(chapterWords)}/
+  1644→  1644→                        {formatNumber(chapterTargetWords)} kata
+  1645→  1645→                      </p>
+  1646→  1646→                    </div>
+  1647→  1647→                    {/* Mini progress */}
+  1648→  1648→                    <div className="hidden w-20 sm:block">
+  1649→  1649→                      <Progress
+  1650→  1650→                        value={
+  1651→  1651→                          chapterTotal > 0
+  1652→  1652→                            ? (chapterDone / chapterTotal) * 100
+  1653→  1653→                            : 0
+  1654→  1654→                        }
+  1655→  1655→                        className="h-1.5 bg-gray-100"
+  1656→  1656→                      />
+  1657→  1657→                    </div>
+  1658→  1658→                  </div>
+  1659→  1659→                </AccordionTrigger>
+  1660→  1660→                <AccordionContent>
+  1661→  1661→                  <div className="space-y-2 pl-2 pt-1">
+  1662→  1662→                    {chapter.steps.map((step) => (
+  1663→  1663→                      <Card
+  1664→  1664→                        key={step.stepId}
+  1665→  1665→                        className={`transition-colors ${
+  1666→  1666→                          step.status === 'generating'
+  1667→  1667→                            ? 'border-emerald-300 bg-emerald-50/30'
+  1668→  1668→                            : step.status === 'done'
+  1669→  1669→                              ? 'border-emerald-100'
+  1670→  1670→                              : step.status === 'error'
+  1671→  1671→                                ? 'border-red-100 bg-red-50/30'
+  1672→  1672→                                : ''
+  1673→  1673→                        }`}
+  1674→  1674→                      >
+  1675→  1675→                        <CardContent className="p-3 sm:p-4">
+  1676→  1676→                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+  1677→  1677→                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+  1678→  1678→                              {renderStepStatusIcon(step.status)}
+  1679→  1679→                              <div className="min-w-0 flex-1">
+  1680→  1680→                                <p
+  1681→  1681→                                  className={`text-sm font-medium leading-snug ${
+  1682→  1682→                                    step.status === 'done'
+  1683→  1683→                                      ? 'text-gray-900'
+  1684→  1684→                                      : step.status === 'error'
+  1685→  1685→                                        ? 'text-red-700'
+  1686→  1686→                                        : 'text-gray-700'
+  1687→  1687→                                  }`}
+  1688→  1688→                                >
+  1689→  1689→                                  {step.label}
+  1690→  1690→                                </p>
+  1691→  1691→                                <p className="mt-0.5 text-xs text-gray-400">
+  1692→  1692→                                  Target: {formatNumber(step.targetWords)} kata
+  1693→  1693→                                  {step.wordCount > 0 &&
+  1694→  1694→                                    ` • Tertulis: ${formatNumber(step.wordCount)} kata`}
+  1695→  1695→                                </p>
+  1696→  1696→                                {step.error && (
+  1697→  1697→                                  <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+  1698→  1698→                                    <AlertCircle className="size-3 shrink-0" />
+  1699→  1699→                                    {step.error}
+  1700→  1700→                                  </p>
+  1701→  1701→                                )}
+  1702→  1702→                                {step.status === 'generating' && (
+  1703→  1703→                                  <Skeleton className="mt-2 h-3 w-3/4" />
+  1704→  1704→                                )}
+  1705→  1705→                              </div>
+  1706→  1706→                            </div>
+  1707→  1707→                            <div className="flex items-center gap-2 shrink-0">
+  1708→  1708→                              {renderStepStatusLabel(step.status)}
+  1709→  1709→                              {(step.status === 'pending' ||
+  1710→  1710→                                step.status === 'error') &&
+  1711→  1711→                                !store.isAutoGenerating && (
+  1712→  1712→                                  <Button
+  1713→  1713→                                    size="sm"
+  1714→  1714→                                    onClick={() => handleGenerateStep(step)}
+  1715→  1715→                                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3"
+  1716→  1716→                                  >
+  1717→  1717→                                    <Play className="mr-1 size-3" />
+  1718→  1718→                                    Generate
+  1719→  1719→                                  </Button>
+  1720→  1720→                                )}
+  1721→  1721→                            </div>
+  1722→  1722→                          </div>
+  1723→  1723→                        </CardContent>
+  1724→  1724→                      </Card>
+  1725→  1725→                    ))}
+  1726→  1726→                  </div>
+  1727→  1727→                </AccordionContent>
+  1728→  1728→              </AccordionItem>
+  1729→  1729→            );
+  1730→  1730→          })}
+  1731→  1731→        </Accordion>
+  1732→  1732→      </ScrollArea>
+  1733→  1733→    </motion.div>
+  1734→  1734→  );
+  1735→  1735→
+  1736→  1736→  const renderOutputPhase = () => (
+  1737→  1737→    <motion.div
+  1738→  1738→      key="output"
+  1739→  1739→      {...fadeSlideUp}
+  1740→  1740→      className="flex flex-1 flex-col gap-4"
+  1741→  1741→    >
+  1742→  1742→      {/* Header */}
+  1743→  1743→      <div className="flex items-center justify-between">
+  1744→  1744→        <button
+  1745→  1745→          onClick={() => store.setPhase('writing')}
+  1746→  1746→          className="flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-emerald-600"
+  1747→  1747→        >
+  1748→  1748→          <ArrowLeft className="size-4" />
+  1749→  1749→          Kembali ke Menulis
+  1750→  1750→        </button>
+  1751→  1751→        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
+  1752→  1752→          <FileText className="mr-2 inline-block size-5 text-emerald-600" />
+  1753→  1753→          Hasil Akhir
+  1754→  1754→        </h2>
+  1755→  1755→        <div className="w-20" /> {/* Spacer for centering */}
+  1756→  1756→      </div>
+  1757→  1757→
+  1758→  1758→      {/* Stats */}
+  1759→  1759→      <div className="grid grid-cols-3 gap-3">
+  1760→  1760→        <Card>
+  1761→  1761→          <CardContent className="p-3 text-center">
+  1762→  1762→            <p className="text-xl font-bold text-emerald-600">
+  1763→  1763→              {completedSteps}
+  1764→  1764→            </p>
+  1765→  1765→            <p className="text-xs text-gray-500">Bagian Selesai</p>
+  1766→  1766→          </CardContent>
+  1767→  1767→        </Card>
+  1768→  1768→        <Card>
+  1769→  1769→          <CardContent className="p-3 text-center">
+  1770→  1770→            <p className="text-xl font-bold text-emerald-600">
+  1771→  1771→              {formatNumber(store.totalWordsWritten)}
+  1772→  1772→            </p>
+  1773→  1773→            <p className="text-xs text-gray-500">Total Kata</p>
+  1774→  1774→          </CardContent>
+  1775→  1775→        </Card>
+  1776→  1776→        <Card>
+  1777→  1777→          <CardContent className="p-3 text-center">
+  1778→  1778→            <p className="text-xl font-bold text-emerald-600">
+  1779→  1779→              {store.steps.length}
+  1780→  1780→            </p>
+  1781→  1781→            <p className="text-xs text-gray-500">Total Bagian</p>
+  1782→  1782→          </CardContent>
+  1783→  1783→        </Card>
+  1784→  1784→      </div>
+  1785→  1785→
+  1786→  1786→      {/* Output Content */}
+  1787→  1787→      <Card className="flex-1">
+  1788→  1788→        <CardContent className="p-4 sm:p-6">
+  1789→  1789→          <ScrollArea className="max-h-[60vh] w-full">
+  1790→  1790→            <div className="prose prose-sm max-w-none pr-2">
+  1791→  1791→              {store.fullOutput ? (
+  1792→  1792→                <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800">
+  1793→  1793→                  {store.fullOutput.split('\n').map((line, i) => {
+  1794→  1794→                    // Simple markdown rendering for headings
+  1795→  1795→                    if (line.startsWith('=== ')) {
+  1796→  1796→                      return (
+  1797→  1797→                        <h1
+  1798→  1798→                          key={i}
+  1799→  1799→                          className="mb-4 text-center text-lg font-bold text-emerald-700 sm:text-xl"
+  1800→  1800→                        >
+  1801→  1801→                          {line.replace('=== ', '').replace(' ===', '')}
+  1802→  1802→                        </h1>
+  1803→  1803→                      );
+  1804→  1804→                    }
+  1805→  1805→                    if (line.startsWith('## ')) {
+  1806→  1806→                      return (
+  1807→  1807→                        <h2
+  1808→  1808→                          key={i}
+  1809→  1809→                          className="mb-2 mt-6 text-base font-bold text-gray-900"
+  1810→  1810→                        >
+  1811→  1811→                          {line.replace('## ', '')}
+  1812→  1812→                        </h2>
+  1813→  1813→                      );
+  1814→  1814→                    }
+  1815→  1815→                    if (line.startsWith('---')) {
+  1816→  1816→                      return <Separator key={i} className="my-4" />;
+  1817→  1817→                    }
+  1818→  1818→                    if (line.startsWith('# ')) {
+  1819→  1819→                      return (
+  1820→  1820→                        <h2
+  1821→  1821→                          key={i}
+  1822→  1822→                          className="mb-2 mt-4 text-base font-bold text-gray-900"
+  1823→  1823→                        >
+  1824→  1824→                          {line.replace('# ', '')}
+  1825→  1825→                        </h2>
+  1826→  1826→                      );
+  1827→  1827→                    }
+  1828→  1828→                    if (line.startsWith('**') && line.endsWith('**')) {
+  1829→  1829→                      return (
+  1830→  1830→                        <p
+  1831→  1831→                          key={i}
+  1832→  1832→                          className="mb-1 font-semibold text-gray-800"
+  1833→  1833→                        >
+  1834→  1834→                          {line.replace(/\*\*/g, '')}
+  1835→  1835→                        </p>
+  1836→  1836→                      );
+  1837→  1837→                    }
+  1838→  1838→                    if (line.trim() === '') {
+  1839→  1839→                      return <br key={i} />;
+  1840→  1840→                    }
+  1841→  1841→                    return (
+  1842→  1842→                      <p key={i} className="mb-1">
+  1843→  1843→                        {line}
+  1844→  1844→                      </p>
+  1845→  1845→                    );
+  1846→  1846→                  })}
+  1847→  1847→                </div>
+  1848→  1848→              ) : (
+  1849→  1849→                <div className="flex items-center justify-center py-12 text-gray-400">
+  1850→  1850→                  <p>Tidak ada output yang dihasilkan</p>
+  1851→  1851→                </div>
+  1852→  1852→              )}
+  1853→  1853→            </div>
+  1854→  1854→          </ScrollArea>
+  1855→  1855→        </CardContent>
+  1856→  1856→      </Card>
+  1857→  1857→
+  1858→  1858→      {/* Actions */}
+  1859→  1859→      <div className="mt-auto space-y-2 pt-4">
+  1860→  1860→        <Button
+  1861→  1861→          onClick={handleCopyOutput}
+  1862→  1862→          disabled={!store.fullOutput}
+  1863→  1863→          className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+  1864→  1864→        >
+  1865→  1865→          <Copy className="mr-2 size-4" />
+  1866→  1866→          Salin ke Clipboard
+  1867→  1867→        </Button>
+  1868→  1868→        <Button
+  1869→  1869→          variant="outline"
+  1870→  1870→          onClick={onBack}
+  1871→  1871→          className="w-full h-11 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+  1872→  1872→        >
+  1873→  1873→          <ArrowLeft className="mr-2 size-4" />
+  1874→  1874→          Kembali ke Menu
+  1875→  1875→        </Button>
+  1876→  1876→      </div>
+  1877→  1877→    </motion.div>
+  1878→  1878→  );
+  1879→  1879→
+  1880→  1880→  // ─── Main Render ──────────────────────────────────────────────────────
+  1881→  1881→
+  1882→  1882→  return (
+  1883→  1883→    <div className="flex min-h-screen flex-col bg-gray-50/50">
+  1884→  1884→      {/* Main Content */}
+  1885→  1885→      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8">
+  1886→  1886→        <AnimatePresence mode="wait">
+  1887→  1887→          {store.phase === 'input' && renderInputPhase()}
+  1888→  1888→          {store.phase === 'references' && renderReferencesPhase()}
+  1889→  1889→          {store.phase === 'writing' && renderWritingPhase()}
+  1890→  1890→          {store.phase === 'output' && renderOutputPhase()}
+  1891→  1891→        </AnimatePresence>
+  1892→  1892→      </main>
+  1893→  1893→    </div>
+  1894→  1894→  );
+  1895→  1895→}
