@@ -998,12 +998,12 @@ export default function Step1Input() {
                     <div className="flex items-center gap-2 mb-4">
                       <Type className="size-4 text-emerald-500" />
                       <h3 className="text-sm font-semibold text-foreground">
-                        Enter Your Article Title
+                        Masukkan Judul Artikel Anda
                       </h3>
                     </div>
                     <p className="text-xs text-muted-foreground mb-5">
-                      Provide a scientific article title and we&apos;ll extract relevant keywords
-                      for your research.
+                      Masukkan judul artikel ilmiah dan kami akan mengekstrak kata kunci
+                      yang relevan untuk riset Anda.
                     </p>
                     <Textarea
                       placeholder="Contoh: Dampak Kecerdasan Buatan terhadap Sistem Kesehatan Modern: Tinjauan Pustaka Komprehensif"

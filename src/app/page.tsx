@@ -274,10 +274,10 @@ function StepHeader({
 
 function SocialProofSection() {
   const stats = [
-    { value: 10000, suffix: '+', label: 'Artikel Dibuat', display: '10,000+' },
-    { value: 12, suffix: '', label: 'Mode Penulisan', display: '12' },
+    { value: 11, suffix: '+', label: 'Mode Penulisan', display: '11+' },
+    { value: 8, suffix: '+', label: 'Database Akademik', display: '8+' },
     { value: 7, suffix: 'th', label: 'Edition', display: 'APA 7th', prefix: 'Format ' },
-    { value: 2, suffix: '', label: 'Export Format', display: 'PDF & DOCX' },
+    { value: 3, suffix: '', label: 'Export Format', display: 'PDF, DOCX, MD' },
   ];
 
   const testimonials = [
@@ -354,6 +354,9 @@ function SocialProofSection() {
         <h2 className="text-center text-lg sm:text-xl font-bold text-foreground mb-6 sm:mb-8">
           Dipercaya oleh Ribuan Penulis Akademik
         </h2>
+        <p className="text-xs text-muted-foreground text-center -mt-1 mb-6 sm:mb-8">
+          * Testimoni di bawah merupakan contoh ilustrasi
+        </p>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
           {testimonials.map((t, i) => (
             <motion.div
@@ -591,15 +594,15 @@ function PricingSection() {
       popular: true,
       features: [
         'Generate unlimited',
-        'Semua 12 mode penulisan',
+        'Semua 11 mode penulisan',
         '50 referensi per pencarian',
-        'Export PDF & DOCX',
-        'AI Multi-Engine (3 Tim)',
+        'Export PDF, DOCX & Markdown',
         'Mode Cicil (Bab per Bab)',
         'Prioritas processing',
         'Fitur Reviewer Notes',
+        'Export CSV referensi (SLR)',
       ],
-      cta: 'Pilih Pro',
+      cta: 'Segera Hadir',
       ctaVariant: 'default' as const,
     },
     {
@@ -612,11 +615,10 @@ function PricingSection() {
       features: [
         'Semua fitur Pro',
         'Multi-user (10-100+)',
-        'Dashboard admin institusi',
-        'Template kustom universitas',
-        'API integration',
         'Dedicated support',
-        'SLA uptime 99.9%',
+        'Template kustom',
+        'Lisensi bulk discount',
+        'Pelatihan penggunaan',
       ],
       cta: 'Hubungi Kami',
       ctaVariant: 'outline' as const,

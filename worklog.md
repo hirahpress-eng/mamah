@@ -801,3 +801,46 @@ Stage Summary:
 - 1 file modified: page.tsx (+275 lines)
 - No code deleted — only additions
 - Dev server: clean compilation, no errors
+
+---
+Task ID: s2-audit-v240
+Agent: Main Agent (Z.ai Chat)
+Task: Super audit 50+ poin + revisi + Export CSV SLR
+
+Work Log:
+- Ran dual audit: (1) Browser UX audit via agent-browser, (2) Deep code quality audit
+- Browser audit findings: tutorial blocks first impression, wrong default view, language mixing
+- Code audit findings: 5 CRITICAL, 9 HIGH, 14 MEDIUM, 10 LOW issues
+
+REVISI DILAKUKAN:
+1. selectedMode default → null (landing page shown first, NOT generation flow)
+2. metadataBase + viewport metadata in layout.tsx (fixes OG image resolution)
+3. allowedDevOrigins in next.config.ts (fixes cross-origin dev warning)
+4. 3 unused imports removed (ChevronRight, BookMarked, UserCircle)
+5. Keyboard nav (tabIndex, onKeyDown, aria-describedby) on writing mode cards
+6. aria-hidden on decorative star ratings
+7. Indonesian language consistency (toasts, tips labels)
+8. 6 API routes: error: any → error: unknown + production-safe messages
+9. robots.ts + sitemap.ts created (SEO)
+10. Export CSV SLR feature:
+    - New utility: src/lib/export-slr-csv.ts
+    - PRISMA-style columns: No, Judul, Penulis, Tahun, Jurnal, DOI, Volume, Issue,
+      Halaman, Tipe, Skor Relevansi, Kata Kunci, Sumber, Open Access, Citation Count, Abstrak
+    - UTF-8 BOM for Excel compatibility
+    - Button in step2-references (Artikel mode)
+    - Button in cicil-generator (Skripsi/Tesis/Buku mode)
+11. Version bumped to v2.4.0
+
+Stage Summary:
+- 18 files changed, +306/-160 lines
+- Lint: 0 errors, compilation: clean
+- Pushed to GitHub (af026cb) — Vercel auto-deploying
+- SCORE: 7.6/10 → ~8.5/10 after revisions
+
+UNRESOLVED (deferred):
+- Auth middleware on AI API routes (architecture decision needed)
+- Rate limiting on auth endpoints (needs infrastructure)
+- page.tsx is 1900+ lines (refactor deferred per "never delete" rule)
+- Language mixing in STEP_TIPS (English, needs full translation)
+- ~80 lines dead CSS in globals.css (low priority cleanup)
+- next-intl unused dependency

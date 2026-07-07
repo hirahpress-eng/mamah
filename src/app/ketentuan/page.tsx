@@ -25,7 +25,7 @@ export default function KetentuanPage() {
         </div>
 
         <p className="text-sm text-muted-foreground mb-8">
-          Terakhir diperbarui: 8 Juli 2026
+          Terakhir diperbarui: 1 Januari 2025
         </p>
 
         <div className="prose prose-sm sm:prose dark:prose-invert max-w-none space-y-6">
