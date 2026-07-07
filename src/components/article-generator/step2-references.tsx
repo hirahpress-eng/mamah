@@ -1087,54 +1087,15 @@ export default function Step2References() {
       if (!postRes.ok) throw new Error('Search failed to start');
 
       const postData = await postRes.json();
-      if (!postData.success || !postData.jobId) throw new Error('Invalid search response');
 
-      const jobId = postData.jobId;
+      // Synchronous mode: result is directly in the POST response
+      setReferenceSearchProgress(50);
 
-      // Poll for results
-      const pollResult = await new Promise<{
-        references: any[];
-        meta: Record<string, number>;
-      }>((resolve, reject) => {
-        const pollInterval = setInterval(async () => {
-          try {
-            const pollRes = await fetch(`/api/references/search?jobId=${jobId}`);
-            if (!pollRes.ok) {
-              clearInterval(pollInterval);
-              reject(new Error('Polling failed'));
-              return;
-            }
+      if (!postData.success || !postData.result) {
+        throw new Error(postData.error || 'Invalid search response');
+      }
 
-            const pollData = await pollRes.json();
-
-            if (pollData.status === 'done' && pollData.result) {
-              clearInterval(pollInterval);
-              setSearchStatusMessage('');
-              resolve(pollData.result);
-            } else if (pollData.status === 'error') {
-              clearInterval(pollInterval);
-              reject(new Error(pollData.error || 'Search job failed'));
-            } else {
-              // Show server status message in UI
-              if (pollData.statusMessage) setSearchStatusMessage(pollData.statusMessage);
-              const done = (pollData.progress || []).filter(
-                (p: any) => p.status === 'done' || p.status === 'error'
-              ).length;
-              // Scale: 11 DBs take 30-95%, translated phase takes 95-99%
-              const baseProgress = Math.round(30 + (done / 11) * 60);
-              const finalProgress = done >= 11 ? Math.min(99, baseProgress + 4) : baseProgress;
-              setReferenceSearchProgress(finalProgress);
-            }
-          } catch {
-            // Continue polling on transient errors
-          }
-        }, 1000);
-
-        setTimeout(() => {
-          clearInterval(pollInterval);
-          reject(new Error('Search timed out'));
-        }, 180_000);
-      });
+      const pollResult = postData.result;
 
       setReferenceSearchProgress(100);
 

@@ -1,6 +1,8 @@
 import { generateWithEngine } from '@/lib/ai-engine';
 import { AI_ENGINES, type AIEngineId } from '@/lib/ai-engine-config';
 
+export const maxDuration = 300;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -25,39 +27,6 @@ interface PolishOptions {
 interface SectionNames {
   [key: string]: string;
 }
-
-// ---------------------------------------------------------------------------
-// In-Memory Job Store
-// ---------------------------------------------------------------------------
-
-interface PolishJob {
-  id: string;
-  status: 'running' | 'done' | 'error';
-  statusMessage: string;
-  result?: {
-    article: any;
-    changes: any;
-  };
-  error?: string;
-  createdAt: number;
-}
-
-const jobs = new Map<string, PolishJob>();
-
-// Cleanup old jobs every 10 minutes (keep max 50)
-setInterval(() => {
-  const now = Date.now();
-  const ids = [...jobs.keys()];
-  if (ids.length > 50) {
-    ids.sort((a, b) => (jobs.get(a)?.createdAt ?? 0) - (jobs.get(b)?.createdAt ?? 0));
-    for (let i = 0; i < ids.length - 30; i++) {
-      jobs.delete(ids[i]);
-    }
-  }
-  for (const [id, job] of jobs) {
-    if (now - job.createdAt > 30 * 60_000) jobs.delete(id);
-  }
-}, 600_000);
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -467,7 +436,7 @@ function generateImprovementSummary(
 }
 
 // ---------------------------------------------------------------------------
-// Background Worker
+// Reviewer context builder
 // ---------------------------------------------------------------------------
 
 function buildReviewerContext(reviewerNotes: any): string {
@@ -495,229 +464,8 @@ function buildReviewerContext(reviewerNotes: any): string {
   return ctx;
 }
 
-function runPolishJob(
-  jobId: string,
-  article: any,
-  options: PolishOptions,
-  engineId: AIEngineId,
-  reviewerNotes?: any,
-) {
-  const job = jobs.get(jobId)!;
-
-  (async () => {
-    try {
-      const polishOptions: PolishOptions = options || {
-        structural: true,
-        tone: true,
-        citations: true,
-        coherence: true,
-        clarity: true,
-        vocabulary: true,
-        grammar: true,
-        formatting: true,
-      };
-
-      // Use zai as default polish engine for reliability, fall back to gemini, then grok
-      const polishEngine: AIEngineId = engineId || 'zai';
-      const validEngine: AIEngineId = AI_ENGINES.some(e => e.id === polishEngine)
-        ? polishEngine
-        : 'zai';
-
-      const keywords: string[] = article.keywords || [];
-
-      // Track metrics
-      let totalChangePercentage = 0;
-      let sectionsActuallyModified = 0;
-      const improvementsLog: string[] = [];
-      let sectionsFailed = 0;
-
-      // Polish each section SEQUENTIALLY with delays to avoid rate limit exhaustion
-      const sectionsToPolish = article.sections.filter(
-        (s: PolishSection) => s.type !== 'bibliography' && s.content?.trim().length > 0,
-      );
-
-      const polishedSectionsMap: Record<string, PolishSection> = {};
-
-      for (let i = 0; i < sectionsToPolish.length; i++) {
-        const section = sectionsToPolish[i];
-        const sectionName = SECTION_NAMES[section.type] || section.type;
-
-        try {
-          job.statusMessage = `Polishing section ${i + 1}/${sectionsToPolish.length}: ${sectionName}...`;
-
-          console.log(`[polish] Processing section ${i + 1}/${sectionsToPolish.length}: ${sectionName} (${section.wordCount || '?'} words)`);
-
-          const userPrompt = getSectionPrompt(
-            section.type,
-            section.content,
-            article.title,
-            keywords,
-            polishOptions,
-          ) + buildReviewerContext(reviewerNotes);
-
-          const maxTokens = SECTION_MAX_TOKENS[section.type] || 16000;
-
-          // First attempt
-          let polishedContent = await generateWithEngine(
-            validEngine,
-            BASE_SYSTEM_PROMPT,
-            userPrompt,
-            { temperature: POLISH_TEMPERATURE, maxTokens },
-          );
-
-          // If content is empty or generation failed, return original
-          if (!polishedContent || polishedContent.trim().length === 0) {
-            console.warn(`[polish] Section "${sectionName}" returned empty, keeping original`);
-            polishedSectionsMap[section.type] = section;
-            sectionsFailed++;
-            continue;
-          }
-
-          // Calculate change percentage
-          let changePct = calculateChangePercentage(section.content, polishedContent);
-
-          // If too similar (>95% identical), retry with stronger prompt
-          if (changePct < 5) {
-            console.log(
-              `[polish] Section "${sectionName}" only ${changePct}% changed, retrying with stronger prompt...`,
-            );
-
-            // Wait before retry to avoid rate limit
-            await new Promise<void>((r) => setTimeout(r, 8000));
-
-            const retryPrompt = `You are rewriting a ${sectionName} section for an academic article titled "${article.title}".
-
-The previous rewrite was REJECTED because it was too similar to the original. You must REWRITE this text more aggressively.
-
-ORIGINAL TEXT (do NOT copy this — REWRITE it):
-${section.content}
-
-REWRITE THE ABOVE TEXT. Make it sound like a different author wrote it while keeping the same meaning and all citations. Return ONLY the rewritten text.`;
-
-            const retryResult = await generateWithEngine(
-              validEngine,
-              RETRY_SYSTEM_PROMPT,
-              retryPrompt,
-              { temperature: 0.95, maxTokens },
-            );
-
-            if (retryResult && retryResult.trim().length > 0) {
-              const retryChangePct = calculateChangePercentage(
-                section.content,
-                retryResult,
-              );
-              if (retryChangePct > changePct) {
-                polishedContent = retryResult;
-                changePct = retryChangePct;
-                console.log(
-                  `[polish] Retry for "${sectionName}" achieved ${changePct}% change`,
-                );
-              }
-            }
-          }
-
-          // Track metrics
-          totalChangePercentage += changePct;
-
-          if (changePct >= 5) {
-            sectionsActuallyModified++;
-          }
-
-          // Generate a brief summary of what likely changed
-          const improvement = generateImprovementSummary(
-            section.type,
-            changePct,
-            section.content,
-            polishedContent,
-          );
-          improvementsLog.push(`${sectionName}: ${improvement}`);
-
-          const wordCount = polishedContent
-            .split(/\s+/)
-            .filter((w: string) => w.length > 0).length;
-
-          polishedSectionsMap[section.type] = {
-            type: section.type,
-            content: polishedContent,
-            wordCount,
-          };
-
-          console.log(`[polish] Section "${sectionName}" polished successfully (${changePct}% change, ${wordCount} words)`);
-        } catch (sectionError) {
-          console.error(`[polish] Error polishing "${sectionName}":`, sectionError);
-          // Return original section on error — don't fail the entire polish
-          polishedSectionsMap[section.type] = section;
-          sectionsFailed++;
-          improvementsLog.push(`${sectionName}: ERROR - kept original`);
-        }
-
-        // Delay between sections to avoid rate limiting (skip after the last section)
-        if (i < sectionsToPolish.length - 1) {
-          job.statusMessage = `Waiting before next section... (${i + 1}/${sectionsToPolish.length} done)`;
-          console.log(`[polish] Waiting ${INTER_SECTION_DELAY_MS / 1000}s before next section...`);
-          await new Promise<void>((r) => setTimeout(r, INTER_SECTION_DELAY_MS));
-        }
-      }
-
-      // Rebuild sections array preserving original order, including bibliography
-      const polishedSections: PolishSection[] = article.sections.map((section: PolishSection) => {
-        if (section.type === 'bibliography') return section; // Keep bibliography as-is
-        return polishedSectionsMap[section.type] || section; // Return polished if available, else original
-      });
-
-      const totalWordCount = polishedSections.reduce(
-        (sum: number, s: PolishSection) => sum + (s.wordCount || 0),
-        0,
-      );
-
-      // Calculate average change percentage across polished sections
-      const polishedSectionCount = sectionsToPolish.length;
-      const avgChangePercentage =
-        polishedSectionCount > 0
-          ? Math.round(totalChangePercentage / polishedSectionCount)
-          : 0;
-
-      const polishedArticle = {
-        ...article,
-        sections: polishedSections,
-        totalWordCount,
-        isPolished: true,
-      };
-
-      const changesSummary = {
-        structural: polishOptions.structural ?? false,
-        tone: polishOptions.tone ?? false,
-        citations: polishOptions.citations ?? false,
-        coherence: polishOptions.coherence ?? false,
-        clarity: polishOptions.clarity ?? false,
-        vocabulary: polishOptions.vocabulary ?? false,
-        grammar: polishOptions.grammar ?? false,
-        formatting: polishOptions.formatting ?? false,
-        originalWordCount: article.totalWordCount || 0,
-        polishedWordCount: totalWordCount,
-        wordCountChange: totalWordCount - (article.totalWordCount || 0),
-        sectionsPolished: sectionsActuallyModified,
-        sectionsFailed,
-        changePercentage: avgChangePercentage,
-        improvementsMade: improvementsLog.join('; '),
-      };
-
-      job.status = 'done';
-      job.statusMessage = 'Polish complete';
-      job.result = {
-        article: polishedArticle,
-        changes: changesSummary,
-      };
-    } catch (error: any) {
-      console.error(`[polish] Job ${jobId} error:`, error);
-      job.status = 'error';
-      job.error = error?.message || 'Failed to polish article';
-    }
-  })();
-}
-
 // ---------------------------------------------------------------------------
-// POST: Start polish job
+// POST: Polish article synchronously
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
@@ -732,27 +480,210 @@ export async function POST(request: Request) {
       );
     }
 
-    const jobId = `polish_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-    const job: PolishJob = {
-      id: jobId,
-      status: 'running',
-      statusMessage: 'Starting polish job...',
-      createdAt: Date.now(),
+    const polishOptions: PolishOptions = options || {
+      structural: true,
+      tone: true,
+      citations: true,
+      coherence: true,
+      clarity: true,
+      vocabulary: true,
+      grammar: true,
+      formatting: true,
     };
-    jobs.set(jobId, job);
 
-    console.log(`[polish] Job ${jobId} started for "${article.title}" with ${article.sections.length} sections`);
-
-    const validEngine: AIEngineId = engineId && AI_ENGINES.some(e => e.id === engineId)
-      ? engineId
+    // Use zai as default polish engine for reliability, fall back to gemini, then grok
+    const polishEngine: AIEngineId = engineId || 'zai';
+    const validEngine: AIEngineId = AI_ENGINES.some(e => e.id === polishEngine)
+      ? polishEngine
       : 'zai';
 
-    // Fire-and-forget background polish
-    runPolishJob(jobId, article, options, validEngine, reviewerNotes);
+    console.log(`[polish] Starting polish for "${article.title}" with ${article.sections.length} sections`);
 
-    // Return immediately — client will poll
-    return Response.json({ success: true, jobId });
+    const keywords: string[] = article.keywords || [];
+
+    // Track metrics
+    let totalChangePercentage = 0;
+    let sectionsActuallyModified = 0;
+    const improvementsLog: string[] = [];
+    let sectionsFailed = 0;
+
+    // Polish each section SEQUENTIALLY with delays to avoid rate limit exhaustion
+    const sectionsToPolish = article.sections.filter(
+      (s: PolishSection) => s.type !== 'bibliography' && s.content?.trim().length > 0,
+    );
+
+    const polishedSectionsMap: Record<string, PolishSection> = {};
+
+    for (let i = 0; i < sectionsToPolish.length; i++) {
+      const section = sectionsToPolish[i];
+      const sectionName = SECTION_NAMES[section.type] || section.type;
+
+      try {
+        console.log(`[polish] Processing section ${i + 1}/${sectionsToPolish.length}: ${sectionName} (${section.wordCount || '?'} words)`);
+
+        const userPrompt = getSectionPrompt(
+          section.type,
+          section.content,
+          article.title,
+          keywords,
+          polishOptions,
+        ) + buildReviewerContext(reviewerNotes);
+
+        const maxTokens = SECTION_MAX_TOKENS[section.type] || 16000;
+
+        // First attempt
+        let polishedContent = await generateWithEngine(
+          validEngine,
+          BASE_SYSTEM_PROMPT,
+          userPrompt,
+          { temperature: POLISH_TEMPERATURE, maxTokens },
+        );
+
+        // If content is empty or generation failed, return original
+        if (!polishedContent || polishedContent.trim().length === 0) {
+          console.warn(`[polish] Section "${sectionName}" returned empty, keeping original`);
+          polishedSectionsMap[section.type] = section;
+          sectionsFailed++;
+          continue;
+        }
+
+        // Calculate change percentage
+        let changePct = calculateChangePercentage(section.content, polishedContent);
+
+        // If too similar (>95% identical), retry with stronger prompt
+        if (changePct < 5) {
+          console.log(
+            `[polish] Section "${sectionName}" only ${changePct}% changed, retrying with stronger prompt...`,
+          );
+
+          // Wait before retry to avoid rate limit
+          await new Promise<void>((r) => setTimeout(r, 8000));
+
+          const retryPrompt = `You are rewriting a ${sectionName} section for an academic article titled "${article.title}".
+
+The previous rewrite was REJECTED because it was too similar to the original. You must REWRITE this text more aggressively.
+
+ORIGINAL TEXT (do NOT copy this — REWRITE it):
+${section.content}
+
+REWRITE THE ABOVE TEXT. Make it sound like a different author wrote it while keeping the same meaning and all citations. Return ONLY the rewritten text.`;
+
+          const retryResult = await generateWithEngine(
+            validEngine,
+            RETRY_SYSTEM_PROMPT,
+            retryPrompt,
+            { temperature: 0.95, maxTokens },
+          );
+
+          if (retryResult && retryResult.trim().length > 0) {
+            const retryChangePct = calculateChangePercentage(
+              section.content,
+              retryResult,
+            );
+            if (retryChangePct > changePct) {
+              polishedContent = retryResult;
+              changePct = retryChangePct;
+              console.log(
+                `[polish] Retry for "${sectionName}" achieved ${changePct}% change`,
+              );
+            }
+          }
+        }
+
+        // Track metrics
+        totalChangePercentage += changePct;
+
+        if (changePct >= 5) {
+          sectionsActuallyModified++;
+        }
+
+        // Generate a brief summary of what likely changed
+        const improvement = generateImprovementSummary(
+          section.type,
+          changePct,
+          section.content,
+          polishedContent,
+        );
+        improvementsLog.push(`${sectionName}: ${improvement}`);
+
+        const wordCount = polishedContent
+          .split(/\s+/)
+          .filter((w: string) => w.length > 0).length;
+
+        polishedSectionsMap[section.type] = {
+          type: section.type,
+          content: polishedContent,
+          wordCount,
+        };
+
+        console.log(`[polish] Section "${sectionName}" polished successfully (${changePct}% change, ${wordCount} words)`);
+      } catch (sectionError) {
+        console.error(`[polish] Error polishing "${sectionName}":`, sectionError);
+        // Return original section on error — don't fail the entire polish
+        polishedSectionsMap[section.type] = section;
+        sectionsFailed++;
+        improvementsLog.push(`${sectionName}: ERROR - kept original`);
+      }
+
+      // Delay between sections to avoid rate limiting (skip after the last section)
+      if (i < sectionsToPolish.length - 1) {
+        console.log(`[polish] Waiting ${INTER_SECTION_DELAY_MS / 1000}s before next section...`);
+        await new Promise<void>((r) => setTimeout(r, INTER_SECTION_DELAY_MS));
+      }
+    }
+
+    // Rebuild sections array preserving original order, including bibliography
+    const polishedSections: PolishSection[] = article.sections.map((section: PolishSection) => {
+      if (section.type === 'bibliography') return section; // Keep bibliography as-is
+      return polishedSectionsMap[section.type] || section; // Return polished if available, else original
+    });
+
+    const totalWordCount = polishedSections.reduce(
+      (sum: number, s: PolishSection) => sum + (s.wordCount || 0),
+      0,
+    );
+
+    // Calculate average change percentage across polished sections
+    const polishedSectionCount = sectionsToPolish.length;
+    const avgChangePercentage =
+      polishedSectionCount > 0
+        ? Math.round(totalChangePercentage / polishedSectionCount)
+        : 0;
+
+    const polishedArticle = {
+      ...article,
+      sections: polishedSections,
+      totalWordCount,
+      isPolished: true,
+    };
+
+    const changesSummary = {
+      structural: polishOptions.structural ?? false,
+      tone: polishOptions.tone ?? false,
+      citations: polishOptions.citations ?? false,
+      coherence: polishOptions.coherence ?? false,
+      clarity: polishOptions.clarity ?? false,
+      vocabulary: polishOptions.vocabulary ?? false,
+      grammar: polishOptions.grammar ?? false,
+      formatting: polishOptions.formatting ?? false,
+      originalWordCount: article.totalWordCount || 0,
+      polishedWordCount: totalWordCount,
+      wordCountChange: totalWordCount - (article.totalWordCount || 0),
+      sectionsPolished: sectionsActuallyModified,
+      sectionsFailed,
+      changePercentage: avgChangePercentage,
+      improvementsMade: improvementsLog.join('; '),
+    };
+
+    console.log(`[polish] Polish complete for "${article.title}": ${sectionsActuallyModified} sections modified, ${avgChangePercentage}% avg change`);
+
+    return Response.json({
+      success: true,
+      result: {
+        article: polishedArticle,
+        changes: changesSummary,
+      },
+    });
   } catch (error: any) {
     console.error('[polish] POST error:', error);
     return Response.json(
@@ -760,37 +691,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// GET: Poll job status
-// ---------------------------------------------------------------------------
-
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const jobId = url.searchParams.get('jobId');
-
-  if (!jobId) {
-    return Response.json(
-      { success: false, error: 'Missing jobId query parameter' },
-      { status: 400 },
-    );
-  }
-
-  const job = jobs.get(jobId);
-  if (!job) {
-    return Response.json(
-      { success: false, error: 'Job not found or expired' },
-      { status: 404 },
-    );
-  }
-
-  return Response.json({
-    success: true,
-    jobId: job.id,
-    status: job.status,
-    statusMessage: job.statusMessage,
-    result: job.result,
-    error: job.error,
-  });
 }

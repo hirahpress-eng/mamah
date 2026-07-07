@@ -897,7 +897,7 @@ export default function Step5Polish() {
   const generateReviewerNotes = useCallback(async () => {
     if (!generatedArticle) return;
     setIsGeneratingReview(true);
-    setReviewStatusMessage('Starting peer review...');
+    setReviewStatusMessage('Running peer review analysis...');
     setReviewerNotes(null);
     setShowReviewerNotes(true);
 
@@ -909,7 +909,17 @@ export default function Step5Polish() {
       });
       if (!postRes.ok) throw new Error(`Reviewer notes API returned ${postRes.status}`);
       const postData = await postRes.json();
-      if (!postData.success || !postData.jobId) throw new Error(postData.error || 'Failed to start review');
+      if (!postData.success) throw new Error(postData.error || 'Failed to generate reviewer notes');
+
+      // Synchronous mode: result is directly in the response
+      if (postData.result) {
+        setReviewerNotes(postData.result);
+        toast.success('Peer review complete! Review notes ready for polish.');
+        return;
+      }
+
+      // Legacy job mode: poll for result
+      if (!postData.jobId) throw new Error('No result or jobId in response');
 
       const jobId = postData.jobId;
       const MAX_TIME = 5 * 60 * 1000;
@@ -937,7 +947,7 @@ export default function Step5Polish() {
     }
   }, [generatedArticle]);
 
-  // ── Polling helper ──
+  // ── Polling helper (legacy mode only) ──
   const pollJob = useCallback(async (jobId: string, onStatus: (msg: string) => void): Promise<any> => {
     const MAX_TIME = 10 * 60 * 1000;
     const start = Date.now();
@@ -953,7 +963,7 @@ export default function Step5Polish() {
     throw new Error('Polish timed out after 10 minutes');
   }, []);
 
-  // ── Start polish (with job polling) ──
+  // ── Start polish (sync or legacy polling) ──
   const startPolish = useCallback(async () => {
     if (!generatedArticle || !isAnyOptionEnabled) return;
 
@@ -1012,14 +1022,20 @@ export default function Step5Polish() {
       });
       if (!postRes.ok) throw new Error(`Polish API returned ${postRes.status}`);
       const postData = await postRes.json();
-      if (!postData.success || !postData.jobId) {
-        throw new Error(postData.error || 'Failed to start polish job');
+      if (!postData.success) {
+        throw new Error(postData.error || 'Failed to polish article');
       }
 
-      // 2. Poll for result
-      const result = await pollJob(postData.jobId, (msg) => {
-        // Could update UI with server status if desired
-      });
+      // Synchronous mode: result is directly in the response
+      let result: any;
+      if (postData.result) {
+        result = postData.result;
+      } else if (postData.jobId) {
+        // Legacy job mode: poll for result
+        result = await pollJob(postData.jobId, (_msg) => {});
+      } else {
+        throw new Error('No result or jobId in response');
+      }
 
       if (result && result.article) {
         setPolishedArticle(result.article);
@@ -1111,7 +1127,7 @@ export default function Step5Polish() {
     advanceUpgradeStep();
 
     try {
-      // 1. POST to create upgrade job (returns immediately)
+      // POST to upgrade article (synchronous — awaits result directly)
       const postRes = await fetch('/api/article/upgrade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1123,50 +1139,21 @@ export default function Step5Polish() {
       }
 
       const postData = await postRes.json();
-      if (!postData.success || !postData.jobId) {
-        throw new Error(postData.error || 'Failed to start upgrade job');
+      if (!postData.success || !postData.result) {
+        throw new Error(postData.error || 'Failed to upgrade article');
       }
 
-      // 2. Poll for result
-      const upgradeJobId = postData.jobId;
-      const MAX_TIME = 10 * 60 * 1000; // 10 minutes
-      const start = Date.now();
-
-      while (Date.now() - start < MAX_TIME) {
-        await new Promise((r) => setTimeout(r, 3000));
-        const pollRes = await fetch(`/api/article/upgrade?jobId=${upgradeJobId}`);
-        if (!pollRes.ok) continue;
-        const pollData = await pollRes.json();
-
-        // Update progress based on server status message
-        if (pollData.statusMessage) {
-          // Advance the simulated step if the server is progressing
-          const serverStep = pollData.statusMessage.match(/(\d+)\/(\d+)/);
-          if (serverStep) {
-            const currentServerStep = parseInt(serverStep[1]);
-            setUpgradeStepIndex(currentServerStep - 1);
-          }
-        }
-
-        if (pollData.status === 'done' && pollData.result) {
-          const { article: upgradedArticle, sectionsUpgraded, sectionsFailed } = pollData.result;
-          setGeneratedArticle(upgradedArticle);
-          setPolishedArticle(null);
-          setChangeSummary(null);
-          if (sectionsFailed > 0) {
-            toast.warning('Upgrade completed with partial results', {
-              description: `${sectionsUpgraded} section${sectionsUpgraded !== 1 ? 's' : ''} upgraded, ${sectionsFailed} kept original.`,
-            });
-          } else {
-            toast.success('Article upgraded to CONSILIUM PROFESSORUM Scopus Q1 standard!');
-          }
-          return;
-        }
-        if (pollData.status === 'error') {
-          throw new Error(pollData.error || 'Upgrade failed on server');
-        }
+      const { article: upgradedArticle, sectionsUpgraded, sectionsFailed } = postData.result;
+      setGeneratedArticle(upgradedArticle);
+      setPolishedArticle(null);
+      setChangeSummary(null);
+      if (sectionsFailed > 0) {
+        toast.warning('Upgrade completed with partial results', {
+          description: `${sectionsUpgraded} section${sectionsUpgraded !== 1 ? 's' : ''} upgraded, ${sectionsFailed} kept original.`,
+        });
+      } else {
+        toast.success('Article upgraded to CONSILIUM PROFESSORUM Scopus Q1 standard!');
       }
-      throw new Error('Upgrade timed out after 10 minutes');
     } catch (err) {
       console.error('Upgrade error:', err);
       const errMsg = err instanceof Error ? err.message : 'Upgrade failed';

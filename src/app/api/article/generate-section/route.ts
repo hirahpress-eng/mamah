@@ -1,6 +1,8 @@
 import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
 import { formatBibliography } from '@/lib/bibliography-formatter';
 
+export const maxDuration = 300;
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface Reference {
@@ -24,40 +26,6 @@ interface Reference {
 }
 
 type StageId = 'abstract' | 'introduction' | 'methodology' | 'results_discussion' | 'conclusion' | 'bibliography';
-
-// ─── In-Memory Job Store ───────────────────────────────────────────────────────
-
-interface GenerationJob {
-  id: string;
-  status: 'running' | 'done' | 'error';
-  statusMessage: string;
-  result?: {
-    success: boolean;
-    content: string;
-    wordCount: number;
-    visualPlaceholders: { id: string; type: 'figure' | 'table'; description: string }[];
-    stageId: StageId;
-  };
-  error?: string;
-  createdAt: number;
-}
-
-const jobs = new Map<string, GenerationJob>();
-
-// Cleanup old jobs every 10 minutes (keep max 50)
-setInterval(() => {
-  const now = Date.now();
-  const ids = [...jobs.keys()];
-  if (ids.length > 50) {
-    ids.sort((a, b) => (jobs.get(a)?.createdAt ?? 0) - (jobs.get(b)?.createdAt ?? 0));
-    for (let i = 0; i < ids.length - 30; i++) {
-      jobs.delete(ids[i]);
-    }
-  }
-  for (const [id, job] of jobs) {
-    if (now - job.createdAt > 30 * 60_000) jobs.delete(id);
-  }
-}, 600_000);
 
 // ─── Word Count Helpers ────────────────────────────────────────────────────────
 
@@ -110,10 +78,8 @@ async function generateWithRetry(
   systemPrompt: string,
   userPrompt: string,
   maxTokens: number,
-  onStatus?: (msg: string) => void,
 ): Promise<string> {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    onStatus?.(`Attempt ${attempt}/${MAX_RETRIES}...`);
     const result = (await generateWithEngine(engine, systemPrompt, userPrompt, {
       temperature: 0.7,
       maxTokens,
@@ -125,7 +91,7 @@ async function generateWithRetry(
 
     if (attempt < MAX_RETRIES) {
       const delay = RETRY_DELAYS[attempt - 1];
-      onStatus?.(`Attempt ${attempt} insufficient (${countWords(result)} words), retrying in ${delay / 1000}s...`);
+      console.log(`[section-gen] Attempt ${attempt} insufficient (${countWords(result)} words), retrying in ${delay / 1000}s...`);
       await new Promise((r) => setTimeout(r, delay));
     }
   }
@@ -521,81 +487,7 @@ Compile the complete bibliography now.`,
   }
 }
 
-// ─── Background Worker ─────────────────────────────────────────────────────────
-
-function runGenerationJob(jobId: string, stageId: StageId, title: string, keywords: string[], references: Reference[], researchMethod: string, additionalInstructions: string, engineId: AIEngineId, previousSections: PreviousSection[]) {
-  const job = jobs.get(jobId)!;
-
-  (async () => {
-    try {
-      job.statusMessage = `Preparing to generate ${stageId}...`;
-
-      const { systemPrompt, userPrompt, maxTokens } = buildStagePrompt(
-        stageId, title, keywords, references, researchMethod, additionalInstructions, previousSections,
-      );
-
-      const content = await generateWithRetry(
-        stageId, engineId, systemPrompt, userPrompt, maxTokens,
-        (msg) => { job.statusMessage = msg; },
-      );
-
-      if (!content || content.trim().length === 0) {
-        job.status = 'error';
-        job.error = `Failed to generate ${stageId} after ${MAX_RETRIES} attempts`;
-        return;
-      }
-
-      const wordCount = countWords(content);
-
-      let finalContent = content;
-      if (stageId === 'bibliography') {
-        try {
-          const selectedRefs = references.filter((r) => r.isSelected);
-          // Map Reference[] to RealReference[] (only fields that RealReference requires)
-          const realRefs: import('@/lib/reference-search').RealReference[] = selectedRefs.map((r) => ({
-            id: r.id,
-            title: r.title,
-            authors: r.authors,
-            year: String(r.year),
-            abstract: r.abstract || '',
-            doi: r.doi || '',
-            journal: r.journal || '',
-            volume: r.volume || '',
-            issue: r.issue || '',
-            pages: r.pages || '',
-            source: r.source || 'Unknown',
-            pdfUrl: r.pdfUrl || '',
-            relevanceScore: r.relevanceScore ?? 0,
-            refType: r.refType || 'Journal Article',
-            isSelected: r.isSelected,
-          }));
-          finalContent = formatBibliography(realRefs);
-        } catch (e) {
-          console.warn('[section-gen] Bibliography formatter failed, using AI-generated version:', e);
-        }
-      }
-
-      const visualPlaceholders = parseVisualPlaceholders(finalContent);
-
-      console.log(`[section-gen] Job ${jobId} stage ${stageId} complete: ${wordCount} words, ${visualPlaceholders.length} visual placeholders`);
-
-      job.status = 'done';
-      job.result = {
-        success: true,
-        content: finalContent,
-        wordCount,
-        visualPlaceholders,
-        stageId,
-      };
-    } catch (error: any) {
-      console.error(`[section-gen] Job ${jobId} error:`, error);
-      job.status = 'error';
-      job.error = error?.message || 'Internal server error';
-    }
-  })();
-}
-
-// ─── POST: Start generation job ───────────────────────────────────────────────
+// ─── POST: Generate section synchronously ─────────────────────────────────────
 
 export async function POST(request: Request) {
   try {
@@ -627,24 +519,67 @@ export async function POST(request: Request) {
       );
     }
 
-    const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    console.log(`[section-gen] Starting ${stageId} generation with ${references.length} references`);
 
-    // Create job immediately
-    const job: GenerationJob = {
-      id: jobId,
-      status: 'running',
-      statusMessage: `Starting ${stageId} generation...`,
-      createdAt: Date.now(),
-    };
-    jobs.set(jobId, job);
+    const { systemPrompt, userPrompt, maxTokens } = buildStagePrompt(
+      stageId, title, keywords, references, researchMethod, additionalInstructions || '', previousSections,
+    );
 
-    console.log(`[section-gen] Job ${jobId} started: ${stageId} with ${references.length} references`);
+    const content = await generateWithRetry(
+      stageId, engineId, systemPrompt, userPrompt, maxTokens,
+    );
 
-    // Fire-and-forget background generation
-    runGenerationJob(jobId, stageId, title, keywords, references, researchMethod, additionalInstructions || '', engineId, previousSections);
+    if (!content || content.trim().length === 0) {
+      return Response.json(
+        { success: false, error: `Failed to generate ${stageId} after ${MAX_RETRIES} attempts` },
+        { status: 500 }
+      );
+    }
 
-    // Return immediately — client will poll
-    return Response.json({ success: true, jobId });
+    const wordCount = countWords(content);
+
+    let finalContent = content;
+    if (stageId === 'bibliography') {
+      try {
+        const selectedRefs = references.filter((r) => r.isSelected);
+        // Map Reference[] to RealReference[] (only fields that RealReference requires)
+        const realRefs: import('@/lib/reference-search').RealReference[] = selectedRefs.map((r) => ({
+          id: r.id,
+          title: r.title,
+          authors: r.authors,
+          year: String(r.year),
+          abstract: r.abstract || '',
+          doi: r.doi || '',
+          journal: r.journal || '',
+          volume: r.volume || '',
+          issue: r.issue || '',
+          pages: r.pages || '',
+          source: r.source || 'Unknown',
+          pdfUrl: r.pdfUrl || '',
+          relevanceScore: r.relevanceScore ?? 0,
+          refType: r.refType || 'Journal Article',
+          isSelected: r.isSelected,
+        }));
+        finalContent = formatBibliography(realRefs);
+      } catch (e) {
+        console.warn('[section-gen] Bibliography formatter failed, using AI-generated version:', e);
+      }
+    }
+
+    const visualPlaceholders = parseVisualPlaceholders(finalContent);
+
+    console.log(`[section-gen] Stage ${stageId} complete: ${wordCount} words, ${visualPlaceholders.length} visual placeholders`);
+
+    return Response.json({
+      success: true,
+      result: {
+        success: true,
+        content: finalContent,
+        wordCount,
+        visualPlaceholders,
+        stageId,
+      },
+    });
   } catch (error: any) {
     console.error('[section-gen] POST error:', error);
     return Response.json(
@@ -652,35 +587,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
-
-// ─── GET: Poll job status ─────────────────────────────────────────────────────
-
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const jobId = url.searchParams.get('jobId');
-
-  if (!jobId) {
-    return Response.json(
-      { success: false, error: 'Missing jobId query parameter' },
-      { status: 400 }
-    );
-  }
-
-  const job = jobs.get(jobId);
-  if (!job) {
-    return Response.json(
-      { success: false, error: 'Job not found or expired' },
-      { status: 404 }
-    );
-  }
-
-  return Response.json({
-    success: true,
-    jobId: job.id,
-    status: job.status,
-    statusMessage: job.statusMessage,
-    result: job.result,
-    error: job.error,
-  });
 }

@@ -791,16 +791,36 @@ export default function Step3Method() {
       });
 
       const postData = await postRes.json();
-      if (!postData.success || !postData.jobId) {
-        throw new Error(postData.error || 'Failed to start generation job');
+      if (!postData.success) {
+        throw new Error(postData.error || 'Failed to generate section');
+      }
+
+      // Synchronous mode: result is directly in the response
+      if (postData.result) {
+        updateStage(currentStage.id, {
+          status: 'done',
+          content: postData.result.content,
+          wordCount: postData.result.wordCount || 0,
+          visualPlaceholders: (postData.result.visualPlaceholders || []).map((p: { id: string; type: 'figure' | 'table'; description: string }) => ({
+            ...p,
+            generated: false,
+          })),
+          completedAt: new Date().toISOString(),
+        });
+        toast.success(`${currentStage.label} generated successfully!`);
+        return;
+      }
+
+      // Legacy job mode: poll for result (fallback for older servers)
+      if (!postData.jobId) {
+        throw new Error('No result or jobId in response');
       }
 
       const jobId = postData.jobId;
       setStatusText(`Generation job started, waiting for ${currentStage.label}...`);
 
-      // 2. Poll for result every 3 seconds
       const POLL_INTERVAL = 3000;
-      const MAX_POLL_TIME = 10 * 60 * 1000; // 10 minutes max
+      const MAX_POLL_TIME = 10 * 60 * 1000;
       const startTime = Date.now();
 
       while (Date.now() - startTime < MAX_POLL_TIME) {
@@ -811,14 +831,10 @@ export default function Step3Method() {
         const pollRes = await fetch(`/api/article/generate-section?jobId=${jobId}`, {
           signal: abort.signal,
         });
+        if (!pollRes.ok) throw new Error(`Poll returned HTTP ${pollRes.status}`);
         const pollData = await pollRes.json();
 
         if (!pollData.success) throw new Error(pollData.error || 'Polling failed');
-
-        // Update status text from server
-        if (pollData.statusMessage) {
-          setStatusText(pollData.statusMessage);
-        }
 
         if (pollData.status === 'done' && pollData.result) {
           updateStage(currentStage.id, {
@@ -909,15 +925,30 @@ export default function Step3Method() {
       });
 
       const postData = await postRes.json();
-      if (!postData.success || !postData.jobId) {
-        failPlaceholder(postData.error || 'Failed to start visual generation');
-        toast.error(postData.error || 'Failed to start visual generation');
+      if (!postData.success) {
+        failPlaceholder(postData.error || 'Failed to generate visual');
+        toast.error(postData.error || 'Failed to generate visual');
+        return;
+      }
+
+      // Synchronous mode: result is directly in the response
+      if (postData.result) {
+        const updatedPlaceholders = stage.visualPlaceholders.map((p) =>
+          p.id === placeholderId ? { ...p, generated: true, data: postData.result.data, error: undefined } : p
+        );
+        updateStage(stage.id, { visualPlaceholders: updatedPlaceholders });
+        toast.success(`${placeholder.type === 'figure' ? 'Figure' : 'Table'} generated!`);
+        return;
+      }
+
+      // Legacy job mode: poll for result
+      if (!postData.jobId) {
+        failPlaceholder('No result or jobId in response');
+        toast.error('No result or jobId in response');
         return;
       }
 
       const jobId = postData.jobId;
-
-      // Poll for result every 3 seconds
       const POLL_INTERVAL = 3000;
       const MAX_POLL_TIME = 5 * 60 * 1000;
       const startTime = Date.now();
@@ -930,6 +961,11 @@ export default function Step3Method() {
         const pollRes = await fetch(`/api/article/generate-visual?jobId=${jobId}`, {
           signal: abort.signal,
         });
+        if (!pollRes.ok) {
+          failPlaceholder(`Poll returned HTTP ${pollRes.status}`);
+          toast.error(`Poll returned HTTP ${pollRes.status}`);
+          return;
+        }
         const pollData = await pollRes.json();
 
         if (!pollData.success) {

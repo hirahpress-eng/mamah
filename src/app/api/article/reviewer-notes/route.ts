@@ -1,5 +1,7 @@
 import { generateWithEngine } from '@/lib/ai-engine';
 
+export const maxDuration = 300;
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -15,36 +17,6 @@ interface ReviewerArticle {
   sections: ReviewerArticleSection[];
   keywords: string[];
 }
-
-interface ReviewerJob {
-  id: string;
-  status: 'running' | 'done' | 'error';
-  statusMessage: string;
-  result?: any;
-  error?: string;
-  createdAt: number;
-}
-
-// ---------------------------------------------------------------------------
-// In-Memory Job Store
-// ---------------------------------------------------------------------------
-
-const jobs = new Map<string, ReviewerJob>();
-
-// Cleanup old jobs every 10 minutes (keep max 50)
-setInterval(() => {
-  const now = Date.now();
-  const ids = [...jobs.keys()];
-  if (ids.length > 50) {
-    ids.sort((a, b) => (jobs.get(a)?.createdAt ?? 0) - (jobs.get(b)?.createdAt ?? 0));
-    for (let i = 0; i < ids.length - 30; i++) {
-      jobs.delete(ids[i]);
-    }
-  }
-  for (const [id, job] of jobs) {
-    if (now - job.createdAt > 30 * 60_000) jobs.delete(id);
-  }
-}, 600_000);
 
 // ---------------------------------------------------------------------------
 // System Prompt
@@ -117,94 +89,7 @@ ${sections}`;
 }
 
 // ---------------------------------------------------------------------------
-// Background Worker
-// ---------------------------------------------------------------------------
-
-function runReviewerJob(jobId: string, article: ReviewerArticle) {
-  const job = jobs.get(jobId)!;
-
-  (async () => {
-    try {
-      job.statusMessage = 'Preparing article for review...';
-
-      const articleText = buildArticleText(article);
-      const totalWords = articleText.split(/\s+/).filter((w) => w.length > 0).length;
-
-      console.log(`[reviewer-notes] Job ${jobId} started: "${article.title}" (${totalWords} words)`);
-
-      job.statusMessage = 'Running peer review analysis...';
-
-      const userPrompt = `Review the following academic article critically as the consortium of 3 reviewers described in your instructions.
-
-ARTICLE TO REVIEW:
-
-${articleText}
-
-Provide your complete structured review as JSON. Be extremely critical and specific.`;
-
-      const rawResult = (await generateWithEngine('zai', REVIEWER_SYSTEM_PROMPT, userPrompt, {
-        temperature: 0.3,
-        maxTokens: 16000,
-      })) || '';
-
-      if (!rawResult || rawResult.trim().length === 0) {
-        job.status = 'error';
-        job.error = 'AI engine returned empty response';
-        return;
-      }
-
-      // Parse the JSON from the response — handle possible markdown code fences
-      let jsonStr = rawResult.trim();
-
-      // Strip markdown code fences if present
-      if (jsonStr.startsWith('```')) {
-        jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
-      }
-
-      let reviewData: any;
-      try {
-        reviewData = JSON.parse(jsonStr);
-      } catch (parseError) {
-        console.error(`[reviewer-notes] Job ${jobId} JSON parse failed, attempting extraction...`);
-        // Try to extract JSON object from the response
-        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            reviewData = JSON.parse(jsonMatch[0]);
-          } catch {
-            job.status = 'error';
-            job.error = 'Failed to parse review response as JSON';
-            return;
-          }
-        } else {
-          job.status = 'error';
-          job.error = 'Failed to parse review response as JSON';
-          return;
-        }
-      }
-
-      // Validate minimum structure
-      if (!reviewData.reviewers || !Array.isArray(reviewData.reviewers) || reviewData.reviewers.length === 0) {
-        job.status = 'error';
-        job.error = 'Review response missing required "reviewers" array';
-        return;
-      }
-
-      console.log(`[reviewer-notes] Job ${jobId} complete: ${reviewData.reviewers.length} reviewers, overall score ${reviewData.overallScore}`);
-
-      job.status = 'done';
-      job.statusMessage = 'Review complete';
-      job.result = reviewData;
-    } catch (error: any) {
-      console.error(`[reviewer-notes] Job ${jobId} error:`, error);
-      job.status = 'error';
-      job.error = error?.message || 'Failed to generate reviewer notes';
-    }
-  })();
-}
-
-// ---------------------------------------------------------------------------
-// POST: Start reviewer notes job
+// POST: Generate reviewer notes synchronously
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
@@ -230,23 +115,79 @@ export async function POST(request: Request) {
       );
     }
 
-    const jobId = `review_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    console.log(`[reviewer-notes] Starting review for "${article.title}" with ${validSections.length} sections`);
 
-    const job: ReviewerJob = {
-      id: jobId,
-      status: 'running',
-      statusMessage: 'Starting peer review...',
-      createdAt: Date.now(),
-    };
-    jobs.set(jobId, job);
+    const articleText = buildArticleText(article);
+    const totalWords = articleText.split(/\s+/).filter((w) => w.length > 0).length;
 
-    console.log(`[reviewer-notes] Job ${jobId} created for "${article.title}" with ${validSections.length} sections`);
+    console.log(`[reviewer-notes] Article "${article.title}" (${totalWords} words)`);
 
-    // Fire-and-forget background review
-    runReviewerJob(jobId, article);
+    const userPrompt = `Review the following academic article critically as the consortium of 3 reviewers described in your instructions.
 
-    // Return immediately — client will poll
-    return Response.json({ success: true, jobId });
+ARTICLE TO REVIEW:
+
+${articleText}
+
+Provide your complete structured review as JSON. Be extremely critical and specific.`;
+
+    const rawResult = (await generateWithEngine('zai', REVIEWER_SYSTEM_PROMPT, userPrompt, {
+      temperature: 0.3,
+      maxTokens: 16000,
+    })) || '';
+
+    if (!rawResult || rawResult.trim().length === 0) {
+      return Response.json(
+        { success: false, error: 'AI engine returned empty response' },
+        { status: 500 },
+      );
+    }
+
+    // Parse the JSON from the response — handle possible markdown code fences
+    let jsonStr = rawResult.trim();
+
+    // Strip markdown code fences if present
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+    }
+
+    let reviewData: any;
+    try {
+      reviewData = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('[reviewer-notes] JSON parse failed, attempting extraction...');
+      // Try to extract JSON object from the response
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          reviewData = JSON.parse(jsonMatch[0]);
+        } catch {
+          return Response.json(
+            { success: false, error: 'Failed to parse review response as JSON' },
+            { status: 500 },
+          );
+        }
+      } else {
+        return Response.json(
+          { success: false, error: 'Failed to parse review response as JSON' },
+          { status: 500 },
+        );
+      }
+    }
+
+    // Validate minimum structure
+    if (!reviewData.reviewers || !Array.isArray(reviewData.reviewers) || reviewData.reviewers.length === 0) {
+      return Response.json(
+        { success: false, error: 'Review response missing required "reviewers" array' },
+        { status: 500 },
+      );
+    }
+
+    console.log(`[reviewer-notes] Review complete: ${reviewData.reviewers.length} reviewers, overall score ${reviewData.overallScore}`);
+
+    return Response.json({
+      success: true,
+      result: reviewData,
+    });
   } catch (error: any) {
     console.error('[reviewer-notes] POST error:', error);
     return Response.json(
@@ -254,37 +195,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// GET: Poll job status
-// ---------------------------------------------------------------------------
-
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const jobId = url.searchParams.get('jobId');
-
-  if (!jobId) {
-    return Response.json(
-      { success: false, error: 'Missing jobId query parameter' },
-      { status: 400 },
-    );
-  }
-
-  const job = jobs.get(jobId);
-  if (!job) {
-    return Response.json(
-      { success: false, error: 'Job not found or expired' },
-      { status: 404 },
-    );
-  }
-
-  return Response.json({
-    success: true,
-    jobId: job.id,
-    status: job.status,
-    statusMessage: job.statusMessage,
-    result: job.result,
-    error: job.error,
-  });
 }

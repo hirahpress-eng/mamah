@@ -163,7 +163,6 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
     flowConfig.chapters[0]?.id ?? ''
   );
   const abortRef = useRef<AbortController | null>(null);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const autoGenRef = useRef(false);
 
   // Sync local state from store on mount
@@ -173,10 +172,9 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
     setIdeaInput(store.idea);
   }, []);
 
-  // Cleanup polling on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
       if (abortRef.current) abortRef.current.abort();
     };
   }, []);
@@ -417,10 +415,11 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
 
       if (!searchRes.ok) throw new Error('Gagal mencari referensi');
       const searchData = await searchRes.json();
-      if (!searchData.jobId) throw new Error('JobId tidak ditemukan dalam respons pencarian');
 
       store.setRefSearchMessage('Langkah 3/6: Mencari di 11 database akademik (ini membutuhkan waktu)...');
-      const searchResult = await pollJobApi('/api/references/search', searchData.jobId, 300, 5000);
+
+      // Synchronous mode: result is directly in the POST response
+      const searchResult = searchData.success ? searchData.result : null;
       if (!searchResult) throw new Error('Pencarian referensi gagal atau timeout');
 
       const rawRefs = (searchResult.references ?? []) as Record<string, unknown>[];
@@ -619,7 +618,7 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
   // ─── Phase 3: WRITING ──────────────────────────────────────────────────
 
   const generateSingleStep = useCallback(
-    async (step: CicilStepState) => {
+    async (step: CicilStepState): Promise<string | null> => {
       store.updateStep(step.stepId, {
         status: 'generating',
         startedAt: new Date().toISOString(),
@@ -664,14 +663,21 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
         }
 
         const data = await res.json();
-        const jobId = data.jobId;
 
-        if (!jobId) {
-          throw new Error('JobId tidak ditemukan dalam respons');
+        // Synchronous mode: result is directly in the POST response
+        if (!data.success || !data.result) {
+          throw new Error(data.error || 'Gagal menghasilkan bagian ini');
         }
 
-        store.updateStep(step.stepId, { jobId });
-        return jobId;
+        const { content, wordCount } = data.result;
+        const wc = wordCount || countWords(content);
+        store.updateStep(step.stepId, {
+          status: 'done',
+          content,
+          wordCount: wc,
+          completedAt: new Date().toISOString(),
+        });
+        return content;
       } catch (err: unknown) {
         const msg =
           err instanceof Error ? err.message : 'Gagal memulai generasi';
@@ -686,83 +692,13 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
     [store, mode, flowConfig]
   );
 
-  const pollJob = useCallback(
-    (jobId: string, stepId: string): Promise<string | null> => {
-      return new Promise((resolve) => {
-        let attempts = 0;
-        const maxAttempts = 200; // 200 * 3s = 10 minutes max
-
-        const poll = async () => {
-          attempts++;
-          if (attempts > maxAttempts) {
-            store.updateStep(stepId, {
-              status: 'error',
-              error: 'Timeout: generasi terlalu lama',
-            });
-            toast.error('Timeout: generasi terlalu lama');
-            resolve(null);
-            return;
-          }
-
-          try {
-            const res = await fetch(
-              `/api/writing/generate-section?jobId=${encodeURIComponent(jobId)}`
-            );
-
-            if (!res.ok) {
-              // Server error — retry
-              pollingRef.current = setTimeout(poll, 3000);
-              return;
-            }
-
-            const data = await res.json();
-
-            if (data.status === 'done') {
-              const result = data.result ?? {};
-              const content = result.content ?? '';
-              const wc = countWords(content);
-              store.updateStep(stepId, {
-                status: 'done',
-                content,
-                wordCount: wc,
-                completedAt: new Date().toISOString(),
-              });
-              resolve(content);
-            } else if (data.status === 'error') {
-              store.updateStep(stepId, {
-                status: 'error',
-                error: data.error ?? 'Gagal menghasilkan bagian ini',
-              });
-              toast.error(
-                `Error: ${data.error ?? 'Gagal menghasilkan bagian ini'}`
-              );
-              resolve(null);
-            } else {
-              // Still processing
-              pollingRef.current = setTimeout(poll, 3000);
-            }
-          } catch {
-            // Network error — retry
-            pollingRef.current = setTimeout(poll, 3000);
-          }
-        };
-
-        poll();
-      });
-    },
-    [store]
-  );
-
   const handleGenerateStep = useCallback(
     async (step: CicilStepState) => {
       if (step.status === 'generating' || step.status === 'done') return;
 
-      const jobId = await generateSingleStep(step);
-      if (!jobId) return;
-
-      await pollJob(jobId, step.stepId);
+      await generateSingleStep(step);
     },
-    [generateSingleStep, pollJob]
+    [generateSingleStep]
   );
 
   const handleAutoGenerateAll = useCallback(async () => {
@@ -797,10 +733,7 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
         const idx = store.steps.findIndex((s) => s.stepId === step.stepId);
         if (idx >= 0) store.setCurrentStepIndex(idx);
 
-        const jobId = await generateSingleStep(step);
-        if (!jobId) continue;
-
-        const content = await pollJob(jobId, step.stepId);
+        const content = await generateSingleStep(step);
         if (content === null) continue;
 
         toast.success(`✅ ${step.labelId} selesai`);
@@ -822,14 +755,10 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
       store.setIsAutoGenerating(false);
       autoGenRef.current = false;
     }
-  }, [store, generateSingleStep, pollJob]);
+  }, [store, generateSingleStep]);
 
   const handleStopAutoGenerate = useCallback(() => {
     autoGenRef.current = false;
-    if (pollingRef.current) {
-      clearTimeout(pollingRef.current);
-      pollingRef.current = null;
-    }
     store.setIsAutoGenerating(false);
     toast.info('Auto-generate dihentikan');
   }, [store]);
