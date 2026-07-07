@@ -1842,7 +1842,7 @@ export default function ArticleGeneratorApp() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
             {/* Left: copyright & version */}
             <div className="flex items-center gap-2">
-              <p>© 2025 <span className="font-semibold text-foreground">HirahPress</span>. Hak cipta dilindungi.</p>
+              <p>© {new Date().getFullYear()} <span className="font-semibold text-foreground">HirahPress</span>. Hak cipta dilindungi.</p>
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
                 {APP_VERSION}
               </Badge>

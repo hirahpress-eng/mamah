@@ -605,14 +605,28 @@ export const useArticleStore = create<AppState>()(
         references: state.references,
         researchMethod: state.researchMethod,
         additionalInstructions: state.additionalInstructions,
-        generatedArticle: state.generatedArticle,
+        // Only persist latest article (not full history) to avoid localStorage quota
+        generatedArticle: state.generatedArticle ? {
+          ...state.generatedArticle,
+          // Truncate content to save space — keep metadata, trim section content
+          sections: state.generatedArticle.sections?.map(s => ({
+            ...s,
+            // Keep first 500 chars of each section for preview, full content lost on reload
+            content: s.content?.slice(0, 500) || '',
+          })),
+        } : null,
         generatedAt: state.generatedAt,
-        polishedArticle: state.polishedArticle,
-        articleHistory: state.articleHistory,
+        // Don't persist polished article (it's derived from generated)
+        polishedArticle: null,
+        // Only keep last 3 history entries with truncated content
+        articleHistory: (state.articleHistory || []).slice(-3).map(a => ({
+          ...a,
+          preview: (a.preview || '').slice(0, 200),
+        })),
         botResults: state.botResults,
         botConfig: state.botConfig,
-        sectionStages: state.sectionStages,
-        currentStageIndex: state.currentStageIndex,
+        sectionStages: {},
+        currentStageIndex: 0,
       }),
     }
   )

@@ -77,7 +77,7 @@ export default function PromoBanner({ onCtaClick }: PromoBannerProps) {
                   Coba fitur Pro — unlimited & export premium!
                 </span>{' '}
                 <span className="text-amber-200 font-semibold">
-                  Coba gratis 7 hari!
+                  Segera Hadir!
                 </span>
               </p>
 

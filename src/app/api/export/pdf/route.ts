@@ -149,16 +149,6 @@ async function generatePdfBuffer(article: ExportArticle): Promise<Uint8Array> {
   // ── TITLE PAGE ──
   // ══════════════════════════════════════════════════════════════
 
-  // Watermark
-  doc.setFontSize(40);
-  doc.setTextColor(230, 230, 230);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Mamah', pageWidth / 2, pageHeight / 2 - 20, { align: 'center' });
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Academic Article Generator', pageWidth / 2, pageHeight / 2 - 10, { align: 'center' });
-  doc.setTextColor(0);
-
   // Title
   currentY = 80;
   doc.setFontSize(16);
@@ -228,14 +218,7 @@ async function generatePdfBuffer(article: ExportArticle): Promise<Uint8Array> {
       indent: isAbstract ? 15 : 0,
     });
 
-    // Section word count
-    ensureSpace(6);
-    doc.setFontSize(8);
-    doc.setTextColor(160, 160, 160);
-    doc.setFont('helvetica', 'italic');
-    doc.text(`Section word count: ${section.wordCount.toLocaleString()}`, margin, currentY);
-    currentY += 5;
-    doc.setTextColor(0);
+    // Reset font after section
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
     currentY += 4;

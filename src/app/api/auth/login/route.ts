@@ -1,12 +1,24 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json({ success: false, error: 'Email and password are required' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'Email dan kata sandi wajib diisi' },
+        { status: 400 }
+      );
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return NextResponse.json(
+        { success: false, error: 'Format email tidak valid' },
+        { status: 400 }
+      );
     }
 
     const supabase = createSupabaseServerClient();
@@ -20,10 +32,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 401 });
     }
 
-    // Fetch user profile
+    // Fetch user profile — only select fields needed by client
     const { data: profile } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, full_name, avatar_url, role, subscription_tier, created_at')
       .eq('id', data.user.id)
       .single();
 
@@ -38,6 +50,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Terjadi kesalahan server' },
+      { status: 500 }
+    );
   }
 }

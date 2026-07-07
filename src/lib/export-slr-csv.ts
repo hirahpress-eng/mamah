@@ -42,6 +42,8 @@ export function exportSlrCsv(
     'Open Access',
     'Citation Count',
     ...(includeAbstract ? ['Abstrak'] : []),
+    'Status Inklusi',
+    'Catatan',
   ];
 
   // Escape CSV field
@@ -78,6 +80,10 @@ export function exportSlrCsv(
     if (includeAbstract) {
       base.push(esc(ref.abstract));
     }
+
+    // Empty columns for user to fill in Excel
+    base.push(esc(''));  // Status Inklusi
+    base.push(esc(''));  // Catatan
 
     return base.join(',');
   });
