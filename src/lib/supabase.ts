@@ -35,16 +35,24 @@ export function createSupabaseBrowserClient() {
   });
 }
 
-// ── Singleton for server-side ──────────────────────────────────────────────────
+// ── Singleton for server-side (lazy — won't throw until actually called) ─────────
 const globalForSupabase = globalThis as unknown as {
   supabaseServer: ReturnType<typeof createSupabaseServerClient> | undefined;
 };
 
-export const supabaseServer = globalForSupabase.supabaseServer ?? createSupabaseServerClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForSupabase.supabaseServer = supabaseServer;
+export function getSupabaseServer() {
+  if (!globalForSupabase.supabaseServer) {
+    globalForSupabase.supabaseServer = createSupabaseServerClient();
+  }
+  return globalForSupabase.supabaseServer;
 }
+
+/** @deprecated Use getSupabaseServer() instead */
+export const supabaseServer = new Proxy({} as ReturnType<typeof createSupabaseServerClient>, {
+  get(_target, prop) {
+    return (getSupabaseServer() as any)[prop];
+  },
+});
 
 // ── Database Types (inline to avoid codegen dependency) ────────────────────────
 export interface Profile {
