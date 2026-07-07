@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useArticleStore, type Reference } from '@/store/article-store';
+import { exportSlrCsv } from '@/lib/export-slr-csv';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -1266,6 +1267,27 @@ export default function Step2References() {
               >
                 <FileDown className="size-4" />
                 <span>Export BibTeX</span>
+              </Button>
+            )}
+            {hasResults && references.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  try {
+                    exportSlrCsv(references, {
+                      filename: `slr-${(effectiveTitle || 'references').replace(/[^a-zA-Z0-9]/g, '-').slice(0, 50)}`,
+                    });
+                    toast.success(`${references.length} referensi berhasil diekspor ke CSV`);
+                  } catch {
+                    toast.error('Gagal mengekspor CSV');
+                  }
+                }}
+                className="inline-flex gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-900/30"
+              >
+                <Database className="size-4" />
+                <span className="hidden sm:inline">Export CSV SLR</span>
+                <span className="sm:hidden">CSV</span>
               </Button>
             )}
             <Button

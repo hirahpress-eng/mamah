@@ -106,10 +106,13 @@ Generate the markdown table now. Output ONLY the table and caption, nothing else
         result: { success: true, type: 'table', data: cleaned, description },
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[visual-gen] POST error:', error);
+    const msg = process.env.NODE_ENV === 'production'
+      ? 'Terjadi kesalahan server. Silakan coba lagi.'
+      : (error instanceof Error ? error.message : 'Internal server error');
     return Response.json(
-      { success: false, error: error?.message || 'Internal server error' },
+      { success: false, error: msg },
       { status: 500 }
     );
   }

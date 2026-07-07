@@ -1006,7 +1006,7 @@ export default function Step1Input() {
                       for your research.
                     </p>
                     <Textarea
-                      placeholder="e.g., The Impact of Artificial Intelligence on Modern Healthcare Systems: A Comprehensive Literature Review"
+                      placeholder="Contoh: Dampak Kecerdasan Buatan terhadap Sistem Kesehatan Modern: Tinjauan Pustaka Komprehensif"
                       value={inputTitle}
                       onChange={(e) =>
                         setInputTitle(e.target.value.slice(0, MAX_TITLE_CHARS))

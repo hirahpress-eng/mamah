@@ -13,13 +13,11 @@ import {
   Wand2,
   ChevronLeft,
   ChevronDown,
-  ChevronRight,
   RotateCcw,
   GraduationCap,
   Sun,
   Moon,
   Sparkles,
-  BookMarked,
   PenTool,
   Heart,
   Shield,
@@ -34,7 +32,6 @@ import {
   HelpCircle,
   LogIn,
   LogOut,
-  UserCircle,
   Crown,
   Bot,
   Zap,
@@ -79,7 +76,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────
 
-const APP_VERSION = 'v2.3.0';
+const APP_VERSION = 'v2.4.0';
 
 const MODE_TITLES: Record<string, string> = {
   article: 'Artikel Jurnal',
@@ -380,7 +377,7 @@ function SocialProofSection() {
               </div>
 
               {/* Star Rating */}
-              <div className="flex gap-0.5">
+              <div className="flex gap-0.5" aria-hidden="true">
                 {Array.from({ length: 5 }).map((_, si) => (
                   <Star
                     key={si}
@@ -983,52 +980,52 @@ function WelcomeBanner() {
 const STEP_TIPS: Record<number, { icon: typeof Info; title: string; tips: string[] }> = {
   1: {
     icon: BookOpen,
-    title: 'Research Definition Tips',
+    title: 'Tips Definisi Riset',
     tips: [
-      'Use specific keywords for better title suggestions',
-      'Try the Idea tab for more creative, exploratory inputs',
-      'Browse Templates for popular research topics to get started quickly',
-      'Select at least 3 keywords for optimal results',
+      'Gunakan kata kunci spesifik untuk saran judul yang lebih baik',
+      'Coba tab Ide untuk masukan yang lebih kreatif dan eksploratif',
+      'Jelajahi Template untuk topik riset populer agar cepat mulai',
+      'Pilih minimal 3 kata kunci untuk hasil optimal',
     ],
   },
   2: {
     icon: Library,
-    title: 'Reference Selection Tips',
+    title: 'Tips Pemilihan Referensi',
     tips: [
-      'Aim for a mix of journal articles, books, and theoretical sources',
-      'Prioritise recent publications (last 5 years) for current relevance',
-      'Use filters to narrow down by type, year, or topic',
-      'Select at least 5 references to proceed to generation',
+      'Campurkan sumber: artikel jurnal, buku, dan sumber teori',
+      'Prioritaskan publikasi terbaru (5 tahun terakhir) untuk relevansi',
+      'Gunakan filter untuk mempersempit berdasarkan jenis, tahun, atau topik',
+      'Pilih minimal 5 referensi untuk melanjutkan ke tahap generate',
     ],
   },
   3: {
     icon: FlaskConical,
-    title: 'Generation Tips',
+    title: 'Tips Generate Artikel',
     tips: [
-      'Literature Review is recommended for most academic articles',
-      'Add specific instructions for targeted, customised output',
-      'Article generation typically takes 1–3 minutes',
-      'Review your references before generating for best results',
+      'Literature Review direkomendasikan untuk sebagian besar artikel akademik',
+      'Tambahkan instruksi khusus untuk output yang lebih terarah',
+      'Generate artikel biasanya memakan waktu 1-3 menit',
+      'Periksa referensi Anda sebelum generate untuk hasil terbaik',
     ],
   },
   4: {
     icon: FileText,
-    title: 'Article Review Tips',
+    title: 'Tips Review Artikel',
     tips: [
-      'Use Ctrl+F to search within the article content',
-      'Check the Table of Contents for section completion status',
-      'Expand each section to review in detail',
-      'Export to DOCX, PDF, or Markdown for offline editing',
+      'Gunakan Ctrl+F untuk mencari dalam konten artikel',
+      'Periksa Daftar Isi untuk status kelengkapan setiap bagian',
+      'Buka setiap bagian untuk review detail',
+      'Export ke DOCX, PDF, atau Markdown untuk pengeditan offline',
     ],
   },
   5: {
     icon: Wand2,
-    title: 'Polish Tips',
+    title: 'Tips Polish',
     tips: [
-      'Use Auto-Polish to enable all refinements at once',
-      'Compare before/after to see the quality improvements',
-      'Each polish pass builds on the previous version',
-      'Export the final polished article in your preferred format',
+      'Gunakan Auto-Polish untuk mengaktifkan semua perbaikan sekaligus',
+      'Bandingkan sebelum/sesudah untuk melihat peningkatan kualitas',
+      'Setiap proses polish membangun versi sebelumnya',
+      'Export artikel polish akhir ke format yang Anda inginkan',
     ],
   },
 };
@@ -1058,7 +1055,7 @@ function StepTipsBar({ step }: { step: number }) {
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium transition-colors"
               >
-                {isExpanded ? 'Show Less' : 'Show Tips'}
+                {isExpanded ? 'Sembunyikan' : 'Tampilkan Tips'}
               </button>
               <button
                 onClick={() => setDismissed(true)}
@@ -1147,23 +1144,23 @@ function WordCountGoalBar({ article }: { article: GeneratedArticle }) {
 const KEYBOARD_SHORTCUTS = [
   {
     keys: ['Ctrl', '→'],
-    label: 'Next step',
+    label: 'Langkah berikutnya',
     available: true,
   },
   {
     keys: ['Ctrl', '←'],
-    label: 'Previous step',
+    label: 'Langkah sebelumnya',
     available: true,
   },
   {
     keys: ['Esc'],
-    label: 'Go back',
+    label: 'Kembali',
     available: true,
   },
   {
     keys: ['Ctrl', 'F'],
-    label: 'Search in article',
-    available: 'Step 4–5',
+    label: 'Cari dalam artikel',
+    available: 'Langkah 4-5',
   },
 ];
 
@@ -1262,7 +1259,7 @@ function MobileQuickActions() {
         size="icon"
         onClick={() => {
           resetAll();
-          toast.success('Starting a new article');
+          toast.success('Artikel baru dimulai');
         }}
         className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
         aria-label="New Article"
@@ -1274,7 +1271,7 @@ function MobileQuickActions() {
         size="icon"
         onClick={() => {
           setCurrentStep(4);
-          toast.info('View article history from the sidebar');
+          toast.info('Lihat riwayat artikel di sidebar');
         }}
         className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
         aria-label="View History"
@@ -1309,7 +1306,7 @@ export default function ArticleGeneratorApp() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [showSuperBot, setShowSuperBot] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<string | null>('article');
+  const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const { hasCompleted, resetOnboarding } = useOnboardingStatus();
   const tutorialTriggeredRef = useRef(false);
   // Direction tracking: transitionPrevStep lags behind currentStep by one render via useEffect,
@@ -1587,7 +1584,7 @@ export default function ArticleGeneratorApp() {
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <ChevronLeft className="size-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Back</span>
+                  <span className="hidden sm:inline">Kembali</span>
                 </Button>
               )}
               {selectedMode === 'article' && (generatedArticle || currentStep > 1) && (
@@ -1658,17 +1655,17 @@ export default function ArticleGeneratorApp() {
                 >
                   <StepHeader
                     step={currentStep}
-                    title={stepInfo?.label || 'Getting Started'}
+                    title={stepInfo?.label || 'Memulai'}
                     description={
                       currentStep === 1
-                        ? 'Define your research topic through keywords, a title, or a research idea.'
+                        ? 'Tentukan topik riset Anda melalui kata kunci, judul, atau ide penelitian.'
                         : currentStep === 2
-                          ? 'Search and select up to 50 academic references for your article.'
+                          ? 'Cari dan pilih hingga 50 referensi akademik untuk artikel Anda.'
                           : currentStep === 3
-                            ? 'Choose your research method and generate the full article.'
+                            ? 'Pilih metode riset dan generate artikel lengkap.'
                             : currentStep === 4
-                              ? 'Review your generated article in IMRAD format.'
-                              : 'Polish and refine your article to publication-ready quality.'
+                              ? 'Tinjau artikel yang dihasilkan dalam format IMRAD.'
+                              : 'Polish dan sempurnakan artikel Anda hingga siap publikasi.'
                     }
                   />
                 </motion.div>
@@ -1717,7 +1714,7 @@ export default function ArticleGeneratorApp() {
                           {showSuperBot && (
                             <Badge variant="outline" className="border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300">
                               <Zap className="size-3 mr-1" />
-                              Custom Engine — No AI per click
+                              Mesin Kustom — Tanpa AI per klik
                             </Badge>
                           )}
                         </div>
@@ -1778,7 +1775,7 @@ export default function ArticleGeneratorApp() {
                 <kbd className="px-2 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-mono">
                   Esc
                 </kbd>
-                <span className="ml-0.5">Go back</span>
+                <span className="ml-0.5">Kembali</span>
               </span>
             </div>
           )}

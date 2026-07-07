@@ -1,12 +1,18 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'mamah-jwt-secret-change-in-production-2024'
-);
+const _jwtSecret = process.env.JWT_SECRET;
+if (!_jwtSecret) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+  // Dev-only fallback — never reaches production
+  console.warn('[session] JWT_SECRET not set, using dev fallback. NEVER use in production.');
+}
+const JWT_SECRET = new TextEncoder().encode(_jwtSecret || 'mamah-dev-only-fallback-never-production');
 
 const SESSION_COOKIE_NAME = 'mamah_session';
-const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export interface SessionPayload {
   userId: string;

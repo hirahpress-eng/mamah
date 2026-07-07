@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
@@ -14,11 +14,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: '#10b981',
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://mamah.app'),
   title: "Mamah — AI Academic Writing Assistant",
   description:
     "Generate publication-ready academic articles with AI. Define research topics, find references, and create IMRAD-formatted papers with professional academic writing.",
-  keywords: [
+    keywords: [
     "academic writing",
     "literature generator",
     "research article",
@@ -26,6 +33,9 @@ export const metadata: Metadata = {
     "AI writing assistant",
     "publication-ready",
     "scientific paper",
+    "asisten penulis akademik",
+    "penulisan skripsi",
+    "penulisan tesis",
   ],
   authors: [{ name: "Mamah" }],
   icons: {

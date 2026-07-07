@@ -164,8 +164,11 @@ IMPORTANT: Write MAXIMUM ${targetWords} words. Be concise but comprehensive. Do 
       success: true,
       result: { content, wordCount, stepId },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[cicil-gen] POST error:', error);
-    return Response.json({ success: false, error: error?.message || 'Internal server error' }, { status: 500 });
+    const msg = process.env.NODE_ENV === 'production'
+      ? 'Gagal menggenerate bagian. Silakan coba lagi.'
+      : (error instanceof Error ? error.message : 'Internal server error');
+    return Response.json({ success: false, error: msg }, { status: 500 });
   }
 }

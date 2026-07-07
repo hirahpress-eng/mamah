@@ -370,7 +370,10 @@ function ModeCard({
     >
       <Card
         onClick={() => onSelect(mode.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(mode.id); }}}
         role="button"
+        tabIndex={0}
+        aria-describedby={`mode-desc-${mode.id}`}
         className={[
           'group relative cursor-pointer overflow-hidden',
           'border transition-all duration-300',
@@ -428,7 +431,7 @@ function ModeCard({
           <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1 tracking-tight">
             {mode.title}
           </h3>
-          <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed line-clamp-1">
+          <p id={`mode-desc-${mode.id}`} className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed line-clamp-1">
             {mode.shortDesc}
           </p>
 

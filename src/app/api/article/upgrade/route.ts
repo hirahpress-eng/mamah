@@ -268,10 +268,13 @@ ${original.content}${refSuffix}`;
         sectionsFailed,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[article-upgrade] POST error:', error);
+    const msg = process.env.NODE_ENV === 'production'
+      ? 'Terjadi kesalahan server. Silakan coba lagi.'
+      : (error instanceof Error ? error.message : 'Internal server error');
     return Response.json(
-      { success: false, error: error?.message || 'Internal server error' },
+      { success: false, error: msg },
       { status: 500 },
     );
   }

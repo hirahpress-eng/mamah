@@ -58,7 +58,9 @@ import {
   CircleDot,
   XCircle,
   Eye,
+  Database,
 } from 'lucide-react';
+import { exportSlrCsv } from '@/lib/export-slr-csv';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -1338,6 +1340,25 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
 
       {/* Footer */}
       <div className="mt-auto pt-4">
+        {store.references.length > 0 && !store.isSearchingRefs && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              try {
+                exportSlrCsv(store.references, {
+                  filename: `slr-${(store.title || 'references').replace(/[^a-zA-Z0-9]/g, '-').slice(0, 50)}`,
+                });
+                toast.success(`${store.references.length} referensi diekspor ke CSV`);
+              } catch {
+                toast.error('Gagal mengekspor CSV');
+              }
+            }}
+            className="mt-2 w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+          >
+            <Database className="mr-2 size-4" />
+            Export CSV SLR
+          </Button>
+        )}
         {store.references.length > 0 && !store.isSearchingRefs && (
           <Button
             onClick={handleStartWriting}

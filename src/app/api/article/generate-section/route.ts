@@ -558,10 +558,13 @@ export async function POST(request: Request) {
         stageId,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[section-gen] POST error:', error);
+    const msg = process.env.NODE_ENV === 'production'
+      ? 'Gagal menggenerate bagian artikel. Silakan coba lagi.'
+      : (error instanceof Error ? error.message : 'Internal server error');
     return Response.json(
-      { success: false, error: error?.message || 'Internal server error' },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
