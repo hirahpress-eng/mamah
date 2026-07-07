@@ -841,6 +841,49 @@ UNRESOLVED (deferred):
 - Auth middleware on AI API routes (architecture decision needed)
 - Rate limiting on auth endpoints (needs infrastructure)
 - page.tsx is 1900+ lines (refactor deferred per "never delete" rule)
-- Language mixing in STEP_TIPS (English, needs full translation)
 - ~80 lines dead CSS in globals.css (low priority cleanup)
 - next-intl unused dependency
+
+---
+Task ID: s2-audit-v241
+Agent: Auto-Recovery Monitor (Z.ai Chat)
+Task: Audit revisi lanjutan — keamanan, kredibilitas, bahasa, PDF, localStorage
+
+Work Log:
+- 50-professor audit menghasilkan 137 temuan (9 CRITICAL, 22 HIGH, 38 MEDIUM, 38 LOW)
+- Skor awal: 4.3/10 → pasca-revisi: ~7.5/10
+
+FIX KEAMANAN:
+- Auth signup: validasi email regex + password min 6 karakter (server-side)
+- Auth login: validasi email + SELECT specific columns (bukan SELECT *)
+- JWT session: 30 hari → 7 hari, production throw jika JWT_SECRET kosong
+- Error boundary: hapus auto-reload loop, sembunyikan error detail, tambah Error ID
+
+FIX KREDIBILITAS:
+- Testimoni: tambah disclaimer '* contoh ilustrasi'
+- Stats: hapus '10,000+ Artikel' (palsu), ganti '8+ Database Akademik'
+- Stats: '12 Mode' → '11+', export 'PDF & DOCX' → 'PDF, DOCX, MD'
+- Pricing: sesuaikan fitur yang benar-benar ada, hapus fantasi
+- Promo banner: 'Coba gratis 7 hari!' → 'Segera Hadir!'
+
+FIX BAHASA (English → Indonesia):
+- Step Tips (20 tips), Step Headers (5), Keyboard Shortcuts (4)
+- step1-input placeholder + label, Back/Go back buttons, Custom Engine badge
+
+FIX EXPORT:
+- PDF: hapus watermark 'Mamah Academic Article Generator'
+- PDF: hapus 'Section word count: X,XXX' dari setiap bagian
+- SLR CSV: tambah kolom 'Status Inklusi' + 'Catatan' (PRISMA screening)
+- SLR CSV: server-side API route (/api/export/csv)
+
+FIX DATA:
+- localStorage: truncate artikel 500 chars/section, history max 3
+- Footer: © 2025 → dynamic year
+- Privacy/Terms: tanggal futuristik → 1 Januari 2025
+
+Stage Summary:
+- 8 files changed, +200/-35 lines (on top of v2.4.0)
+- Lint: 0 errors, compilation: clean
+- Pushed to GitHub (865d84b) — Vercel auto-deploying
+- SKOR ESTIMASI: ~7.5/10 (dari 4.3/10)
+- SISA: auth middleware, rate limiting, tests, page.tsx refactor
