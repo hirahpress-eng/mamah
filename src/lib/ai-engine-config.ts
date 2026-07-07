@@ -36,9 +36,11 @@ export const AI_ENGINES: AIEngineConfig[] = [
   },
   {
     id: 'grok',
-    name: 'Tim 2 (Groq)',
-    description: 'Groq Llama 3.3 70B — inferensi super cepat',
-    bestFor: 'Draf cepat, generasi ringkas, mesin alternatif',
+    name: IS_PROD ? 'Tim 2 (Groq) — Tidak tersedia' : 'Tim 2 (Groq)',
+    description: IS_PROD
+      ? 'Tidak tersedia di server publik'
+      : 'Groq Llama 3.3 70B — inferensi super cepat',
+    bestFor: IS_PROD ? '—' : 'Draf cepat, generasi ringkas, mesin alternatif',
     isDefault: false,
     icon: '🟠',
   },

@@ -45,11 +45,11 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 export const DEFAULT_ENGINE: AIEngineId = IS_PRODUCTION ? 'gemini' : 'zai';
 
 /** Fallback order when the selected engine fails.
- *  On Vercel (production): gemini first (has API key), then grok, then zai last.
+ *  On Vercel (production): gemini only (only engine with valid API key).
  *  On z.ai (development): zai first (internal API fast), then gemini, grok, cloudflare.
  */
 const FALLBACK_ORDER: AIEngineId[] = IS_PRODUCTION
-  ? ['gemini', 'grok', 'cloudflare', 'zai']
+  ? ['gemini']
   : ['zai', 'gemini', 'grok', 'cloudflare'];
 
 // ---------------------------------------------------------------------------
@@ -402,7 +402,10 @@ export async function chatCompletion(
     }
   }
 
-  return 'All AI engines are currently unavailable. Please try again later.';
+  if (IS_PRODUCTION) {
+    return 'Maaf, mesin AI sedang tidak tersedia. Pastikan GEMINI_API_KEY sudah dikonfigurasi di Environment Variables Vercel. Silakan coba lagi dalam beberapa menit.';
+  }
+  return 'Semua mesin AI sedang tidak tersedia. Silakan coba lagi nanti.';
 }
 
 /**
