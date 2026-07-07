@@ -42,6 +42,7 @@ import {
   ArrowLeft,
   Quote,
   Star,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -78,7 +79,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────
 
-const APP_VERSION = 'v2.2.0';
+const APP_VERSION = 'v2.3.0';
 
 const MODE_TITLES: Record<string, string> = {
   article: 'Artikel Jurnal',
@@ -563,6 +564,188 @@ function FAQSection() {
   );
 }
 
+// ─── Pricing Section ─────────────────────────────────────────────
+
+function PricingSection() {
+  const plans = [
+    {
+      name: 'Gratis',
+      price: 'Rp 0',
+      period: 'selamanya',
+      description: 'Coba dulu, rasakan kualitasnya',
+      icon: FileText,
+      popular: false,
+      features: [
+        '3 generate per hari',
+        'Mode Artikel Jurnal',
+        'Pencarian referensi dasar',
+        'Export PDF',
+        'Format APA 7th Edition',
+      ],
+      cta: 'Mulai Gratis',
+      ctaVariant: 'outline' as const,
+    },
+    {
+      name: 'Pro',
+      price: 'Rp 99K',
+      period: '/bulan',
+      description: 'Untuk mahasiswa & peneliti serius',
+      icon: Crown,
+      popular: true,
+      features: [
+        'Generate unlimited',
+        'Semua 12 mode penulisan',
+        '50 referensi per pencarian',
+        'Export PDF & DOCX',
+        'AI Multi-Engine (3 Tim)',
+        'Mode Cicil (Bab per Bab)',
+        'Prioritas processing',
+        'Fitur Reviewer Notes',
+      ],
+      cta: 'Pilih Pro',
+      ctaVariant: 'default' as const,
+    },
+    {
+      name: 'Institusi',
+      price: 'Custom',
+      period: '',
+      description: 'Untuk universitas & lembaga riset',
+      icon: GraduationCap,
+      popular: false,
+      features: [
+        'Semua fitur Pro',
+        'Multi-user (10-100+)',
+        'Dashboard admin institusi',
+        'Template kustom universitas',
+        'API integration',
+        'Dedicated support',
+        'SLA uptime 99.9%',
+      ],
+      cta: 'Hubungi Kami',
+      ctaVariant: 'outline' as const,
+    },
+  ];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.1 }}
+      transition={{ duration: 0.6 }}
+      className="max-w-5xl mx-auto mt-12 sm:mt-16"
+    >
+      {/* Section Header */}
+      <div className="text-center mb-8 sm:mb-10">
+        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 mb-3">
+          <Crown className="size-3.5 mr-1.5" />
+          Harga
+        </Badge>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+          Pilih Paket yang Tepat untuk Anda
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">
+          Mulai gratis, upgrade kapan saja. Tanpa biaya tersembunyi.
+        </p>
+      </div>
+
+      {/* Pricing Cards */}
+      <div className="grid gap-5 sm:gap-6 md:grid-cols-3">
+        {plans.map((plan, index) => {
+          const IconComponent = plan.icon;
+          return (
+            <motion.div
+              key={plan.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.45, delay: index * 0.1 }}
+              className={`relative rounded-2xl p-5 sm:p-6 flex flex-col ${
+                plan.popular
+                  ? 'glass-card ring-2 ring-emerald-500/50 dark:ring-emerald-400/40 shadow-lg shadow-emerald-500/10'
+                  : 'glass-card'
+              }`}
+            >
+              {/* Popular Badge */}
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow-md">
+                    Paling Populer
+                  </span>
+                </div>
+              )}
+
+              {/* Plan Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`rounded-xl p-2.5 ${
+                  plan.popular
+                    ? 'bg-emerald-100 dark:bg-emerald-900/40'
+                    : 'bg-muted/60'
+                }`}>
+                  <IconComponent className={`size-5 ${
+                    plan.popular
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-muted-foreground'
+                  }`} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-base">{plan.name}</h3>
+                  <p className="text-xs text-muted-foreground">{plan.description}</p>
+                </div>
+              </div>
+
+              {/* Price */}
+              <div className="mb-5">
+                <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
+                  plan.popular ? 'text-gradient-emerald' : 'text-foreground'
+                }`}>
+                  {plan.price}
+                </span>
+                {plan.period && (
+                  <span className="text-sm text-muted-foreground ml-1">{plan.period}</span>
+                )}
+              </div>
+
+              {/* CTA Button */}
+              <Button
+                variant={plan.ctaVariant}
+                className={`w-full mb-6 ${
+                  plan.popular
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20'
+                    : ''
+                }`}
+                onClick={() => {
+                  toast.info('Fitur pembayaran akan segera tersedia!');
+                }}
+              >
+                {plan.cta}
+              </Button>
+
+              {/* Features List */}
+              <ul className="space-y-2.5 flex-1">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2.5 text-sm">
+                    <Check className={`size-4 shrink-0 mt-0.5 ${
+                      plan.popular
+                        ? 'text-emerald-500'
+                        : 'text-emerald-500/70'
+                    }`} />
+                    <span className="text-foreground/80">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Bottom Note */}
+      <p className="text-center text-xs text-muted-foreground/70 mt-6 sm:mt-8">
+        Pembayaran aman & terenkripsi. Bisa berhenti berlangganan kapan saja.
+      </p>
+    </motion.section>
+  );
+}
+
 // ─── Welcome Banner Component (Premium Hero Section) ───────────────
 
 function WelcomeBanner() {
@@ -626,6 +809,94 @@ function WelcomeBanner() {
             'radial-gradient(ellipse 70% 50% at 50% 30%, rgba(16,185,129,0.08) 0%, rgba(13,148,136,0.04) 40%, transparent 70%)',
         }}
       />
+
+      {/* Floating decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        {/* Floating book icon — top left */}
+        <motion.div
+          className="absolute top-2 left-[8%] sm:left-[12%]"
+          animate={{ y: [0, -10, 0], rotate: [0, 6, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' as const }}
+        >
+          <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-100/60 dark:bg-emerald-900/20 flex items-center justify-center">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400/50" />
+          </div>
+        </motion.div>
+
+        {/* Floating graduation cap — top right */}
+        <motion.div
+          className="absolute top-6 right-[6%] sm:right-[10%]"
+          animate={{ y: [0, -8, 0], rotate: [0, -4, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' as const, delay: 1 }}
+        >
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-teal-100/50 dark:bg-teal-900/20 flex items-center justify-center">
+            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-teal-400/50" />
+          </div>
+        </motion.div>
+
+        {/* Floating pen — mid left */}
+        <motion.div
+          className="absolute top-1/2 left-[3%] sm:left-[5%] -translate-y-1/2"
+          animate={{ y: [0, -12, 0], rotate: [0, 8, 0] }}
+          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' as const, delay: 2 }}
+        >
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-amber-100/40 dark:bg-amber-900/15 flex items-center justify-center">
+            <PenTool className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400/40" />
+          </div>
+        </motion.div>
+
+        {/* Floating sparkle — mid right */}
+        <motion.div
+          className="absolute top-[45%] right-[4%] sm:right-[7%]"
+          animate={{ y: [0, -6, 0], scale: [1, 1.1, 1] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' as const, delay: 0.5 }}
+        >
+          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-emerald-100/40 dark:bg-emerald-900/15 flex items-center justify-center">
+            <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-400/40" />
+          </div>
+        </motion.div>
+
+        {/* Floating globe — bottom left */}
+        <motion.div
+          className="absolute bottom-3 left-[10%] sm:left-[15%]"
+          animate={{ y: [0, -9, 0], rotate: [0, -5, 0] }}
+          transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' as const, delay: 3 }}
+        >
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-blue-100/30 dark:bg-blue-900/15 flex items-center justify-center">
+            <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400/40" />
+          </div>
+        </motion.div>
+
+        {/* Floating shield — bottom right */}
+        <motion.div
+          className="absolute bottom-5 right-[8%] sm:right-[14%]"
+          animate={{ y: [0, -7, 0], rotate: [0, 5, 0] }}
+          transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut' as const, delay: 1.5 }}
+        >
+          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-purple-100/30 dark:bg-purple-900/15 flex items-center justify-center">
+            <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400/40" />
+          </div>
+        </motion.div>
+
+        {/* Subtle particle dots */}
+        {[...Array(5)].map((_, i) => (
+          <motion.div
+            key={`dot-${i}`}
+            className="absolute w-1.5 h-1.5 rounded-full bg-emerald-400/25 dark:bg-emerald-500/15"
+            style={{
+              top: `${20 + i * 15}%`,
+              left: `${15 + (i % 3) * 30}%`,
+            }}
+            animate={{ opacity: [0.2, 0.6, 0.2], scale: [1, 1.3, 1] }}
+            transition={{
+              duration: 3 + i * 0.5,
+              repeat: Infinity,
+              ease: 'easeInOut' as const,
+              delay: i * 0.7,
+            }}
+          />
+        ))}
+      </div>
 
       <div className="relative text-center px-2 sm:px-4 py-8 sm:py-12">
         {/* Hero heading */}
@@ -1546,6 +1817,9 @@ export default function ArticleGeneratorApp() {
 
       {/* ── How It Works Section (landing page only) ── */}
       {selectedMode === null && <HowItWorksSection />}
+
+      {/* ── Pricing Section (landing page only) ── */}
+      {selectedMode === null && <PricingSection />}
 
       {/* ── FAQ Section (landing page only) ── */}
       {selectedMode === null && <FAQSection />}
