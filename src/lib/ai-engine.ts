@@ -30,10 +30,17 @@ export interface ChatMessage {
   content: string;
 }
 
-export const DEFAULT_ENGINE: AIEngineId = 'zai';
+export const DEFAULT_ENGINE: AIEngineId =
+  process.env.NODE_ENV === 'production' ? 'gemini' : 'zai';
 
-/** Fallback order when the selected engine fails */
-const FALLBACK_ORDER: AIEngineId[] = ['zai', 'gemini', 'grok', 'cloudflare'];
+/** Fallback order when the selected engine fails.
+ *  On Vercel (production), zai is placed LAST because internal-api.z.ai
+ *  is not reachable from Vercel's network (private IPs).
+ */
+const FALLBACK_ORDER: AIEngineId[] =
+  process.env.NODE_ENV === 'production'
+    ? ['gemini', 'cloudflare', 'grok', 'zai']
+    : ['zai', 'gemini', 'grok', 'cloudflare'];
 
 // ---------------------------------------------------------------------------
 // Helpers

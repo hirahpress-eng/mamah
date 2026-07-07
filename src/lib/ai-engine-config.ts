@@ -16,18 +16,20 @@ export interface AIEngineConfig {
 export const AI_ENGINES: AIEngineConfig[] = [
   {
     id: 'zai',
-    name: 'Tim 1 (Default)',
-    description: 'Tim utama, andal dan terintegrasi penuh',
+    name: process.env.NODE_ENV === 'production' ? 'Tim 1 (Z.ai — lokal)' : 'Tim 1 (Default)',
+    description: process.env.NODE_ENV === 'production'
+      ? 'Hanya tersedia di lingkungan z.ai lokal'
+      : 'Tim utama, andal dan terintegrasi penuh',
     bestFor: 'Pembuatan artikel, judul & kata kunci',
-    isDefault: true,
+    isDefault: process.env.NODE_ENV !== 'production',
     icon: '🟢',
   },
   {
     id: 'gemini',
-    name: 'Tim 2',
+    name: 'Tim 2 (Default)',
     description: 'Konteks panjang hingga 1 juta token',
-    bestFor: 'Analisis referensi, konten panjang, generasi cadangan',
-    isDefault: false,
+    bestFor: 'Pembuatan artikel, judul & kata kunci',
+    isDefault: process.env.NODE_ENV === 'production',
     icon: '🔵',
   },
   {
