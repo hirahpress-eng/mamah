@@ -1,4 +1,4 @@
-import { generateWithEngine } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
 import type { AIEngineId } from '@/lib/ai-engine';
 
 // ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ function extractJson(raw: string): Record<string, unknown> | null {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { keywords, title, engineId = 'zai' } = body as {
+    const { keywords, title, engineId = DEFAULT_ENGINE } = body as {
       keywords?: string[];
       title?: string;
       engineId?: AIEngineId;

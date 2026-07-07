@@ -1,4 +1,4 @@
-import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { AI_ENGINES } from '@/lib/ai-engine-config';
 
 export const maxDuration = 300;
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { article, engineId: rawEngineId } = body as { article: ReviewerArticle; engineId?: string };
-    const engineId: AIEngineId = AI_ENGINES.some((e) => e.id === rawEngineId) ? (rawEngineId as AIEngineId) : 'zai';
+    const engineId: AIEngineId = AI_ENGINES.some((e) => e.id === rawEngineId) ? (rawEngineId as AIEngineId) : DEFAULT_ENGINE;
 
     if (!article || !article.title || !article.sections || !Array.isArray(article.sections)) {
       return Response.json(

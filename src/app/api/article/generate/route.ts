@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { AI_ENGINES } from '@/lib/ai-engine-config';
 import { formatBibliography } from '@/lib/bibliography-formatter';
 
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
     }
 
     // Validate engine ID
-    const engine: AIEngineId = AI_ENGINES.some(e => e.id === engineId) ? engineId : 'zai';
+    const engine: AIEngineId = AI_ENGINES.some(e => e.id === engineId) ? engineId : DEFAULT_ENGINE;
 
     // Convert researchMethod slug to a human-readable label
     const methodLabel = (researchMethod as string)

@@ -1,4 +1,4 @@
-import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 
 export const maxDuration = 300;
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       description,
       context,
       articleTitle,
-      engineId = 'zai',
+      engineId = DEFAULT_ENGINE,
     } = body as {
       type: VisualType;
       description: string;

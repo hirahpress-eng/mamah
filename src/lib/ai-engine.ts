@@ -2,16 +2,24 @@
  * Multi-Engine AI Abstraction Layer for Mamah
  *
  * Provides a unified chat completion interface across 4 AI engines:
- *   1. Z.ai (z-ai-web-dev-sdk) — default, built-in
- *   2. Gemini 2.5 Flash (Google Generative AI)
- *   3. Grok 3 (xAI) — fast reasoning via z-ai-web-dev-sdk
- *   4. Cloudflare (Llama 3.1 70B) — open-source model via z-ai-web-dev-sdk
+ *   1. Z.ai (z-ai-web-dev-sdk) — default on z.ai (dev), built-in
+ *   2. Gemini 2.5 Flash (Google Generative AI) — default on Vercel (production)
+ *   3. Groq (llama-3.3-70b-versatile) — fast inference via Groq.com API
+ *   4. Cloudflare (Llama 3.1 70B) — open-source model via CF Workers AI
  *
  * IMPORTANT: This file imports z-ai-web-dev-sdk and MUST ONLY be used
  * from server-side code (API routes). Client components should import
  * types/config from ai-engine-config.ts instead.
  *
- * Fallback order: zai → gemini → grok → cloudflare
+ * PRODUCTION (Vercel) BEHAVIOUR:
+ *   - All SDK fallbacks are DISABLED (internal-api.z.ai is unreachable from Vercel)
+ *   - Only direct public API calls are used (Gemini, Groq, Cloudflare)
+ *   - Default engine: gemini (requires GEMINI_API_KEY)
+ *
+ * DEVELOPMENT (z.ai) BEHAVIOUR:
+ *   - Z.ai SDK is used as default (fast internal API)
+ *   - Direct API calls tried first, SDK as fallback
+ *
  * NEVER throws — always returns a string or fallback error message.
  */
 
@@ -30,38 +38,52 @@ export interface ChatMessage {
   content: string;
 }
 
-export const DEFAULT_ENGINE: AIEngineId =
-  process.env.NODE_ENV === 'production' ? 'grok' : 'zai';
+// On Vercel (production): SDK calls to internal-api.z.ai time out.
+// Only use direct public APIs on production.
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+export const DEFAULT_ENGINE: AIEngineId = IS_PRODUCTION ? 'gemini' : 'zai';
 
 /** Fallback order when the selected engine fails.
- *  On Vercel (production): groq first (has real API key), then cloudflare, gemini, zai last.
- *  On z.ai (development): zai first (internal API), then gemini, grok, cloudflare.
+ *  On Vercel (production): gemini first (has API key), then grok, then zai last.
+ *  On z.ai (development): zai first (internal API fast), then gemini, grok, cloudflare.
  */
-const FALLBACK_ORDER: AIEngineId[] =
-  process.env.NODE_ENV === 'production'
-    ? ['grok', 'cloudflare', 'gemini', 'zai']
-    : ['zai', 'gemini', 'grok', 'cloudflare'];
+const FALLBACK_ORDER: AIEngineId[] = IS_PRODUCTION
+  ? ['gemini', 'grok', 'cloudflare', 'zai']
+  : ['zai', 'gemini', 'grok', 'cloudflare'];
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Create a fetch with an AbortController timeout (default 45s) */
+function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeoutMs?: number },
+): Promise<Response> {
+  const { timeoutMs = 45000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...fetchOptions, signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
+}
+
 /** Extract retry-after seconds from Gemini error messages */
 function parseGeminiRetrySeconds(errorMessage: string): number {
-  // Gemini returns: "Please retry in 37.276015999s."
   const match = errorMessage.match(/retry in ([\d.]+)s/);
   if (match) {
     const seconds = parseFloat(match[1]);
-    if (seconds > 0 && seconds < 120) return Math.ceil(seconds) + 2; // add 2s buffer
+    if (seconds > 0 && seconds < 120) return Math.ceil(seconds) + 2;
   }
-  return 0; // no specific retry time found
+  return 0;
 }
 
 // ---------------------------------------------------------------------------
 // Per-engine execution helpers
 // ---------------------------------------------------------------------------
 
-// Cache ZAI instance to avoid repeated SDK initialization
+// Cache ZAI instance to avoid repeated SDK initialization (dev only)
 let cachedZAI: InstanceType<typeof ZAI> | null = null;
 
 // Default config — same values used by the z.ai platform
@@ -75,7 +97,6 @@ const DEFAULT_ZAI_CONFIG = {
 
 async function getZAI() {
   if (!cachedZAI) {
-    // Priority: Z_AI_CONFIG env var > ZAI.create() (reads .z-ai-config files)
     if (process.env.Z_AI_CONFIG) {
       try {
         const envConfig = JSON.parse(process.env.Z_AI_CONFIG);
@@ -85,10 +106,8 @@ async function getZAI() {
       }
     } else {
       try {
-        // Try ZAI.create() first (works locally with /etc/.z-ai-config)
         cachedZAI = await ZAI.create();
       } catch {
-        // Fallback to hardcoded config (works on Vercel without config file)
         cachedZAI = new ZAI(DEFAULT_ZAI_CONFIG);
       }
     }
@@ -96,10 +115,18 @@ async function getZAI() {
   return cachedZAI;
 }
 
+// ─── Z.ai Engine ────────────────────────────────────────────────────────
+
 async function executeZAI(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
+  // On production: Z.ai SDK calls internal-api.z.ai which is unreachable.
+  // Fail immediately instead of hanging for 30s+.
+  if (IS_PRODUCTION) {
+    throw new Error('Z.ai SDK unavailable on production (internal API unreachable)');
+  }
+
   const zai = await getZAI();
   if (!zai) throw new Error('ZAI SDK initialization failed');
   const completion = await zai.chat.completions.create({
@@ -113,169 +140,181 @@ async function executeZAI(
   return completion.choices[0]?.message?.content || '';
 }
 
+// ─── Gemini Engine ──────────────────────────────────────────────────────
+
 async function executeGemini(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
-  // Try direct Google API first if GEMINI_API_KEY is configured
-  if (process.env.GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
+    if (IS_PRODUCTION) {
+      throw new Error('GEMINI_API_KEY not configured');
+    }
+    // Dev fallback: try via SDK
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
+      const zai = await getZAI();
+      if (!zai) throw new Error('Gemini SDK init failed');
+      const completion = await zai.chat.completions.create({
         model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-        generationConfig: {
-          temperature: options?.temperature ?? 0.7,
-          maxOutputTokens: options?.maxTokens ?? 8192,
-        },
+        messages: messages.map((m) => ({
+          role: m.role as 'user' | 'assistant' | 'system',
+          content: m.content,
+        })),
+        temperature: options?.temperature ?? 0.7,
+        max_tokens: options?.maxTokens ?? 8192,
       });
-
-      const systemMsg = messages.find((m) => m.role === 'system');
-      const nonSystem = messages.filter((m) => m.role !== 'system');
-
-      let effectiveUserContent = nonSystem[nonSystem.length - 1]?.content || '';
-      if (systemMsg) {
-        effectiveUserContent = `[System Instructions]\n${systemMsg.content}\n\n[User Request]\n${effectiveUserContent}`;
-      }
-
-      const chatHistory = nonSystem.slice(0, -1).map((m) => ({
-        role: (m.role === 'assistant' ? 'model' : 'user') as 'model' | 'user',
-        parts: [{ text: m.content }],
-      }));
-
-      if (!effectiveUserContent) throw new Error('No user message for Gemini');
-      const chat = model.startChat({ history: chatHistory });
-      const result = await chat.sendMessage(effectiveUserContent);
-      const text = result.response.text();
-      if (text && text.trim().length > 0) return text;
-    } catch {
-      // Direct API failed, fall through to SDK approach
+      return completion.choices[0]?.message?.content || '';
+    } catch (sdkErr: any) {
+      throw new Error(`Gemini: no API key and SDK failed: ${sdkErr?.message?.substring(0, 100)}`);
     }
   }
 
-  // Fallback: use z-ai-web-dev-sdk with Gemini model
-  const zai = await getZAI();
-  if (!zai) throw new Error('Gemini engine: SDK initialization failed');
-
-  const completion = await zai.chat.completions.create({
+  // Direct Google Generative AI API
+  const { GoogleGenerativeAI } = await import('@google/generative-ai');
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({
     model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    messages: messages.map((m) => ({
-      role: m.role as 'user' | 'assistant' | 'system',
-      content: m.content,
-    })),
-    temperature: options?.temperature ?? 0.7,
-    max_tokens: options?.maxTokens ?? 8192,
+    generationConfig: {
+      temperature: options?.temperature ?? 0.7,
+      maxOutputTokens: options?.maxTokens ?? 8192,
+    },
   });
-  return completion.choices[0]?.message?.content || '';
+
+  const systemMsg = messages.find((m) => m.role === 'system');
+  const nonSystem = messages.filter((m) => m.role !== 'system');
+
+  let effectiveUserContent = nonSystem[nonSystem.length - 1]?.content || '';
+  if (systemMsg) {
+    effectiveUserContent = `[System Instructions]\n${systemMsg.content}\n\n[User Request]\n${effectiveUserContent}`;
+  }
+
+  const chatHistory = nonSystem.slice(0, -1).map((m) => ({
+    role: (m.role === 'assistant' ? 'model' : 'user') as 'model' | 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  if (!effectiveUserContent) throw new Error('No user message for Gemini');
+  const chat = model.startChat({ history: chatHistory });
+  const result = await chat.sendMessage(effectiveUserContent);
+  const text = result.response.text();
+  if (text && text.trim().length > 0) return text;
+  throw new Error('Gemini returned empty response');
 }
+
+// ─── Groq Engine ────────────────────────────────────────────────────────
 
 async function executeGrok(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
-  // Groq.com (fast Llama inference) — uses GROQ_API_KEY
-  // Falls back to z-ai-web-dev-sdk if no key configured
   const apiKey = process.env.GROQ_API_KEY;
   if (apiKey) {
-    const baseUrl = process.env.GROK_BASE_URL || 'https://api.groq.com/openai/v1';
-    try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
-          temperature: options?.temperature ?? 0.7,
-          max_tokens: options?.maxTokens ?? 8192,
-        }),
-      });
+    const baseUrl = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+    const response = await fetchWithTimeout(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        temperature: options?.temperature ?? 0.7,
+        max_tokens: options?.maxTokens ?? 8192,
+      }),
+      timeoutMs: 30000,
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
-      } else {
-        const errText = await response.text().catch(() => '');
-        throw new Error(`Groq API ${response.status}: ${errText.substring(0, 200)}`);
-      }
-    } catch (error: any) {
-      // If it's a non-timeout error from the API call itself, re-throw
-      if (error?.message?.includes('Groq API')) throw error;
-      // Network error — fall through to SDK
+    if (response.ok) {
+      const data = await response.json();
+      if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+      throw new Error('Groq returned empty content');
     }
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Groq API ${response.status}: ${errText.substring(0, 200)}`);
   }
 
-  // Fallback: use z-ai-web-dev-sdk
-  const zai = await getZAI();
-  if (!zai) throw new Error('Groq engine: SDK initialization failed');
-
-  const completion = await zai.chat.completions.create({
-    model: process.env.GROK_MODEL || 'grok-3',
-    messages: messages.map((m) => ({
-      role: m.role as 'user' | 'assistant' | 'system',
-      content: m.content,
-    })),
-    temperature: options?.temperature ?? 0.7,
-    max_tokens: options?.maxTokens ?? 8000,
-  });
-  return completion.choices[0]?.message?.content || '';
+  // No GROQ_API_KEY
+  if (IS_PRODUCTION) {
+    throw new Error('GROQ_API_KEY not configured');
+  }
+  // Dev fallback: try via SDK
+  try {
+    const zai = await getZAI();
+    if (!zai) throw new Error('Groq SDK init failed');
+    const completion = await zai.chat.completions.create({
+      model: process.env.GROK_MODEL || 'grok-3',
+      messages: messages.map((m) => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+      })),
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: options?.maxTokens ?? 8000,
+    });
+    return completion.choices[0]?.message?.content || '';
+  } catch (sdkErr: any) {
+    throw new Error(`Groq: no API key and SDK failed: ${sdkErr?.message?.substring(0, 100)}`);
+  }
 }
+
+// ─── Cloudflare Engine ──────────────────────────────────────────────────
 
 async function executeCloudflare(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
-  // Uses z-ai-web-dev-sdk with Llama model (same model family as Cloudflare Workers AI).
-  // Falls back to direct Cloudflare API if CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN are set.
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
-  // If Cloudflare env vars are configured, try direct Workers AI API first
   if (accountId && apiToken) {
     const model = process.env.CLOUDFLARE_AI_MODEL || '@cf/meta/llama-3.1-8b-instruct';
     const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiToken}`,
-        },
-        body: JSON.stringify({
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
-          max_tokens: options?.maxTokens ?? 8192,
-          temperature: options?.temperature ?? 0.7,
-        }),
-      });
+    const response = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        max_tokens: options?.maxTokens ?? 8192,
+        temperature: options?.temperature ?? 0.7,
+      }),
+      timeoutMs: 30000,
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.result?.response) return data.result.response;
-      }
-    } catch {
-      // Direct API failed, fall through to SDK approach
+    if (response.ok) {
+      const data = await response.json();
+      if (data.result?.response) return data.result.response;
+      throw new Error('Cloudflare returned empty response');
     }
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Cloudflare API ${response.status}: ${errText.substring(0, 200)}`);
   }
 
-  // Fallback: use z-ai-web-dev-sdk with Llama model (Cloudflare's model family)
-  const zai = await getZAI();
-  if (!zai) throw new Error('Cloudflare engine: SDK initialization failed');
-
-  const model = process.env.CLOUDFLARE_AI_MODEL?.replace('@cf/', '') || 'llama-3.1-70b-versatile';
-
-  const completion = await zai.chat.completions.create({
-    model,
-    messages: messages.map((m) => ({
-      role: m.role as 'user' | 'assistant' | 'system',
-      content: m.content,
-    })),
-    temperature: options?.temperature ?? 0.7,
-    max_tokens: options?.maxTokens ?? 8192,
-  });
-  return completion.choices[0]?.message?.content || '';
+  // No CF env vars
+  if (IS_PRODUCTION) {
+    throw new Error('CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN not configured');
+  }
+  // Dev fallback: try via SDK with Llama model
+  try {
+    const zai = await getZAI();
+    if (!zai) throw new Error('Cloudflare SDK init failed');
+    const model = process.env.CLOUDFLARE_AI_MODEL?.replace('@cf/', '') || 'llama-3.1-70b-versatile';
+    const completion = await zai.chat.completions.create({
+      model,
+      messages: messages.map((m) => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+      })),
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: options?.maxTokens ?? 8192,
+    });
+    return completion.choices[0]?.message?.content || '';
+  } catch (sdkErr: any) {
+    throw new Error(`Cloudflare: no API keys and SDK failed: ${sdkErr?.message?.substring(0, 100)}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -303,7 +342,7 @@ const ENGINE_EXECUTORS: Record<
  * Send a chat completion request to the specified AI engine.
  *
  * If the engine fails, it automatically falls back through the remaining
- * engines in this order: zai → gemini → grok → cloudflare.
+ * engines in the configured fallback order.
  *
  * This function NEVER throws — it always returns a string.
  */
@@ -329,7 +368,7 @@ export async function chatCompletion(
         }
         // Empty result — try next engine
         console.warn(`[ai-engine] Engine "${engine}" returned empty result`);
-        break; // Don't retry empty results, try next engine
+        break;
       } catch (error: any) {
         const msg = error?.message || '';
 
@@ -337,15 +376,12 @@ export async function chatCompletion(
         if (msg.includes('429') || msg.includes('Too Many Requests') || msg.includes('rate limit') || msg.includes('rate-limit')) {
           consecutive429++;
 
-          // Calculate backoff: use Gemini's suggested retry time if available, otherwise escalate
           let backoffMs: number;
           const geminiRetry = parseGeminiRetrySeconds(msg);
 
           if (geminiRetry > 0) {
-            // Gemini told us exactly how long to wait
             backoffMs = geminiRetry * 1000;
           } else {
-            // Exponential backoff: 10s, 20s, 40s, 80s
             backoffMs = 10000 * Math.pow(2, consecutive429 - 1);
           }
 

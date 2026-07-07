@@ -1,4 +1,4 @@
-import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { formatBibliography } from '@/lib/bibliography-formatter';
 
 export const maxDuration = 300;
@@ -499,7 +499,7 @@ export async function POST(request: Request) {
       references,
       researchMethod,
       additionalInstructions,
-      engineId = 'zai',
+      engineId = DEFAULT_ENGINE,
       previousSections = [],
     } = body as {
       stageId: StageId;

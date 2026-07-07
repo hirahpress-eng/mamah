@@ -1,4 +1,4 @@
-import { generateWithEngine } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
 import { AI_ENGINES, type AIEngineId } from '@/lib/ai-engine-config';
 
 export const maxDuration = 300;
@@ -495,7 +495,7 @@ export async function POST(request: Request) {
     const polishEngine: AIEngineId = engineId || 'zai';
     const validEngine: AIEngineId = AI_ENGINES.some(e => e.id === polishEngine)
       ? polishEngine
-      : 'zai';
+      : DEFAULT_ENGINE;
 
     console.log(`[polish] Starting polish for "${article.title}" with ${article.sections.length} sections`);
 

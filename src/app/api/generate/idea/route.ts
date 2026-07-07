@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { AI_ENGINES } from '@/lib/ai-engine-config';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { idea, engineId: rawEngineId } = body as { idea?: string; engineId?: string };
-    const engineId: AIEngineId = AI_ENGINES.some((e) => e.id === rawEngineId) ? (rawEngineId as AIEngineId) : 'zai';
+    const engineId: AIEngineId = AI_ENGINES.some((e) => e.id === rawEngineId) ? (rawEngineId as AIEngineId) : DEFAULT_ENGINE;
 
     if (!idea || typeof idea !== 'string' || idea.trim().length === 0) {
       return NextResponse.json(

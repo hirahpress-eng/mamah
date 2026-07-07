@@ -1,4 +1,4 @@
-import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { AI_ENGINES } from '@/lib/ai-engine-config';
 import { formatBibliography } from '@/lib/bibliography-formatter';
 
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const engine: AIEngineId = AI_ENGINES.some(e => e.id === engineId) ? engineId : 'zai';
+    const engine: AIEngineId = AI_ENGINES.some(e => e.id === engineId) ? engineId : DEFAULT_ENGINE;
     const keywords = article.keywords || [];
     const title = article.title;
     const refs: Reference[] = article.references || [];

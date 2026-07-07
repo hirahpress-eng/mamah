@@ -253,3 +253,33 @@ Stage Summary:
 - Dev log errors: ZERO
 - All API responses return proper JSON with success:true and expected data structure
 - No bugs or issues found
+---
+Task ID: 7
+Agent: Main Agent
+Task: Fix keyword generation not working and slow on Vercel (production)
+
+Work Log:
+- Diagnosed root cause: On Vercel (production), DEFAULT_ENGINE was 'grok' but GROQ_API_KEY not set → SDK fallback → calls internal-api.z.ai (private IP, unreachable) → 30s+ timeout per engine → eventually reaches gemini but total wait is 60-120+ seconds
+- Rewrote `src/lib/ai-engine.ts`:
+  - Added `IS_PRODUCTION` flag
+  - DEFAULT_ENGINE: 'gemini' on production (has GEMINI_API_KEY on Vercel), 'zai' on dev
+  - FALLBACK_ORDER production: ['gemini', 'grok', 'cloudflare', 'zai']
+  - On production: ALL SDK fallbacks disabled — engines fail immediately if no direct API key
+  - Added `fetchWithTimeout()` helper (45s default timeout) for all direct API calls
+  - executeZAI: throws immediately on production ("internal API unreachable")
+  - executeGemini: direct Google API only on production, SDK only on dev
+  - executeGrok: direct Groq.com API only on production, SDK only on dev
+  - executeCloudflare: direct CF Workers AI only on production, SDK only on dev
+- Updated ALL 13 API routes to use `DEFAULT_ENGINE` instead of hardcoded `'zai'`:
+  - generate/keywords, generate/titles, generate/idea
+  - article/generate, article/generate-section, article/generate-visual, article/polish, article/upgrade, article/reviewer-notes
+  - references/translate-keywords, references/generate-boolean, references/analyze-criteria, references/detect-theories
+  - (writing/generate left as-is due to custom engine mapping)
+
+Stage Summary:
+- On Vercel: AI calls now go directly to Gemini API (~1-3s) instead of timing out on SDK (30s+ per engine)
+- On z.ai dev: All 4 engines still work via SDK + direct API fallbacks
+- Keyword generation verified in browser: title → 5 keywords in ~3s ✅
+- Title generation verified: 1 keyword → 5 titles in ~5s ✅
+- Lint: 0 errors, 0 warnings ✅
+- No code deleted — only modified existing code

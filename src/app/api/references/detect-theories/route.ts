@@ -1,4 +1,4 @@
-import { generateWithEngine } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
 import type { AIEngineId } from '@/lib/ai-engine';
 
 // ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ function buildReferencesText(references: ReferenceInput[]): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { references, engineId = 'zai' } = body as {
+    const { references, engineId = DEFAULT_ENGINE } = body as {
       references?: ReferenceInput[];
       engineId?: AIEngineId;
     };
