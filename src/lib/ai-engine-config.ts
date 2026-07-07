@@ -26,18 +26,20 @@ export const AI_ENGINES: AIEngineConfig[] = [
   },
   {
     id: 'gemini',
-    name: 'Tim 2 (Default)',
+    name: 'Tim 2',
     description: 'Konteks panjang hingga 1 juta token',
-    bestFor: 'Pembuatan artikel, judul & kata kunci',
-    isDefault: process.env.NODE_ENV === 'production',
+    bestFor: 'Analisis referensi, konten panjang, generasi cadangan',
+    isDefault: false,
     icon: '🔵',
   },
   {
     id: 'grok',
-    name: 'Tim 3',
-    description: 'Grok 3 — penalaran cepat dari xAI',
-    bestFor: 'Draf cepat, generasi ringkas, mesin alternatif',
-    isDefault: false,
+    name: process.env.NODE_ENV === 'production' ? 'Tim 3 (Default)' : 'Tim 3',
+    description: 'Groq Llama 3.3 70B — inferensi super cepat',
+    bestFor: process.env.NODE_ENV === 'production'
+      ? 'Pembuatan artikel, judul & kata kunci'
+      : 'Draf cepat, generasi ringkas, mesin alternatif',
+    isDefault: process.env.NODE_ENV === 'production',
     icon: '🟠',
   },
   {

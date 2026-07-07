@@ -31,15 +31,15 @@ export interface ChatMessage {
 }
 
 export const DEFAULT_ENGINE: AIEngineId =
-  process.env.NODE_ENV === 'production' ? 'gemini' : 'zai';
+  process.env.NODE_ENV === 'production' ? 'grok' : 'zai';
 
 /** Fallback order when the selected engine fails.
- *  On Vercel (production), zai is placed LAST because internal-api.z.ai
- *  is not reachable from Vercel's network (private IPs).
+ *  On Vercel (production): groq first (has real API key), then cloudflare, gemini, zai last.
+ *  On z.ai (development): zai first (internal API), then gemini, grok, cloudflare.
  */
 const FALLBACK_ORDER: AIEngineId[] =
   process.env.NODE_ENV === 'production'
-    ? ['gemini', 'cloudflare', 'grok', 'zai']
+    ? ['grok', 'cloudflare', 'gemini', 'zai']
     : ['zai', 'gemini', 'grok', 'cloudflare'];
 
 // ---------------------------------------------------------------------------
@@ -173,10 +173,11 @@ async function executeGrok(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number },
 ): Promise<string> {
-  // Try direct xAI API first if GROK_API_KEY is configured
-  const apiKey = process.env.GROK_API_KEY;
+  // Groq.com (fast Llama inference) — uses GROQ_API_KEY
+  // Falls back to z-ai-web-dev-sdk if no key configured
+  const apiKey = process.env.GROQ_API_KEY;
   if (apiKey) {
-    const baseUrl = process.env.GROK_BASE_URL || 'https://api.x.ai/v1';
+    const baseUrl = process.env.GROK_BASE_URL || 'https://api.groq.com/openai/v1';
     try {
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -185,25 +186,30 @@ async function executeGrok(
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: process.env.GROK_MODEL || 'grok-3',
+          model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
           temperature: options?.temperature ?? 0.7,
-          max_tokens: options?.maxTokens ?? 8000,
+          max_tokens: options?.maxTokens ?? 8192,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+      } else {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`Groq API ${response.status}: ${errText.substring(0, 200)}`);
       }
-    } catch {
-      // Direct API failed, fall through to SDK approach
+    } catch (error: any) {
+      // If it's a non-timeout error from the API call itself, re-throw
+      if (error?.message?.includes('Groq API')) throw error;
+      // Network error — fall through to SDK
     }
   }
 
-  // Fallback: use z-ai-web-dev-sdk with Grok model
+  // Fallback: use z-ai-web-dev-sdk
   const zai = await getZAI();
-  if (!zai) throw new Error('Grok engine: SDK initialization failed');
+  if (!zai) throw new Error('Groq engine: SDK initialization failed');
 
   const completion = await zai.chat.completions.create({
     model: process.env.GROK_MODEL || 'grok-3',
