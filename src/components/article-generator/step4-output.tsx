@@ -997,10 +997,10 @@ export default function Step4Output() {
       const text = buildPlainText(article);
       await navigator.clipboard.writeText(text);
       setCopiedAll(true);
-      toast.success('Full article copied to clipboard');
+      toast.success('Berhasil disalin ke clipboard');
       setTimeout(() => setCopiedAll(false), 2000);
     } catch {
-      toast.error('Failed to copy article');
+      toast.error('Gagal menyalin');
     }
   }, [article]);
 
@@ -1413,7 +1413,7 @@ export default function Step4Output() {
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Copy All</TooltipContent>
+                      <TooltipContent>Copy Semua</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   {/* Dark/Light Toggle */}
@@ -1572,7 +1572,7 @@ export default function Step4Output() {
                 ) : (
                   <Copy className="size-4" />
                 )}
-                <span className="hidden sm:inline">Copy All</span>
+                <span className="hidden sm:inline">Copy Semua</span>
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>

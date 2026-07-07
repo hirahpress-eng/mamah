@@ -164,6 +164,7 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
   );
   const abortRef = useRef<AbortController | null>(null);
   const autoGenRef = useRef(false);
+  const [copied, setCopied] = useState(false);
 
   // Sync local state from store on mount
   useEffect(() => {
@@ -773,9 +774,11 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
     if (!store.fullOutput) return;
     try {
       await navigator.clipboard.writeText(store.fullOutput);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
       toast.success('Berhasil disalin ke clipboard');
     } catch {
-      toast.error('Gagal menyalin ke clipboard');
+      toast.error('Gagal menyalin');
     }
   }, [store.fullOutput]);
 
@@ -1731,8 +1734,27 @@ export default function CicilGenerator({ mode, onBack }: CicilGeneratorProps) {
       </div>
 
       {/* Output Content */}
-      <Card className="flex-1">
-        <CardContent className="p-4 sm:p-6">
+      <Card className="relative flex-1">
+        {/* Copy ghost button — top-right corner */}
+        <button
+          type="button"
+          onClick={handleCopyOutput}
+          disabled={!store.fullOutput}
+          className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+          title={copied ? 'Tersalin!' : 'Salin'}
+        >
+          {copied ? (
+            <Check className="size-4 text-emerald-600" />
+          ) : (
+            <Copy className="size-4" />
+          )}
+          {copied && (
+            <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium text-emerald-600">
+              Tersalin!
+            </span>
+          )}
+        </button>
+        <CardContent className="p-4 pt-6 sm:p-6 sm:pt-8">
           <ScrollArea className="max-h-[60vh] w-full">
             <div className="prose prose-sm max-w-none pr-2">
               {store.fullOutput ? (
