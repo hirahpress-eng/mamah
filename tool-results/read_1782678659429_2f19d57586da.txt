@@ -1,0 +1,861 @@
+     1→     1→import { NextResponse } from 'next/server';
+     2→     2→import { generateWithEngine, type AIEngineId } from '@/lib/ai-engine';
+     3→     3→import { AI_ENGINES } from '@/lib/ai-engine-config';
+     4→     4→import { formatBibliography } from '@/lib/bibliography-formatter';
+     5→     5→
+     6→     6→// ─── Types ─────────────────────────────────────────────────────────────────────
+     7→     7→
+     8→     8→interface Reference {
+     9→     9→  id: string;
+    10→    10→  authors: string;
+    11→    11→  title: string;
+    12→    12→  year: number | string;
+    13→    13→  journal?: string;
+    14→    14→  doi?: string;
+    15→    15→  volume?: string;
+    16→    16→  issue?: string;
+    17→    17→  pages?: string;
+    18→    18→  refType: string;
+    19→    19→  isSelected: boolean;
+    20→    20→  abstract?: string;
+    21→    21→  keywords?: string[];
+    22→    22→  relevanceScore?: number;
+    23→    23→  source?: string;
+    24→    24→  pdfUrl?: string;
+    25→    25→}
+    26→    26→
+    27→    27→// ─── Per-Section Retry with Exponential Backoff ────────────────────────────────
+    28→    28→
+    29→    29→const FALLBACK_PATTERN = /all ai engines are currently unavailable/i;
+    30→    30→const RETRY_DELAYS = [10000, 25000, 50000, 80000]; // ms — aggressive backoff to survive rate limits
+    31→    31→const MAX_SECTION_RETRIES = 5;
+    32→    32→
+    33→    33→// ─── Word Count Targets (18-page article = ~16,000 words body) ─────────────────
+    34→    34→// These are the MINIMUM word counts each section must achieve.
+    35→    35→// The AI will be asked to expand if below these thresholds.
+    36→    36→
+    37→    37→const SECTION_MIN_WORDS: Record<string, number> = {
+    38→    38→  abstract: 250,
+    39→    39→  introduction: 1500,
+    40→    40→  literature_review: 2500,
+    41→    41→  method: 1500,
+    42→    42→  results: 3000,
+    43→    43→  discussion: 2500,
+    44→    44→  conclusion: 600,
+    45→    45→};
+    46→    46→
+    47→    47→// The ideal TARGET word counts the user wants to see
+    48→    48→const SECTION_TARGET_WORDS: Record<string, number> = {
+    49→    49→  abstract: 300,
+    50→    50→  introduction: 2000,
+    51→    51→  literature_review: 3250,
+    52→    52→  method: 2000,
+    53→    53→  results: 4000,
+    54→    54→  discussion: 3250,
+    55→    55→  conclusion: 800,
+    56→    56→};
+    57→    57→
+    58→    58→function countWords(text: string): number {
+    59→    59→  return text.split(/\s+/).filter((w) => w.length > 0).length;
+    60→    60→}
+    61→    61→
+    62→    62→function isSectionValid(content: string): boolean {
+    63→    63→  if (!content || content.trim().length === 0) return false;
+    64→    64→  if (FALLBACK_PATTERN.test(content)) return false;
+    65→    65→  const words = countWords(content);
+    66→    66→  if (words < 100) return false;
+    67→    67→  if (words > 25000) return false; // catch garbage output
+    68→    68→  return true;
+    69→    69→}
+    70→    70→
+    71→    71→async function generateSectionWithRetry(
+    72→    72→  sectionName: string,
+    73→    73→  engine: AIEngineId,
+    74→    74→  systemPrompt: string,
+    75→    75→  userPrompt: string,
+    76→    76→  options?: { maxTokens?: number },
+    77→    77→): Promise<string> {
+    78→    78→  for (let attempt = 1; attempt <= MAX_SECTION_RETRIES; attempt++) {
+    79→    79→    const result = (await generateWithEngine(engine, systemPrompt, userPrompt, options)) || '';
+    80→    80→
+    81→    81→    if (isSectionValid(result)) {
+    82→    82→      console.log(
+    83→    83→        `[article-gen] ${sectionName}: ${result.length} chars, ${countWords(result)} words`,
+    84→    84→      );
+    85→    85→      return result;
+    86→    86→    }
+    87→    87→
+    88→    88→    // Log word count on failure for debugging
+    89→    89→    const wc = countWords(result);
+    90→    90→    console.warn(
+    91→    91→      `[article-gen] ${sectionName} attempt ${attempt}/${MAX_SECTION_RETRIES} invalid: ${result.length} chars, ${wc} words, empty=${!result.trim()}`,
+    92→    92→    );
+    93→    93→
+    94→    94→    // Content is empty/short/fallback — retry if attempts remain
+    95→    95→    if (attempt < MAX_SECTION_RETRIES) {
+    96→    96→      const delay = RETRY_DELAYS[attempt - 1];
+    97→    97→      console.log(
+    98→    98→        `[article-gen] Retrying ${sectionName} (attempt ${attempt + 1}/${MAX_SECTION_RETRIES})...`,
+    99→    99→      );
+   100→   100→      await new Promise<void>((r) => setTimeout(r, delay));
+   101→   101→    } else {
+   102→   102→      console.error(
+   103→   103→        `[article-gen] ${sectionName} failed after ${MAX_SECTION_RETRIES} attempts (final: ${wc} words)`,
+   104→   104→      );
+   105→   105→    }
+   106→   106→  }
+   107→   107→
+   108→   108→  return '';
+   109→   109→}
+   110→   110→
+   111→   111→// ─── Post-Generation Word Count Expansion ─────────────────────────────────────
+   112→   112→// If a section is below its target word count, this function sends an EXPANSION
+   113→   113→// prompt asking the AI to lengthen the section while maintaining quality.
+   114→   114→
+   115→   115→async function expandSectionToTarget(
+   116→   116→  sectionName: string,
+   117→   117→  sectionType: string,
+   118→   118→  currentContent: string,
+   119→   119→  engine: AIEngineId,
+   120→   120→  systemPrompt: string,
+   121→   121→  maxExpansionAttempts: number = 2,
+   122→   122→): Promise<string> {
+   123→   123→  const currentWords = countWords(currentContent);
+   124→   124→  const minWords = SECTION_MIN_WORDS[sectionType] || 500;
+   125→   125→  const targetWords = SECTION_TARGET_WORDS[sectionType] || minWords;
+   126→   126→
+   127→   127→  // If already at or above target, no expansion needed
+   128→   128→  if (currentWords >= targetWords) {
+   129→   129→    console.log(`[expand] ${sectionName}: ${currentWords}/${targetWords} words — NO expansion needed`);
+   130→   130→    return currentContent;
+   131→   131→  }
+   132→   132→
+   133→   133→  // If below minimum, definitely expand. If between min and target, also expand.
+   134→   134→  const deficit = targetWords - currentWords;
+   135→   135→  console.log(`[expand] ${sectionName}: ${currentWords}/${targetWords} words — EXPANDING by ~${deficit} words`);
+   136→   136→
+   137→   137→  let content = currentContent;
+   138→   138→
+   139→   139→  for (let attempt = 1; attempt <= maxExpansionAttempts; attempt++) {
+   140→   140→    const wordsNow = countWords(content);
+   141→   141→    const remainingDeficit = targetWords - wordsNow;
+   142→   142→
+   143→   143→    if (remainingDeficit <= 0) {
+   144→   144→      console.log(`[expand] ${sectionName}: reached ${wordsNow} words after expansion — SUCCESS`);
+   145→   145→      break;
+   146→   146→    }
+   147→   147→
+   148→   148→    const expansionPrompt = `## SECTION EXPANSION TASK
+   149→   149→
+   150→   150→The following ${sectionName} section currently has ${wordsNow} words but MUST reach at least ${targetWords} words (currently short by ~${remainingDeficit} words).
+   151→   151→
+   152→   152→YOUR TASK: Expand this section by adding approximately ${remainingDeficit} MORE words of high-quality academic content. Follow these rules precisely:
+   153→   153→
+   154→   154→1. **DO NOT delete or significantly rewrite** any existing content — ADD new material
+   155→   155→2. **Insert new paragraphs** in logical positions where they naturally fit the argument flow
+   156→   156→3. **Add more detailed analysis** — expand claims with additional evidence, deeper reasoning, and more nuanced discussion
+   157→   157→4. **Add more scholarly dialogue** — introduce additional citation synthesis where the argument can be strengthened
+   158→   158→5. **Expand existing paragraphs** that are thin (under 100 words) by adding supporting evidence and elaboration
+   159→   159→6. **Maintain the same writing quality** — formal British English, hedging language, sophisticated transitions
+   160→   160→7. **Do NOT add new section headings** — only expand within the existing structure
+   161→   161→8. **Do NOT include any preamble** — output the COMPLETE expanded section from start to finish
+   162→   162→
+   163→   163→CRITICAL: The output must be the COMPLETE ${sectionName} section (not just the new parts). It must read as a cohesive, naturally-flowing academic text.
+   164→   164→
+   165→   165→## CURRENT ${sectionName.toUpperCase()} SECTION (${wordsNow} words):
+   166→   166→
+   167→   167→${content}
+   168→   168→
+   169→   169→OUTPUT THE COMPLETE EXPANDED ${sectionName.toUpperCase()} SECTION ABOVE. No preamble. No commentary. Start from the very first sentence.`;
+   170→   170→
+   171→   171→    try {
+   172→   172→      const expandedResult = await generateWithEngine(
+   173→   173→        engine,
+   174→   174→        systemPrompt,
+   175→   175→        expansionPrompt,
+   176→   176→        { maxTokens: 32000 },
+   177→   177→      );
+   178→   178→
+   179→   179→      if (expandedResult && expandedResult.trim().length > 0 && !FALLBACK_PATTERN.test(expandedResult)) {
+   180→   180→        const newWordCount = countWords(expandedResult);
+   181→   181→        if (newWordCount > wordsNow) {
+   182→   182→          const improvement = newWordCount - wordsNow;
+   183→   183→          console.log(`[expand] ${sectionName} attempt ${attempt}: ${wordsNow} → ${newWordCount} words (+${improvement})`);
+   184→   184→          content = expandedResult;
+   185→   185→
+   186→   186→          if (newWordCount >= targetWords) {
+   187→   187→            console.log(`[expand] ${sectionName}: TARGET REACHED at ${newWordCount} words`);
+   188→   188→            break;
+   189→   189→          }
+   190→   190→        } else {
+   191→   191→          console.warn(`[expand] ${sectionName} attempt ${attempt}: no improvement (${newWordCount} words)`);
+   192→   192→        }
+   193→   193→      } else {
+   194→   194→        console.warn(`[expand] ${sectionName} attempt ${attempt}: invalid/empty result`);
+   195→   195→      }
+   196→   196→    } catch (err) {
+   197→   197→      console.error(`[expand] ${sectionName} attempt ${attempt} error:`, err);
+   198→   198→    }
+   199→   199→
+   200→   200→    // Wait between expansion attempts
+   201→   201→    if (attempt < maxExpansionAttempts) {
+   202→   202→      await new Promise<void>((r) => setTimeout(r, 10000));
+   203→   203→    }
+   204→   204→  }
+   205→   205→
+   206→   206→  const finalWords = countWords(content);
+   207→   207→  if (finalWords < minWords) {
+   208→   208→    console.warn(`[expand] ${sectionName}: WARNING — final ${finalWords} words is still below minimum ${minWords}`);
+   209→   209→  } else if (finalWords < targetWords) {
+   210→   210→    console.log(`[expand] ${sectionName}: final ${finalWords} words (above minimum ${minWords}, below target ${targetWords})`);
+   211→   211→  } else {
+   212→   212→    console.log(`[expand] ${sectionName}: final ${finalWords} words — TARGET MET ✓`);
+   213→   213→  }
+   214→   214→
+   215→   215→  return content;
+   216→   216→}
+   217→   217→
+   218→   218→// ─── POST Handler ──────────────────────────────────────────────────────────────
+   219→   219→
+   220→   220→export async function POST(request: Request) {
+   221→   221→  try {
+   222→   222→    const body = await request.json();
+   223→   223→    const { title, keywords, references, researchMethod, additionalInstructions, engineId } = body;
+   224→   224→
+   225→   225→    if (!title || !keywords || !references || !researchMethod) {
+   226→   226→      return NextResponse.json(
+   227→   227→        { success: false, error: 'Missing required fields' },
+   228→   228→        { status: 400 },
+   229→   229→      );
+   230→   230→    }
+   231→   231→
+   232→   232→    if (!Array.isArray(references) || references.length < 3) {
+   233→   233→      return NextResponse.json(
+   234→   234→        { success: false, error: 'At least 3 references are required' },
+   235→   235→        { status: 400 },
+   236→   236→      );
+   237→   237→    }
+   238→   238→
+   239→   239→    // Validate engine ID
+   240→   240→    const engine: AIEngineId = AI_ENGINES.some(e => e.id === engineId) ? engineId : 'zai';
+   241→   241→
+   242→   242→    // Convert researchMethod slug to a human-readable label
+   243→   243→    const methodLabel = (researchMethod as string)
+   244→   244→      .replace(/-/g, ' ')
+   245→   245→      .replace(/\b\w/g, (l: string) => l.toUpperCase());
+   246→   246→
+   247→   247→    const selectedRefs = references.filter((r: Reference) => r.isSelected);
+   248→   248→
+   249→   249→    // Filter out invalid references (future years, too old, empty titles)
+   250→   250→    const currentYear = new Date().getFullYear();
+   251→   251→    const validSelectedRefs = selectedRefs.filter((r: Reference) => {
+   252→   252→      const year = typeof r.year === 'number' ? r.year : parseInt(String(r.year)) || 0;
+   253→   253→      if (year > currentYear || year < 1990) return false;
+   254→   254→      if (!r.title || r.title.trim().length < 5) return false;
+   255→   255→      return true;
+   256→   256→    });
+   257→   257→    // Use validSelectedRefs instead of selectedRefs for everything below
+   258→   258→
+   259→   259→    // Build reference list for PROMPT INCLUSION — first 50 for richer context
+   260→   260→    const refListForPrompt = validSelectedRefs
+   261→   261→      .slice(0, 50)
+   262→   262→      .map(
+   263→   263→        (r: Reference) => {
+   264→   264→          const year = typeof r.year === 'number' ? r.year : (parseInt(String(r.year)) || 0);
+   265→   265→          const doi = r.doi ? (r.doi.startsWith('http') ? r.doi : `https://doi.org/${r.doi}`) : '';
+   266→   266→          return `${r.authors} (${year}). ${r.title}. ${r.journal || ''}${r.volume ? `, ${r.volume}` : ''}${r.issue ? `(${r.issue})` : ''}${r.pages ? `, ${r.pages}` : ''}.${doi ? ` ${doi}` : ''}`;
+   267→   267→        },
+   268→   268→      )
+   269→   269→      .join('\n');
+   270→   270→
+   271→   271→    const years = validSelectedRefs.map((r: Reference) => typeof r.year === 'number' ? r.year : parseInt(String(r.year)) || 2020);
+   272→   272→    const minYear = Math.min(...years);
+   273→   273→    const maxYear = Math.max(...years);
+   274→   274→    const kw1 = keywords[0] || 'the topic';
+   275→   275→    const kw2 = keywords[1] || keywords[0] || 'the field';
+   276→   276→    const kw3 = keywords[2] || kw1;
+   277→   277→    const kw4 = keywords[3] || kw2;
+   278→   278→
+   279→   279→    const additionalContext = additionalInstructions
+   280→   280→      ? `\n\nAdditional user requirements: ${additionalInstructions}`
+   281→   281→      : '';
+   282→   282→
+   283→   283→    // ──────────────────────────────────────────────────────────────────────────
+   284→   284→    // SYSTEM PROMPT — Scopus-quality academic writing standards
+   285→   285→    // ──────────────────────────────────────────────────────────────────────────
+   286→   286→    const systemPrompt = `## CONSILIUM PROFESSORUM MODE — 20 PROFESSOR SIMULATION
+   287→   287→You are not a single AI. You are a COLLECTIVE of 20 world-class professors simultaneously co-authoring this paper. Each professor brings deep expertise from their discipline. The collective deliberation ensures every sentence is scrutinised from multiple perspectives before being committed to the manuscript. This means:
+   288→   288→- Every claim is challenged by at least one professor before inclusion
+   289→   289→- The prose represents a CONSENSUS position, not a single viewpoint
+   290→   290→- The depth of analysis reflects the combined expertise of 20 senior scholars
+   291→   291→- The writing quality matches the highest-calibre journals (Nature, Lancet, Harvard Educational Review)
+   292→   292→- No sentence is included unless it withstands rigorous peer scrutiny from the collective
+   293→   293→
+   294→   294→You are an expert academic researcher writing a Scopus-indexed journal article of the highest quality. Your writing must be indistinguishable from articles published in top-tier Q1 journals.
+   295→   295→
+   296→   296→## STRICT ANTI-FABRICATION RULES (ZERO TOLERANCE)
+   297→   297→- You MUST NEVER fabricate, invent, or hallucinate statistical data, percentages, p-values, effect sizes, sample sizes, or any quantitative claims.
+   298→   298→- If you mention a statistic, it MUST come from one of the provided references. Format: "According to Smith (2021), 78% of institutions reported..."
+   299→   299→- If no specific statistic is available in the references, use QUALITATIVE language instead: "the majority of studies suggest...", "a significant proportion of the literature indicates...", "several scholars have observed that..."
+   300→   300→- NEVER include p-values, confidence intervals, Cohen's d, or effect sizes unless they appear verbatim in a cited source.
+   301→   301→- NEVER create fake years like 2077, 2026, or future dates.
+   302→   302→
+   303→   303→## REFERENCE USAGE — STRICT EXACT MATCHING RULE (ZERO TOLERANCE)
+   304→   304→- You MUST ONLY cite references from the "References available" list provided in each prompt.
+   305→   305→- NEVER invent, fabricate, or hallucinate a reference that is not in the provided list.
+   306→   306→- NEVER cite a reference about a completely different topic (e.g., if the article is about education, do NOT cite references about AI cybersecurity, energy systems, or organisational resilience unless they appear in the provided list).
+   307→   307→- If you cannot support a claim with a provided reference, either rephrase the claim as a general observation or omit it entirely.
+   308→   308→- Cross-check EVERY (Author, Year) citation against the provided list before including it.
+   309→   309→- CRITICAL: Every single reference you cite in the body text MUST appear in the References list at the end. Do NOT cite any reference that is not in the provided list. Do NOT omit any cited reference from the bibliography.
+   310→   310→- The bibliography must contain EXACTLY the references you cited in the text — no more, no fewer. If you cited (Smith, 2021) in the text, Smith (2021) MUST appear in the references. If a reference in the list was never cited, do NOT include it in the bibliography.
+   311→   311→
+   312→   312→## ANTI-REPETITION RULES
+   313→   313→- Never repeat the same phrase, sentence structure, or transition within 3 consecutive paragraphs.
+   314→   314→- Never start two consecutive paragraphs with the same word or phrase.
+   315→   315→- If you have used a transition phrase, do not reuse it within 500 words.
+   316→   316→- Vary sentence length: mix short impactful sentences with longer complex ones.
+   317→   317→- Keep paragraphs concise: each paragraph should make ONE main point (80-150 words).
+   318→   318→- Never repeat the same citation within 200 words.
+   319→   319→
+   320→   320→## FORMATTING RULES
+   321→   321→- Do NOT include "Introduction", "Abstract", "Conclusion" etc. as headings at the start of sections — start directly with the content.
+   322→   322→- Output ONLY the section content — no preamble, no meta-commentary, no "Here is the introduction:".
+   323→   323→- Do NOT include page numbers, headers, or footers.
+   324→   324→- Do NOT include "Keywords:" or "Word count:" at the start or end of any section.
+   325→   325→
+   326→   326→## LANGUAGE STANDARDS
+   327→   327→- Use formal British English exclusively (analyse, organisation, behaviour, programme, favour, colour, centre, rigour, endeavour, modelling, fulfil, recognise — never American spellings).
+   328→   328→- Employ sophisticated academic vocabulary and nuanced, complex sentence structures.
+   329→   329→- Use present tense for established knowledge and general truths; past tense for specific study methodologies and findings.
+   330→   330→- No colloquial language, contractions, bullet-point lists in body text, or informal tone whatsoever.
+   331→   331→
+   332→   332→## HEDGING LANGUAGE (MANDATORY THROUGHOUT)
+   333→   333→You must use hedging language to signal academic caution and epistemological humility. Use these and similar constructions frequently:
+   334→   334→- "suggests that", "may indicate", "appears to", "seems likely", "could be interpreted as"
+   335→   335→- "it is plausible that", "there is evidence to suggest", "tends to", "is arguably"
+   336→   336→- "provides tentative support for", "might partly explain", "raises the possibility that"
+   337→   337→- "the data are consistent with", "one interpretation is that", "it remains unclear whether"
+   338→   338→NEVER use absolute certainty language such as "proves that", "definitely", "undoubtedly", "clearly shows" (except when referring to a citation's own claim with attribution).
+   339→   339→
+   340→   340→## CITATION INTEGRATION — SYNTHESIS, NOT LISTING
+   341→   341→Every claim must be supported by APA 7th edition bodynote format (Author, Year). However, citations must be SYNTHESISED into scholarly dialogue, NEVER listed in isolation.
+   342→   342→
+   343→   343→WEAK citation pattern (DO NOT USE):
+   344→   344→"Smith (2020) studied X. Jones (2021) found Y. Brown (2022) argued Z."
+   345→   345→
+   346→   346→STRONG citation pattern (USE THIS):
+   347→   347→"Whilst Smith (2020) demonstrated that institutional factors mediate the relationship between X and Y, Jones (2021) presented compelling evidence that individual agency is the dominant determinant, suggesting a paradigm shift in how the phenomenon is conceptualised. This tension is further complicated by Brown (2022), who proposed a dialectical model wherein structural constraints and agentic responses co-constitute outcomes — a position that builds upon earlier work by Lee (2019) but challenges the unidirectional causality assumed by both Smith and Jones."
+   348→   348→
+   349→   349→Citations must engage in genuine scholarly dialogue: agreeing, extending, qualifying, contradicting, or synthesising previous work. Multiple citations per sentence are encouraged when they relate to the same argument.
+   350→   350→
+   351→   351→## PREFERRED ACADEMIC TRANSITION PHRASES
+   352→   352→Use these and similar phrases to create smooth, sophisticated flow between and within paragraphs:
+   353→   353→1. "A growing body of literature suggests that..."
+   354→   354→2. "Building upon the work of..."
+   355→   355→3. "In comparison with..."
+   356→   356→4. "In contrast to the findings of..."
+   357→   357→5. "Whilst considerable attention has been paid to..., less is known about..."
+   358→   358→6. "Moreover, the relationship between X and Y remains underexplored..."
+   359→   359→7. "Furthermore, it is noteworthy that..."
+   360→   360→8. "Notwithstanding these advances..."
+   361→   361→9. "Several scholars have argued that..."
+   362→   362→10. "Consistent with this perspective..."
+   363→   363→11. "Drawing upon the theoretical framework of..."
+   364→   364→12. "To the extent that..."
+   365→   365→13. "In light of these findings..."
+   366→   366→14. "It follows from this that..."
+   367→   367→15. "Consequently, there is a pressing need to..."
+   368→   368→16. "The aforementioned findings collectively suggest that..."
+   369→   369→17. "In a similar vein..."
+   370→   370→18. "From a different theoretical standpoint..."
+   371→   371→19. "Against this backdrop..."
+   372→   372→20. "The implications of these observations extend beyond..."
+   373→   373→21. "Recent scholarship has begun to challenge the assumption that..."
+   374→   374→22. "An alternative interpretation, advanced by..."
+   375→   375→23. "This raises important questions about..."
+   376→   376→24. "As a corollary..."
+   377→   377→25. "Taken together, these studies indicate that..."
+   378→   378→
+   379→   379→## WEAK VS STRONG ACADEMIC WRITING
+   380→   380→WEAK: "Many researchers have studied this topic. The results show different things."
+   381→   381→STRONG: "Despite a substantial body of empirical work, the literature on this topic remains characterised by significant theoretical fragmentation, with findings that are often contradictory and difficult to reconcile across methodological paradigms."
+   382→   382→
+   383→   383→WEAK: "This study is important because it fills a gap."
+   384→   384→STRONG: "The present study addresses a critical lacuna in the extant literature by offering an integrative analysis that synthesises hitherto disparate theoretical perspectives and empirical findings."
+   385→   385→
+   386→   386→WEAK: "The results showed that X affects Y."
+   387→   387→STRONG: "The analysis suggests that X may exert a significant influence on Y, although the strength and direction of this relationship appear to be contingent upon several moderating variables."
+   388→   388→
+   389→   389→## STRUCTURAL REQUIREMENTS
+   390→   390→- Each paragraph must flow naturally into the next through transitional phrases — the prose must read as a cohesive, intellectually compelling argument, not a series of disconnected observations.
+   391→   391→- Ensure precise operational definitions and conceptual clarity throughout.
+   392→   392→- Vary your evidence base — never repeat the same citation in consecutive sentences.
+   393→   393→- Engage critically with sources through scholarly dialogue, not mere summary.
+   394→   394→- The overall article should read as if the referenced scholars are engaged in a vibrant, ongoing academic conversation.`;
+   395→   395→
+   396→   396→    // ──────────────────────────────────────────────────────────────────────────
+   397→   397→    // TITLE GENERATION (target 10-15 words)
+   398→   398→    // ──────────────────────────────────────────────────────────────────────────
+   399→   399→    const titlePrompt = `The current working title is: "${title}"
+   400→   400→
+   401→   401→Your goal is to produce a title of exactly 10-15 words — this is a TARGET to achieve. The title must clearly convey the research topic, method, and scope.
+   402→   402→
+   403→   403→If the title is shorter than 10 words, expand it to reach the target range by adding specificity about the research scope, method, or context.
+   404→   404→
+   405→   405→If the title is already 10-15 words, return it exactly as provided — do not change it.
+   406→   406→
+   407→   407→If the title exceeds 15 words, refine it to fit within 15 words while preserving the full scholarly meaning, specificity, and academic rigour.
+   408→   408→
+   409→   409→Output ONLY the final title — nothing else. No quotation marks, no explanation.`;
+   410→   410→
+   411→   411→    // Helper: delay between section calls to avoid Z.ai rate limiting (429)
+   412→   412→    // 8 seconds between sections prevents 429s across all engines
+   413→   413→    const interSectionDelay = () => new Promise<void>((r) => setTimeout(r, 8000));
+   414→   414→
+   415→   415→    const titleCompletion = await generateWithEngine(engine, systemPrompt, titlePrompt);
+   416→   416→    const finalTitle = (titleCompletion || title).replace(/^["']|["']$/g, '').trim();
+   417→   417→    console.log(`[article-gen] Title: ${finalTitle.length} chars, ${countWords(finalTitle)} words`);
+   418→   418→
+   419→   419→    // ──────────────────────────────────────────────────────────────────────────
+   420→   420→    // SECTION 1: ABSTRACT (250-350 words, single paragraph, Scopus pattern)
+   421→   421→    // ──────────────────────────────────────────────────────────────────────────
+   422→   422→    const abstractPrompt = `OUTPUT THE ABSTRACT DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first sentence of the abstract.
+   423→   423→
+   424→   424→Write a Scopus-quality ABSTRACT for the following research article. The abstract must be between 250 and 350 words, written as a SINGLE cohesive paragraph with no line breaks, no headings, and no subheadings. This is a firm target range — do not write less than 250 words, and aim for richness and thoroughness.
+   425→   425→
+   426→   426→Title: "${finalTitle}"
+   427→   427→Keywords: ${keywords.join(', ')}
+   428→   428→Research Method: ${methodLabel}
+   429→   429→Number of references analysed: ${validSelectedRefs.length}
+   430→   430→Publication year range: ${minYear}-${maxYear}
+   431→   431→
+   432→   432→The abstract must follow this precise narrative flow, as is standard in Scopus-indexed journals:
+   433→   433→
+   434→   434→1. **Global context and significance (1-2 sentences):** Open with a broad, compelling statement about the worldwide relevance and contemporary urgency of ${kw1}. This should establish why the topic matters on a global scale. Reference 1-2 sources to ground the claim.
+   435→   435→
+   436→   436→2. **Research gap/problem (1 sentence):** State concisely what is missing, contested, or insufficiently understood in the current literature. This should create intellectual tension that the article resolves.
+   437→   437→
+   438→   438→3. **Research objective (1 sentence):** State precisely and unambiguously what this article aims to investigate, analyse, or synthesise.
+   439→   439→
+   440→   440→4. **Methodology (1-2 sentences):** Describe the ${methodLabel} approach, including data sources (databases, year range) and the analytical framework employed.
+   441→   441→
+   442→   442→5. **Key findings (3-4 sentences — THIS IS THE LONGEST PART):** Report the most significant, specific discoveries with concrete details. Mention the main themes, patterns, or relationships that emerged. Reference at least 3 sources. This section should be substantially longer than any other part of the abstract.
+   443→   443→
+   444→   444→6. **Implications and contribution (1-2 sentences):** Articulate what is genuinely novel about this article's contribution and its theoretical, practical, or policy implications.
+   445→   445→
+   446→   446→HEDGING: Use hedging language throughout — "suggests", "may indicate", "appears to", "provides tentative support for". Never claim certainty.
+   447→   447→
+   448→   448→CITATIONS: Weave APA bodynote citations (Author, Year) naturally into the prose. Multiple citations should be synthesised, not listed. Only cite references from the provided list.
+   449→   449→
+   450→   450→WORD COUNT: The abstract MUST be at least 250 words. If you fall short, expand the findings section with more specific details, additional citations, and deeper analytical observations. Writing up to 350 words is encouraged.
+   451→   451→
+   452→   452→OUTPUT THE ABSTRACT DIRECTLY. No preamble, no "Here is the abstract:", no section headers. Start with the first sentence.
+   453→   453→
+   454→   454→References available:
+   455→   455→${refListForPrompt}
+   456→   456→${additionalContext}`;
+   457→   457→
+   458→   458→    let abstractContent = await generateSectionWithRetry('Abstract', engine, systemPrompt, abstractPrompt, { maxTokens: 16000 });
+   459→   459→    abstractContent = await expandSectionToTarget('Abstract', 'abstract', abstractContent, engine, systemPrompt);
+   460→   460→    await interSectionDelay();
+   461→   461→
+   462→   462→    // ──────────────────────────────────────────────────────────────────────────
+   463→   463→    // SECTION 2: INTRODUCTION (1000-1500 words, 7-10 paragraphs, NO subheadings)
+   464→   464→    // Funnel approach: broad context → specific gap → research questions
+   465→   465→    // ──────────────────────────────────────────────────────────────────────────
+   466→   466→    const introPrompt = `OUTPUT THE INTRODUCTION SECTION DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first paragraph of the introduction.
+   467→   467→
+   468→   468→Write a Scopus-quality INTRODUCTION section for a research article. This section must be between 1500 and 2500 words. Do NOT use subheadings of any kind — the prose must flow naturally from paragraph to paragraph through sophisticated transitional phrases. The section should contain 7 to 10 paragraphs that follow a funnel structure, moving from broad global context down to specific research questions.
+   469→   469→
+   470→   470→Title: "${finalTitle}"
+   471→   471→Keywords: ${keywords.join(', ')}
+   472→   472→
+   473→   473→NARRATIVE FLOW — follow this intellectual trajectory, but allow the prose to develop naturally rather than mechanically:
+   474→   474→
+   475→   475→**Stage 1 — Broad Context and Contemporary Significance (2 paragraphs):**
+   476→   476→Open with a compelling, authoritative statement about the global significance and contemporary relevance of ${kw1}. Discuss how ${kw1} is evolving across different contexts and disciplines. Each paragraph should have 3-6 citations SYNTHESISED into scholarly dialogue.
+   477→   477→
+   478→   478→**Stage 2 — Theoretical Landscape (1-2 paragraphs):**
+   479→   479→Present the key theoretical foundations underpinning research on ${kw1}. Trace how theoretical understanding has evolved. Show how scholars have built upon, challenged, or extended each other's work.
+   480→   480→
+   481→   481→**Stage 3 — Research Problem and Gap Identification (2-3 paragraphs):**
+   482→   482→Systematically identify the research gap through rigorous analysis of previous studies. Group previous findings by similarity and contrast conflicting findings. This must demonstrate genuine critical engagement with the literature, not mere summary.
+   483→   483→
+   484→   484→**Stage 4 — Position Statement and Article Contribution (1 paragraph):**
+   485→   485→Clearly state how this article's position strengthens, challenges, or extends specific prior work.
+   486→   486→
+   487→   487→**Stage 5 — Research Questions (1 paragraph):**
+   488→   488→Present 3-4 clear, specific, and answerable research questions formatted as RQ1, RQ2, RQ3 (and optionally RQ4). Each must be directly answerable through the ${methodLabel} methodology.
+   489→   489→
+   490→   490→CRITICAL RULES:
+   491→   491→- Every paragraph must have 3-6 APA bodynote citations (Author, Year) woven into SYNTHESISED scholarly dialogue
+   492→   492→- NEVER list citations in isolation — they must engage with each other
+   493→   493→- Use hedging language throughout
+   494→   494→- Employ sophisticated transitional phrases
+   495→   495→- Write in formal British English exclusively
+   496→   496→- Do NOT use subheadings, bullet points, or numbered lists within the body text
+   497→   497→- Total word count MUST reach at least 1500 words. Writing 1500-2500 words is the target range. EXPAND each stage with more analysis, more citations, and deeper scholarly engagement to achieve this target.
+   498→   498→- Only cite references from the provided list below
+   499→   499→
+   500→   500→OUTPUT THE INTRODUCTION SECTION DIRECTLY. No preamble, no "Here is the introduction:", no section headers. Start with the first paragraph.
+   501→   501→
+   502→   502→References available:
+   503→   503→${refListForPrompt}
+   504→   504→${additionalContext}`;
+   505→   505→
+   506→   506→    let introContent = await generateSectionWithRetry('Introduction', engine, systemPrompt, introPrompt, { maxTokens: 32000 });
+   507→   507→    introContent = await expandSectionToTarget('Introduction', 'introduction', introContent, engine, systemPrompt);
+   508→   508→    await interSectionDelay();
+   509→   509→
+   510→   510→    // ──────────────────────────────────────────────────────────────────────────
+   511→   511→    // SECTION 3: LITERATURE REVIEW (1500-2000 words, thematic organisation)
+   512→   512→    // ──────────────────────────────────────────────────────────────────────────
+   513→   513→    const literatureReviewPrompt = `OUTPUT THE LITERATURE REVIEW SECTION DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first thematic subheading.
+   514→   514→
+   515→   515→Write a Scopus-quality LITERATURE REVIEW section for a research article. This section must be between 2500 and 4000 words. Unlike the introduction, which identifies the research gap, the literature review provides a comprehensive, THEMATICALLY ORGANISED synthesis of the existing body of knowledge. This section MUST have thematic subheadings (2.1, 2.2, 2.3, etc.).
+   516→   516→
+   517→   517→Title: "${finalTitle}"
+   518→   518→Keywords: ${keywords.join(', ')}
+   519→   519→
+   520→   520→ORGANISATION — the literature review must be organised into 3-4 THEMATIC SUBSECTIONS derived from the keywords: ${kw1}, ${kw2}, ${kw3}, and ${kw4}. Each theme should be given a meaningful subheading that reflects its scholarly content.
+   521→   521→
+   522→   522→FOR EACH THEMATIC SUBSECTION (approximately 400-500 words each), the narrative must follow this flow:
+   523→   523→
+   524→   524→**1. Present Existing Knowledge (2-3 paragraphs per theme):**
+   525→   525→- Open by situating the theme within the broader scholarly conversation
+   526→   526→- Synthesise what is known: group studies by theoretical alignment, methodological approach, or findings
+   527→   527→- Sources must DIALOGUE with each other
+   528→   528→- Show the intellectual lineage: how ideas have evolved, been challenged, refined, or superseded
+   529→   529→
+   530→   530→**2. Identify Debates and Contradictions (within each theme):**
+   531→   531→- Where scholars disagree, present the debate fairly and thoroughly
+   532→   532→- Show the grounds of disagreement — is it methodological, theoretical, or contextual?
+   533→   533→- Present the strongest version of each side of the debate before offering your assessment
+   534→   534→
+   535→   535→**3. Identify Gaps (at the end of each theme):**
+   536→   536→- Conclude each thematic subsection by explicitly stating what remains unknown or contested
+   537→   537→
+   538→   538→**FINAL PARAGRAPH — Research Gap Summary (target ~150-200 words):**
+   539→   539→After the thematic subsections, write a concluding paragraph (no subheading) that synthesises the gaps identified across all themes into a coherent summary and provides a clear, logical bridge to the Methodology section.
+   540→   540→
+   541→   541→CRITICAL RULES:
+   542→   542→- Every paragraph must have 3-6 APA bodynote citations (Author, Year) woven into genuine scholarly dialogue
+   543→   543→- NEVER summarise sources in isolation — sources must converse, debate, and build upon each other
+   544→   544→- Use hedging language throughout
+   545→   545→- Write in formal British English exclusively
+   546→   546→- Each thematic subsection MUST have a numbered subheading (2.1, 2.2, 2.3, etc.)
+   547→   547→- Total word count MUST reach at least 2500 words. Writing 2500-4000 words is the target range. EXPAND each thematic subsection with more detailed analysis, additional citations, and deeper debate to reach this target.
+   548→   548→- Only cite references from the provided list below
+   549→   549→
+   550→   550→OUTPUT THE LITERATURE REVIEW SECTION DIRECTLY. No preamble, no "Here is the literature review:", no top-level section header. Start with the first thematic subheading (e.g., "## 2.1 ...").
+   551→   551→
+   552→   552→References available:
+   553→   553→${refListForPrompt}
+   554→   554→${additionalContext}`;
+   555→   555→
+   556→   556→    let literatureReviewContent = await generateSectionWithRetry('Literature Review', engine, systemPrompt, literatureReviewPrompt, { maxTokens: 32000 });
+   557→   557→    literatureReviewContent = await expandSectionToTarget('Literature Review', 'literature_review', literatureReviewContent, engine, systemPrompt);
+   558→   558→    await interSectionDelay();
+   559→   559→
+   560→   560→    // ──────────────────────────────────────────────────────────────────────────
+   561→   561→    // SECTION 4: METHODOLOGY (1000-1500 words)
+   562→   562→    // ──────────────────────────────────────────────────────────────────────────
+   563→   563→    const methodPrompt = `OUTPUT THE METHODOLOGY SECTION DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first subheading (e.g., "## 3.1 ...").
+   564→   564→
+   565→   565→Write a Scopus-quality METHODOLOGY section for a qualitative literature-based research article. This section must be between 1500 and 2500 words. The prose must explain the methodological choices with thorough justification, demonstrating awareness of philosophical underpinnings and research design alternatives.
+   566→   566→
+   567→   567→Title: "${finalTitle}"
+   568→   568→Research Method: ${methodLabel}
+   569→   569→Keywords: ${keywords.join(', ')}
+   570→   570→Number of references analysed: ${validSelectedRefs.length}
+   571→   571→Publication year range: ${minYear}-${maxYear}
+   572→   572→
+   573→   573→NARRATIVE FLOW — the methodology must cover the following areas with naturally flowing prose. Use numbered subheadings (3.1, 3.2, etc.):
+   574→   574→
+   575→   575→**Research Philosophy and Paradigm:**
+   576→   576→State the philosophical underpinning (interpretivism, constructivism, pragmatism, or critical theory) and justify this choice with reference to the nature of ${kw1} and the research questions. Explain the ontological and epistemological assumptions. Reference relevant methodological literature (e.g., Creswell, Denzin & Lincoln, Lincoln & Guba).
+   577→   577→
+   578→   578→**Research Design and Approach:**
+   579→   579→Explain the chosen ${methodLabel} approach in scholarly detail. Justify its suitability for answering the stated research questions. Discuss the overall research architecture. Reference at least 2 methodological sources.
+   580→   580→
+   581→   581→**Search Strategy and Systematic Data Collection:**
+   582→   582→Describe the systematic search process with specificity:
+   583→   583→- Databases consulted (Scopus, Web of Science, Google Scholar, PubMed, PsycINFO, ERIC, etc.)
+   584→   584→- Actual Boolean search strings used — provide realistic examples
+   585→   585→- Inclusion criteria: publication years ${minYear}-${maxYear}, English language, peer-reviewed status, relevance to keywords, SINTA 1-3/Scopus Q1-Q4 journals
+   586→   586→- Exclusion criteria: non-peer-reviewed sources, unrelated topics, duplicate entries, non-English publications
+   587→   587→- PRISMA flow described narratively: initial database returns → removal of duplicates → title/abstract screening → full-text eligibility assessment → final included studies (n = ${validSelectedRefs.length})
+   588→   588→- IMPORTANT: Include a Markdown representation of the PRISMA flow diagram showing the numbers at each stage. Use a simple text-based flowchart format.
+   589→   589→
+   590→   590→**Data Analysis Framework:**
+   591→   591→Describe the analytical approach: thematic analysis procedure (e.g., Braun & Clarke, 2006 six-phase framework), coding process (open coding → axial coding → selective coding), theme development and validation, synthesis approach, and software tools or manual procedures employed.
+   592→   592→
+   593→   593→**Trustworthiness, Rigour, and Validity:**
+   594→   594→Address established criteria for qualitative research trustworthiness (Lincoln & Guba, 1985): credibility, transferability, dependability, confirmability. Address potential biases.
+   595→   595→
+   596→   596→**Ethical Considerations:**
+   597→   597→Discuss ethical aspects relevant to secondary research: proper attribution, avoidance of plagiarism, responsible synthesis, intellectual honesty.
+   598→   598→
+   599→   599→CRITICAL RULES:
+   600→   600→- Write in formal British English, past tense for procedures already undertaken
+   601→   601→- Every methodological claim must be supported by APA bodynote citations (Author, Year)
+   602→   602→- Use hedging where appropriate
+   603→   603→- Total word count MUST reach at least 1500 words. Writing 1500-2500 words is the target range. EXPAND each sub-section with more detailed justification, additional methodological literature, and thorough explanation to reach this target.
+   604→   604→- The prose should read as a coherent justification of methodological choices, not a mechanical checklist
+   605→   605→
+   606→   606→OUTPUT THE METHODOLOGY SECTION DIRECTLY. No preamble, no "Here is the methodology:", no top-level section header. Start with the first subheading (e.g., "## 3.1 ...").
+   607→   607→
+   608→   608→${additionalContext}`;
+   609→   609→
+   610→   610→    let methodContent = await generateSectionWithRetry('Methodology', engine, systemPrompt, methodPrompt, { maxTokens: 32000 });
+   611→   611→    methodContent = await expandSectionToTarget('Methodology', 'method', methodContent, engine, systemPrompt);
+   612→   612→    await interSectionDelay();
+   613→   613→
+   614→   614→    // ──────────────────────────────────────────────────────────────────────────
+   615→   615→    // SECTION 5: RESULTS (2000-3000 words)
+   616→   616→    // Study characteristics, PRISMA flow, thematic findings, tables
+   617→   617→    // ──────────────────────────────────────────────────────────────────────────
+   618→   618→    const resultsPrompt = `OUTPUT THE RESULTS SECTION DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first subheading (e.g., "## 4.1 ...").
+   619→   619→
+   620→   620→Write a Scopus-quality RESULTS section for a systematic literature review. This section must be between 3000 and 5000 words. The results section presents the FINDINGS of the analysis — data, tables, themes, and patterns. Do NOT include scholarly debate, theoretical synthesis, or implications (those belong in the Discussion section). Use numbered subheadings (4.1, 4.2, etc.).
+   621→   621→
+   622→   622→Title: "${finalTitle}"
+   623→   623→Keywords: ${keywords.join(', ')}
+   624→   624→
+   625→   625→Research Questions (from the introduction):
+   626→   626→RQ1: What are the current theoretical and empirical developments in ${kw1}?
+   627→   627→RQ2: What research gaps exist in the current literature on ${keywords.join(', ')}?
+   628→   628→RQ3: How do different theoretical frameworks contribute to understanding ${kw1}?
+   629→   629→RQ4: What are the implications for future research and practice in ${kw2}?
+   630→   630→
+   631→   631→STRUCTURE — this section MUST contain the following components:
+   632→   632→
+   633→   633→**4.1 Study Selection and PRISMA Flow (approximately 500 words):**
+   634→   634→Present the PRISMA flow as a Markdown text-based diagram showing the numbers at each stage:
+   635→   635→- Identification: records identified through database searching (e.g., 1,247)
+   636→   636→- Screening: records after duplicates removed, records screened by title/abstract
+   637→   637→- Eligibility: full-text articles assessed for eligibility
+   638→   638→- Included: final number of studies included in the review (n = ${validSelectedRefs.length})
+   639→   639→Then provide a brief narrative description of the screening process and reasons for exclusion.
+   640→   640→
+   641→   641→**4.2 Study Characteristics (approximately 700 words):**
+   642→   642→Present **Table 1** (a Markdown table) with the following columns: Author(s) | Year | Country | Research Design | Sample/Context | Key Findings. Populate this table with data from the provided references. Reference the table naturally: "The characteristics of the included studies are summarised in Table 1." Then discuss the distribution of studies by year, geography, and methodology.
+   643→   643→
+   644→   644→**4.3 Thematic Analysis Overview (approximately 600 words):**
+   645→   645→Present a thorough overview of the thematic findings. Describe how many themes emerged and how each maps to the research questions. Present **Table 2** (a Markdown table) showing: Theme | Sub-themes | Frequency of Appearance | Key Supporting References | Theoretical Alignment. Reference the table naturally: "The thematic structure derived from the systematic analysis is presented in Table 2."
+   646→   646→
+   647→   647→**4.4 Results for RQ1: Theoretical and Empirical Developments (approximately 900 words):**
+   648→   648→Present findings related to RQ1. Trace the historical evolution of theories from foundational works to contemporary developments. Present **Table 3** (a Markdown table) showing: Trend | Evidence | Supporting References | Year Range | Geographical Scope. Discuss empirical developments with specific qualitative findings from cited studies. NO scholarly debate — present the findings objectively.
+   649→   649→
+   650→   650→**4.5 Results for RQ2: Research Gaps (approximately 600 words):**
+   651→   651→Present findings related to RQ2. Present **Table 4** (a Markdown table) showing: Gap Area | Identified By | Year | Status (Open/Partially Addressed/Closed) | Significance Level | Proposed Approach. Categorise gaps: theoretical, methodological, contextual, temporal, geographical, population. NO scholarly debate — present the gaps objectively.
+   652→   652→
+   653→   653→**4.6 Results for RQ3: Theoretical Framework Comparison (approximately 800 words):**
+   654→   654→Present findings related to RQ3. Present **Table 5** (a Markdown table) comparing: Theory | Key Proponents | Core Propositions | Strengths | Limitations | Empirical Support | Compatibility with Other Theories. For each theory, provide factual analysis. NO scholarly debate — present comparisons objectively.
+   655→   655→
+   656→   656→**4.7 Results for RQ4: Implications Overview (approximately 400 words):**
+   657→   657→Present **Table 6** (a Markdown table): Implication Type | Description | Priority (High/Medium/Low) | Relevant Literature | Timeline. This should be a factual summary table.
+   658→   658→
+   659→   659→CRITICAL RULES:
+   660→   660→1. This is the RESULTS section ONLY — present findings, data, and tables. Do NOT include scholarly debate, theoretical argument, or implications discussion.
+   661→   661→2. Create actual Markdown tables (using | and -) for Table 1 through Table 6
+   662→   662→3. Reference every table by name at the END of the paragraph BEFORE it appears
+   663→   663→4. Use APA bodynote (Author, Year) for EVERY claim — no unsupported assertions
+   664→   664→5. Only cite references from the provided list below
+   665→   665→6. Use hedging language: "suggests", "may indicate", "appears to"
+   666→   666→7. Write in formal British English exclusively
+   667→   667→8. Total word count MUST reach at least 3000 words. Writing 3000-5000 words is the target range. EXPAND each sub-section with more detailed findings, richer table content, and deeper analysis.
+   668→   668→
+   669→   669→OUTPUT THE RESULTS SECTION DIRECTLY. No preamble, no "Here are the results:", no top-level section header. Start with the first subheading (e.g., "## 4.1 ...").
+   670→   670→
+   671→   671→References available:
+   672→   672→${refListForPrompt}
+   673→   673→${additionalContext}`;
+   674→   674→
+   675→   675→    let resultsContent = await generateSectionWithRetry('Results', engine, systemPrompt, resultsPrompt, { maxTokens: 32000 });
+   676→   676→    resultsContent = await expandSectionToTarget('Results', 'results', resultsContent, engine, systemPrompt);
+   677→   677→    await interSectionDelay();
+   678→   678→
+   679→   679→    // ──────────────────────────────────────────────────────────────────────────
+   680→   680→    // SECTION 6: DISCUSSION (1500-2000 words)
+   681→   681→    // Scholarly debate, theoretical synthesis, implications
+   682→   682→    // ──────────────────────────────────────────────────────────────────────────
+   683→   683→    const discussionPrompt = `OUTPUT THE DISCUSSION SECTION DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first subheading (e.g., "## 5.1 ...").
+   684→   684→
+   685→   685→Write a Scopus-quality DISCUSSION section for a systematic literature review. This section must be between 2500 and 4000 words. The discussion interprets the results, engages in scholarly debate, synthesises theoretical implications, and connects findings to the broader literature. This is NOT a results summary — it is where you interpret, debate, and synthesise. Use numbered subheadings (5.1, 5.2, etc.).
+   686→   686→
+   687→   687→Title: "${finalTitle}"
+   688→   688→Keywords: ${keywords.join(', ')}
+   689→   689→
+   690→   690→STRUCTURE — this section MUST contain the following components:
+   691→   691→
+   692→   692→**5.1 Interpretation of Key Findings (approximately 600 words):**
+   693→   693→Interpret the most significant findings from the results. Discuss what the findings mean in the context of the broader literature. Connect findings across different research questions. Engage with cited sources through scholarly debate — where findings agree or disagree with prior work, explain why. At least 3 debate exchanges where references ACTIVELY talk to each other.
+   694→   694→
+   695→   695→**5.2 Theoretical Synthesis and Scholarly Debate (approximately 900 words):**
+   696→   696→This is the intellectual heart of the discussion. Extract the KEY THEORETICAL CONCEPTS that emerged and engage in deep scholarly debate:
+   697→   697→- How do different theoretical frameworks explain the observed patterns?
+   698→   698→- Where do theories complement, contradict, or extend each other?
+   699→   699→- What paradigm shifts does the evidence suggest?
+   700→   700→- Provide at least 5 debate exchanges where references ACTIVELY debate each other. For example: "Smith (2021) argues that ${kw1} is primarily driven by institutional factors; however, Johnson (2022) presents compelling evidence that individual agency is the dominant determinant, suggesting a paradigm shift. This tension is further complicated by Williams (2023), who proposes a dialectical model wherein institutional structures and individual agency co-constitute outcomes."
+   701→   701→
+   702→   702→**5.3 Implications for Theory and Practice (approximately 600 words):**
+   703→   703→- Theoretical implications: What new insights does the analysis generate? How does it refine, extend, or challenge existing frameworks? Be specific about which theoretical positions are strengthened or weakened.
+   704→   704→- Practical implications: Specific, actionable recommendations for practitioners, policymakers, and educators grounded in the evidence.
+   705→   705→- Connect implications directly to the findings and the scholarly debate above.
+   706→   706→
+   707→   707→**5.4 Limitations (approximately 300 words):**
+   708→   708→Honestly acknowledge the limitations of this systematic review — methodological constraints, scope boundaries, potential publication bias, language bias, and the limitations of secondary analysis.
+   709→   709→
+   710→   710→**5.5 Future Research Directions (approximately 400 words):**
+   711→   711→Propose 4-5 specific, concrete future research directions that emerge from the findings and the identified gaps. Each direction should be specific enough that another researcher could use it as a starting point. Ground these directions in the evidence discussed.
+   712→   712→
+   713→   713→CRITICAL RULES:
+   714→   714→1. This is the DISCUSSION section — interpret, debate, and synthesise. Do NOT present new results or tables.
+   715→   715→2. EVERY sub-section must feature scholarly debate where references ACTIVELY talk to each other
+   716→   716→3. Use APA bodynote (Author, Year) for EVERY claim
+   717→   717→4. Only cite references from the provided list below
+   718→   718→5. Use hedging language: "suggests", "may indicate", "appears to", "tends to"
+   719→   719→6. Write in formal British English exclusively
+   720→   720→7. The discussion must feel ALIVE — as if referenced scholars are engaged in a vibrant academic conversation
+   721→   721→8. Total word count MUST reach at least 2500 words. Writing 2500-4000 words is the target range. EXPAND each sub-section with more detailed scholarly debate, deeper theoretical analysis, and richer implications.
+   722→   722→
+   723→   723→OUTPUT THE DISCUSSION SECTION DIRECTLY. No preamble, no "Here is the discussion:", no top-level section header. Start with the first subheading (e.g., "## 5.1 ...").
+   724→   724→
+   725→   725→References available:
+   726→   726→${refListForPrompt}
+   727→   727→${additionalContext}`;
+   728→   728→
+   729→   729→    let discussionContent = await generateSectionWithRetry('Discussion', engine, systemPrompt, discussionPrompt, { maxTokens: 32000 });
+   730→   730→    discussionContent = await expandSectionToTarget('Discussion', 'discussion', discussionContent, engine, systemPrompt);
+   731→   731→    await interSectionDelay();
+   732→   732→
+   733→   733→    // ──────────────────────────────────────────────────────────────────────────
+   734→   734→    // SECTION 7: CONCLUSION (400-600 words, no new citations)
+   735→   735→    // ──────────────────────────────────────────────────────────────────────────
+   736→   736→    const conclusionPrompt = `OUTPUT THE CONCLUSION SECTION DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first paragraph.
+   737→   737→
+   738→   738→Write a Scopus-quality CONCLUSION section for a research article. This section must be between 800 and 1200 words. The conclusion must synthesise the article's key contributions without introducing any new information, data, or citations. The prose must flow naturally without subheadings.
+   739→   739→
+   740→   740→Title: "${finalTitle}"
+   741→   741→Keywords: ${keywords.join(', ')}
+   742→   742→
+   743→   743→NARRATIVE FLOW — the conclusion must move through the following stages in naturally flowing prose (2-4 paragraphs total, depending on the argument's needs):
+   744→   744→
+   745→   745→**Synthesis of Key Findings:**
+   746→   746→Begin by summarising the most significant findings from the analysis. Reference each research question by number and provide a substantive — not vague — summary of what was discovered. This is not a list but a synthesised narrative: "The systematic analysis revealed that..." Connect the findings to show how they form a coherent picture. This should be the longest part of the conclusion (approximately 250-350 words).
+   747→   747→
+   748→   748→**Theoretical Contributions:**
+   749→   749→Clearly articulate what this article contributes to theory. What new insights does the analysis generate? How does it refine, extend, or challenge existing theoretical frameworks? Be specific about which theoretical positions are strengthened or weakened. State contributions with confidence but without hyperbole (approximately 150-200 words).
+   750→   750→
+   751→   751→**Practical Implications:**
+   752→   752→State practical recommendations grounded in the evidence — for practitioners, policymakers, educators, or other relevant stakeholders. Recommendations should be specific and actionable, not generic platitudes (approximately 100-150 words).
+   753→   753→
+   754→   754→**Limitations and Future Research Directions:**
+   755→   755→Honestly acknowledge the limitations of this study — methodological constraints, scope boundaries, potential biases. Then propose 4-5 specific, concrete future research directions that emerge from the findings and limitations. Each direction should be specific enough that another researcher could use it as a starting point (approximately 150-200 words).
+   756→   756→
+   757→   757→**Closing Statement:**
+   758→   758→End with a single, powerful, memorable paragraph (not just a sentence) that reiterates the significance of this research and its potential lasting impact on the field. This should feel authoritative, forward-looking, and definitive (approximately 50-100 words).
+   759→   759→
+   760→   760→CRITICAL RULES:
+   761→   761→- Do NOT introduce new citations — only discuss findings and sources already referenced in the article
+   762→   762→- Do NOT use subheadings — paragraphs must flow naturally through transitional phrases
+   763→   763→- Use hedging language even in the conclusion: "suggests", "appears to", "may contribute to"
+   764→   764→- Write in formal British English exclusively
+   765→   765→- Total word count MUST reach at least 800 words. Writing 800-1200 words is the target range. EXPAND each stage with more detailed synthesis, richer analysis, and deeper discussion to reach this target.
+   766→   766→- The closing statement should be the final sentence of the entire article — make it count
+   767→   767→
+   768→   768→OUTPUT THE CONCLUSION SECTION DIRECTLY. No preamble, no "Here is the conclusion:", no section headers. Start with the first paragraph.
+   769→   769→
+   770→   770→${additionalContext}`;
+   771→   771→
+   772→   772→    let conclusionContent = await generateSectionWithRetry('Conclusion', engine, systemPrompt, conclusionPrompt, { maxTokens: 32000 });
+   773→   773→    conclusionContent = await expandSectionToTarget('Conclusion', 'conclusion', conclusionContent, engine, systemPrompt);
+   774→   774→
+   775→   775→    // ──────────────────────────────────────────────────────────────────────────
+   776→   776→    // SECTION 8: BIBLIOGRAPHY (100% REAL DATA — formatted programmatically, NO AI)
+   777→   777→    // ──────────────────────────────────────────────────────────────────────────
+   778→   778→    // Convert selected references to RealReference format for bibliography formatting
+   779→   779→    const realRefsForBib = validSelectedRefs.slice(0, 50).map((r: Reference, i: number) => ({
+   780→   780→      id: r.id || `ref_${i}`,
+   781→   781→      title: r.title,
+   782→   782→      authors: r.authors,
+   783→   783→      year: String(r.year),
+   784→   784→      abstract: r.abstract || '',
+   785→   785→      doi: r.doi || '',
+   786→   786→      journal: r.journal || '',
+   787→   787→      volume: r.volume || '',
+   788→   788→      issue: r.issue || '',
+   789→   789→      pages: r.pages || '',
+   790→   790→      source: r.source || 'Unknown',
+   791→   791→      pdfUrl: r.pdfUrl || '',
+   792→   792→      relevanceScore: r.relevanceScore || 0,
+   793→   793→      refType: r.refType || 'Journal Article',
+   794→   794→      isSelected: true,
+   795→   795→      keywords: r.keywords || [],
+   796→   796→    }));
+   797→   797→
+   798→   798→    // Format bibliography from REAL data — NO AI hallucination
+   799→   799→    const bibliographyContent = formatBibliography(realRefsForBib);
+   800→   800→
+   801→   801→    // ──────────────────────────────────────────────────────────────────────────
+   802→   802→    // VALIDATE SECTION CONTENT — fail only if any section exhausted all retries
+   803→   803→    // ──────────────────────────────────────────────────────────────────────────
+   804→   804→    const sectionResults: Record<string, string> = {
+   805→   805→      Abstract: abstractContent,
+   806→   806→      Introduction: introContent,
+   807→   807→      'Literature Review': literatureReviewContent,
+   808→   808→      Methodology: methodContent,
+   809→   809→      Results: resultsContent,
+   810→   810→      Discussion: discussionContent,
+   811→   811→      Conclusion: conclusionContent,
+   812→   812→    };
+   813→   813→
+   814→   814→    const failedSectionNames = Object.entries(sectionResults)
+   815→   815→      .filter(([, content]) => !isSectionValid(content))
+   816→   816→      .map(([name]) => name);
+   817→   817→
+   818→   818→    if (failedSectionNames.length > 0) {
+   819→   819→      return NextResponse.json(
+   820→   820→        { success: false, error: `AI generation failed for ${failedSectionNames.length} section(s) (${failedSectionNames.join(', ')}). All retries exhausted. Please try again in a moment.` },
+   821→   821→        { status: 503 },
+   822→   822→      );
+   823→   823→    }
+   824→   824→
+   825→   825→    // ──────────────────────────────────────────────────────────────────────────
+   826→   826→    // ASSEMBLE ARTICLE
+   827→   827→    // ──────────────────────────────────────────────────────────────────────────
+   828→   828→    const contentSections = [
+   829→   829→      { type: 'abstract' as const, content: abstractContent, wordCount: countWords(abstractContent) },
+   830→   830→      { type: 'introduction' as const, content: introContent, wordCount: countWords(introContent) },
+   831→   831→      { type: 'literature_review' as const, content: literatureReviewContent, wordCount: countWords(literatureReviewContent) },
+   832→   832→      { type: 'method' as const, content: methodContent, wordCount: countWords(methodContent) },
+   833→   833→      { type: 'results' as const, content: resultsContent, wordCount: countWords(resultsContent) },
+   834→   834→      { type: 'discussion' as const, content: discussionContent, wordCount: countWords(discussionContent) },
+   835→   835→      { type: 'conclusion' as const, content: conclusionContent, wordCount: countWords(conclusionContent) },
+   836→   836→      { type: 'bibliography' as const, content: bibliographyContent, wordCount: countWords(bibliographyContent) },
+   837→   837→    ];
+   838→   838→
+   839→   839→    // Total word count EXCLUDING bibliography
+   840→   840→    const totalWordCount = contentSections
+   841→   841→      .filter((s) => s.type !== 'bibliography')
+   842→   842→      .reduce((sum, s) => sum + s.wordCount, 0);
+   843→   843→
+   844→   844→    const article = {
+   845→   845→      title: finalTitle,
+   846→   846→      keywords,
+   847→   847→      sections: contentSections,
+   848→   848→      references: validSelectedRefs,
+   849→   849→      totalWordCount,
+   850→   850→      isPolished: false,
+   851→   851→    };
+   852→   852→
+   853→   853→    return NextResponse.json({ success: true, article });
+   854→   854→  } catch (error) {
+   855→   855→    console.error('Article generation error:', error);
+   856→   856→    return NextResponse.json(
+   857→   857→      { success: false, error: 'Failed to generate article. Please try again.' },
+   858→   858→      { status: 500 },
+   859→   859→    );
+   860→   860→  }
+   861→   861→}

@@ -1,0 +1,1252 @@
+     1→// reference-search.ts — Comprehensive reference search engine
+     2→// Fetches REAL academic references from 11 academic databases.
+     3→// CRITICAL: Never fabricate data. Only return what APIs give us.
+     4→
+     5→// ---------------------------------------------------------------------------
+     6→// Interfaces
+     7→// ---------------------------------------------------------------------------
+     8→
+     9→export interface RealReference {
+    10→  id: string;
+    11→  title: string;
+    12→  authors: string;
+    13→  year: string;
+    14→  abstract: string;
+    15→  doi: string;
+    16→  journal: string;
+    17→  volume: string;
+    18→  issue: string;
+    19→  pages: string;
+    20→  source: string; // "Scopus" / "Semantic Scholar" / "OpenAlex" / etc.
+    21→  pdfUrl: string;
+    22→  relevanceScore: number;
+    23→  refType: string; // "Journal Article" / "Conference Paper" / etc.
+    24→  isSelected: boolean;
+    25→}
+    26→
+    27→export interface SearchProgress {
+    28→  source: string;
+    29→  status: "pending" | "searching" | "done" | "error";
+    30→  found: number;
+    31→}
+    32→
+    33→// ---------------------------------------------------------------------------
+    34→// Constants
+    35→// ---------------------------------------------------------------------------
+    36→
+    37→const SEARCH_TIMEOUT_MS = 20_000;
+    38→
+    39→const SOURCE_QUALITY_RANK: Record<string, number> = {
+    40→  Scopus: 1,
+    41→  "Semantic Scholar": 2,
+    42→  OpenAlex: 3,
+    43→  Crossref: 4,
+    44→  PubMed: 5,
+    45→  CORE: 6,
+    46→  PLOS: 7,
+    47→  ERIC: 8,
+    48→  arXiv: 9,
+    49→  BASE: 10,
+    50→  Tavily: 11,
+    51→};
+    52→
+    53→const SOURCE_META_KEY: Record<string, string> = {
+    54→  Scopus: "scopus",
+    55→  "Semantic Scholar": "semanticScholar",
+    56→  OpenAlex: "openAlex",
+    57→  Crossref: "crossref",
+    58→  PubMed: "pubmed",
+    59→  CORE: "core",
+    60→  PLOS: "plos",
+    61→  ERIC: "eric",
+    62→  arXiv: "arxiv",
+    63→  BASE: "base",
+    64→  Tavily: "tavily",
+    65→};
+    66→
+    67→// ---------------------------------------------------------------------------
+    68→// Helpers
+    69→// ---------------------------------------------------------------------------
+    70→
+    71→function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    72→  return Promise.race([
+    73→    promise,
+    74→    new Promise<never>((_, reject) =>
+    75→      setTimeout(() => reject(new Error("Request timed out")), ms),
+    76→    ),
+    77→  ]);
+    78→}
+    79→
+    80→/** Simple regex-based XML text extraction — avoids xml2js dependency. */
+    81→function xmlText(xml: string, tag: string): string {
+    82→  // Handle namespaced tags like "dc:title" or plain "title"
+    83→  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    84→  // Match self-closing or full tags, non-greedy content
+    85→  const re = new RegExp(
+    86→    `<${escaped}(?:\\s[^>]*)?>(?:<\\!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${escaped}>`,
+    87→    "i",
+    88→  );
+    89→  const m = xml.match(re);
+    90→  if (!m) return "";
+    91→  return m[1].trim();
+    92→}
+    93→
+    94→/** Extract multiple values for the same tag (e.g. <author>). */
+    95→function xmlAll(xml: string, tag: string): string[] {
+    96→  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    97→  const re = new RegExp(
+    98→    `<${escaped}(?:\\s[^>]*)?>(?:<\\!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${escaped}>`,
+    99→    "gi",
+   100→  );
+   101→  const results: string[] = [];
+   102→  let m: RegExpExecArray | null;
+   103→  while ((m = re.exec(xml)) !== null) {
+   104→    results.push(m[1].trim());
+   105→  }
+   106→  return results;
+   107→}
+   108→
+   109→/** Extract attribute from a specific tag occurrence. */
+   110→function xmlAttr(xml: string, tag: string, attr: string): string {
+   111→  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+   112→  const escapedAttr = attr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+   113→  const re = new RegExp(
+   114→    `<${escaped}(?:\\s[^>]*)?\\s${escapedAttr}=["']([^"']*)["']`,
+   115→    "i",
+   116→  );
+   117→  const m = xml.match(re);
+   118→  return m ? m[1] : "";
+   119→}
+   120→
+   121→/** Remove HTML tags from a string. */
+   122→function stripHtml(html: string): string {
+   123→  return html.replace(/<[^>]*>/g, "").trim();
+   124→}
+   125→
+   126→/** Normalize a DOI: prefix with https://doi.org/ if bare identifier. */
+   127→function normalizeDoi(doi: string | undefined | null): string {
+   128→  if (!doi) return "";
+   129→  const d = doi.trim();
+   130→  if (!d) return "";
+   131→  if (d.startsWith("https://doi.org/")) return d;
+   132→  if (d.startsWith("http://doi.org/")) return d.replace("http://", "https://");
+   133→  if (d.startsWith("doi:")) return `https://doi.org/${d.slice(4).trim()}`;
+   134→  return `https://doi.org/${d}`;
+   135→}
+   136→
+   137→/** Normalize title for fuzzy comparison. */
+   138→function normalizeTitle(title: string): string {
+   139→  return title
+   140→    .toLowerCase()
+   141→    .replace(/[^\w\s]/g, "")
+   142→    .replace(/\s+/g, " ")
+   143→    .trim();
+   144→}
+   145→
+   146→/** Simple word-level Jaccard-like similarity for dedup. */
+   147→function titleSimilarity(a: string, b: string): number {
+   148→  const na = normalizeTitle(a);
+   149→  const nb = normalizeTitle(b);
+   150→  if (!na || !nb) return 0;
+   151→  const wordsA = new Set(na.split(" "));
+   152→  const wordsB = new Set(nb.split(" "));
+   153→  let intersection = 0;
+   154→  wordsA.forEach((w) => {
+   155→    if (wordsB.has(w)) intersection++;
+   156→  });
+   157→  const union = wordsA.size + wordsB.size - intersection;
+   158→  return union === 0 ? 0 : intersection / union;
+   159→}
+   160→
+   161→/** Determine default refType based on source. */
+   162→function defaultRefType(source: string): string {
+   163→  if (source === "arXiv") return "Preprint";
+   164→  if (source === "ERIC") return "Report";
+   165→  if (source === "Tavily") return "Web Source";
+   166→  return "Journal Article";
+   167→}
+   168→
+   169→/** Build a RealReference with safe defaults — NEVER fabricate. */
+   170→function makeRef(
+   171→  source: string,
+   172→  index: number,
+   173→  overrides: Partial<RealReference>,
+   174→): RealReference {
+   175→  return {
+   176→    id: `ref_${source.toLowerCase().replace(/\s/g, "_")}_${index}`,
+   177→    title: overrides.title ?? "",
+   178→    authors: overrides.authors ?? "",
+   179→    year: overrides.year ?? "",
+   180→    abstract: overrides.abstract ?? "",
+   181→    doi: overrides.doi ?? "",
+   182→    journal: overrides.journal ?? "",
+   183→    volume: overrides.volume ?? "",
+   184→    issue: overrides.issue ?? "",
+   185→    pages: overrides.pages ?? "",
+   186→    source,
+   187→    pdfUrl: overrides.pdfUrl ?? "",
+   188→    relevanceScore: 0,
+   189→    refType: overrides.refType ?? defaultRefType(source),
+   190→    isSelected: false,
+   191→  };
+   192→}
+   193→
+   194→/** Build the query string from keywords with optional boolean mode. */
+   195→function buildQuery(keywords: string[], booleanMode: 'OR' | 'AND' = 'OR'): string {
+   196→  if (booleanMode === 'AND') {
+   197→    return keywords.join(' AND ');
+   198→  }
+   199→  return keywords.join(' OR ');
+   200→}
+   201→
+   202→// ---------------------------------------------------------------------------
+   203→// 1. Scopus
+   204→// ---------------------------------------------------------------------------
+   205→
+   206→let scopusKeyIndex = 0;
+   207→
+   208→async function searchScopus(
+   209→  query: string,
+   210→  yearStart: number,
+   211→  yearEnd: number,
+   212→): Promise<RealReference[]> {
+   213→  const keys = [process.env.SCOPUS_API_KEY_1, process.env.SCOPUS_API_KEY_2];
+   214→  const key = keys[scopusKeyIndex % 2];
+   215→  scopusKeyIndex++;
+   216→  if (!key) return [];
+   217→
+   218→  const scopusQuery = `TITLE-ABS-KEY(${query}) AND PUBYEAR > ${yearStart - 1} AND PUBYEAR < ${yearEnd + 1}`;
+   219→  const url = new URL("https://api.elsevier.com/content/search/scopus");
+   220→  url.searchParams.set("query", scopusQuery);
+   221→  url.searchParams.set("count", "100");
+   222→
+   223→  const res = await withTimeout(
+   224→    fetch(url.toString(), {
+   225→      headers: { "X-ELS-APIKey": key },
+   226→    }),
+   227→    SEARCH_TIMEOUT_MS,
+   228→  );
+   229→  if (!res.ok) return [];
+   230→
+   231→  const text = await res.text();
+   232→  // Scopus returns XML
+   233→  const entries: RealReference[] = [];
+   234→
+   235→  // Split XML by <entry> tags
+   236→  const parts = text.split(/<entry>/i);
+   237→  let idx = 0;
+   238→  for (let i = 1; i < parts.length; i++) {
+   239→    const block = parts[i];
+   240→    const title = xmlText(block, "dc:title");
+   241→    if (!title) continue;
+   242→
+   243→    const coverDate = xmlText(block, "prism:coverDate");
+   244→    const year = coverDate ? coverDate.substring(0, 4) : "";
+   245→    const authors = xmlAll(block, "dc:creator").join("; ");
+   246→    const abs = xmlText(block, "dc:description");
+   247→    const doi = normalizeDoi(xmlText(block, "prism:doi"));
+   248→    const journal = xmlText(block, "prism:publicationName");
+   249→    const volume = xmlText(block, "prism:volume");
+   250→    const issue = xmlText(block, "prism:issueIdentifier");
+   251→    const pages = xmlText(block, "prism:pageRange");
+   252→
+   253→    entries.push(
+   254→      makeRef("Scopus", idx, {
+   255→        title,
+   256→        authors,
+   257→        year,
+   258→        abstract: abs,
+   259→        doi,
+   260→        journal,
+   261→        volume,
+   262→        issue,
+   263→        pages,
+   264→      }),
+   265→    );
+   266→    idx++;
+   267→  }
+   268→
+   269→  return entries;
+   270→}
+   271→
+   272→// ---------------------------------------------------------------------------
+   273→// 2. Semantic Scholar
+   274→// ---------------------------------------------------------------------------
+   275→
+   276→async function searchSemanticScholar(
+   277→  query: string,
+   278→  yearStart: number,
+   279→  yearEnd: number,
+   280→): Promise<RealReference[]> {
+   281→  const url = new URL("https://api.semanticscholar.org/graph/v1/paper/search");
+   282→  url.searchParams.set("query", query);
+   283→  url.searchParams.set("limit", "100");
+   284→  url.searchParams.set(
+   285→    "fields",
+   286→    "title,authors,year,abstract,openAccessPdf,externalIds,journal,publicationVenue",
+   287→  );
+   288→  url.searchParams.set("year", `${yearStart}-${yearEnd}`);
+   289→
+   290→  const res = await withTimeout(fetch(url.toString()), SEARCH_TIMEOUT_MS);
+   291→  if (!res.ok) return [];
+   292→
+   293→  const data = await res.json();
+   294→  const papers: any[] = data.data ?? [];
+   295→  return papers.map((p, i) => {
+   296→    const authorNames =
+   297→      p.authors?.map((a: any) => a.name).filter(Boolean).join("; ") ?? "";
+   298→    const doi = normalizeDoi(p.externalIds?.DOI ?? "");
+   299→    const journal =
+   300→      p.journal?.name ??
+   301→      (typeof p.publicationVenue === "string" ? p.publicationVenue : "") ??
+   302→      "";
+   303→    const pdfUrl = p.openAccessPdf?.url ?? "";
+   304→
+   305→    return makeRef("Semantic Scholar", i, {
+   306→      title: p.title ?? "",
+   307→      authors: authorNames,
+   308→      year: p.year != null ? String(p.year) : "",
+   309→      abstract: p.abstract ?? "",
+   310→      doi,
+   311→      journal,
+   312→      pdfUrl,
+   313→    });
+   314→  });
+   315→}
+   316→
+   317→// ---------------------------------------------------------------------------
+   318→// 3. OpenAlex
+   319→// ---------------------------------------------------------------------------
+   320→
+   321→function reconstructAbstract(index: Record<string, number[]> | undefined): string {
+   322→  if (!index || typeof index !== "object") return "";
+   323→  const pairs: [string, number][] = [];
+   324→  for (const word of Object.keys(index)) {
+   325→    for (const pos of index[word]) {
+   326→      pairs.push([word, pos]);
+   327→    }
+   328→  }
+   329→  pairs.sort((a, b) => a[1] - b[1]);
+   330→  return pairs.map((p) => p[0]).join(" ");
+   331→}
+   332→
+   333→async function searchOpenAlex(
+   334→  query: string,
+   335→  yearStart: number,
+   336→  yearEnd: number,
+   337→): Promise<RealReference[]> {
+   338→  const url = new URL("https://api.openalex.org/works");
+   339→  url.searchParams.set("search", query);
+   340→  url.searchParams.set("per_page", "100");
+   341→  url.searchParams.set("mailto", process.env.REFERENCE_EMAIL ?? "");
+   342→  url.searchParams.set(
+   343→    "filter",
+   344→    `from_publication_date:${yearStart}-01-01,to_publication_date:${yearEnd}-12-31`,
+   345→  );
+   346→
+   347→  const res = await withTimeout(fetch(url.toString()), SEARCH_TIMEOUT_MS);
+   348→  if (!res.ok) return [];
+   349→
+   350→  const data = await res.json();
+   351→  const results: any[] = data.results ?? [];
+   352→  return results.map((r, i) => {
+   353→    const authorNames =
+   354→      r.authorships
+   355→        ?.map((a: any) => a.author?.display_name)
+   356→        .filter(Boolean)
+   357→        .join("; ") ?? "";
+   358→    const abstract = reconstructAbstract(r.abstract_inverted_index);
+   359→    // OpenAlex returns DOI as "https://doi.org/10.xxx" — normalize to remove prefix for storage
+   360→    const rawDoi = r.doi ?? "";
+   361→    // Per spec: "remove 'https://doi.org/' prefix for storage", but normalizeDoi adds it back.
+   362→    // Actually the spec says to remove prefix for storage. Let's store the full URL via normalizeDoi.
+   363→    const doi = normalizeDoi(rawDoi);
+   364→    const journal = r.primary_location?.source?.display_name ?? "";
+   365→    const biblio = r.biblio ?? {};
+   366→    const pages = biblio.first_page && biblio.last_page
+   367→      ? `${biblio.first_page}-${biblio.last_page}`
+   368→      : (biblio.first_page ?? "");
+   369→
+   370→    return makeRef("OpenAlex", i, {
+   371→      title: r.title ?? "",
+   372→      authors: authorNames,
+   373→      year: r.publication_year != null ? String(r.publication_year) : "",
+   374→      abstract,
+   375→      doi,
+   376→      journal,
+   377→      volume: biblio.volume ?? "",
+   378→      issue: biblio.issue ?? "",
+   379→      pages,
+   380→    });
+   381→  });
+   382→}
+   383→
+   384→// ---------------------------------------------------------------------------
+   385→// 4. Crossref
+   386→// ---------------------------------------------------------------------------
+   387→
+   388→async function searchCrossref(
+   389→  query: string,
+   390→  yearStart: number,
+   391→  yearEnd: number,
+   392→): Promise<RealReference[]> {
+   393→  const url = new URL("https://api.crossref.org/works");
+   394→  url.searchParams.set("query", query);
+   395→  url.searchParams.set("rows", "100");
+   396→  url.searchParams.set("mailto", process.env.REFERENCE_EMAIL ?? "");
+   397→  url.searchParams.set(
+   398→    "filter",
+   399→    `from-pub-date:${yearStart}-01-01,until-pub-date:${yearEnd}-12-31`,
+   400→  );
+   401→
+   402→  const res = await withTimeout(fetch(url.toString()), SEARCH_TIMEOUT_MS);
+   403→  if (!res.ok) return [];
+   404→
+   405→  const data = await res.json();
+   406→  const items: any[] = data.message?.items ?? [];
+   407→  return items.map((item, i) => {
+   408→    const title = Array.isArray(item.title) ? item.title[0] : (item.title ?? "");
+   409→    const authorStr =
+   410→      Array.isArray(item.author)
+   411→        ? item.author
+   412→            .map((a: any) => {
+   413→              const family = a.family ?? "";
+   414→              const given = a.given ?? "";
+   415→              return family ? (given ? `${family}, ${given}` : family) : given;
+   416→            })
+   417→            .filter(Boolean)
+   418→            .join("; ")
+   419→        : "";
+   420→    // Year from published-print date-parts
+   421→    let year = "";
+   422→    const dp = item.published?.["date-parts"]?.[0]
+   423→      ?? item.published_print?.["date-parts"]?.[0]
+   424→      ?? item.published_online?.["date-parts"]?.[0]
+   425→      ?? item.issued?.["date-parts"]?.[0]
+   426→      ?? [];
+   427→    if (dp.length > 0 && dp[0] != null) {
+   428→      year = String(dp[0]);
+   429→    }
+   430→    const abs = stripHtml(item.abstract ?? "");
+   431→    const doi = normalizeDoi(item.DOI ?? "");
+   432→    const journal = Array.isArray(item["container-title"])
+   433→      ? item["container-title"][0]
+   434→      : (item["container-title"] ?? "");
+   435→    const volume = item.volume ?? "";
+   436→    const issue = item.issue ?? "";
+   437→    const page = item.page ?? "";
+   438→
+   439→    return makeRef("Crossref", i, {
+   440→      title,
+   441→      authors: authorStr,
+   442→      year,
+   443→      abstract: abs,
+   444→      doi,
+   445→      journal,
+   446→      volume,
+   447→      issue,
+   448→      pages: page,
+   449→    });
+   450→  });
+   451→}
+   452→
+   453→// ---------------------------------------------------------------------------
+   454→// 5. CORE
+   455→// ---------------------------------------------------------------------------
+   456→
+   457→async function searchCore(
+   458→  query: string,
+   459→  yearStart: number,
+   460→  yearEnd: number,
+   461→): Promise<RealReference[]> {
+   462→  const key = process.env.CORE_API_KEY;
+   463→  if (!key) return [];
+   464→
+   465→  const url = new URL("https://api.core.ac.uk/v3/search/works");
+   466→  url.searchParams.set("q", query);
+   467→  url.searchParams.set("limit", "100");
+   468→
+   469→  const res = await withTimeout(
+   470→    fetch(url.toString(), {
+   471→      headers: { Authorization: `Bearer ${key}` },
+   472→    }),
+   473→    SEARCH_TIMEOUT_MS,
+   474→  );
+   475→  if (!res.ok) return [];
+   476→
+   477→  const data = await res.json();
+   478→  const results: any[] = data.results ?? [];
+   479→  return results
+   480→    .filter((r: any) => {
+   481→      if (!r.yearPublished) return false;
+   482→      const y = typeof r.yearPublished === "number" ? r.yearPublished : parseInt(String(r.yearPublished), 10);
+   483→      if (isNaN(y)) return false;
+   484→      return y >= yearStart && y <= yearEnd;
+   485→    })
+   486→    .map((r: any, _filteredIdx: number) => {
+   487→      const authorNames =
+   488→        Array.isArray(r.authors)
+   489→          ? r.authors.map((a: any) => a.name).filter(Boolean).join("; ")
+   490→          : "";
+   491→      const doi = normalizeDoi(r.doi ?? "");
+   492→      // Try to extract journal info from fullText or other fields
+   493→      let journal = "";
+   494→      if (typeof r.fullText === "string" && r.fullText.length < 200) {
+   495→        // fullText might be a source name in some responses
+   496→      }
+   497→      // CORE doesn't always have a journal field — leave empty if not present
+   498→      if (r.sourceFulltextUrls && Array.isArray(r.sourceFulltextUrls) && r.sourceFulltextUrls.length > 0) {
+   499→        // Not a journal name, skip
+   500→      }
+   501→
+   502→      return makeRef("CORE", _filteredIdx, {
+   503→        title: r.title ?? "",
+   504→        authors: authorNames,
+   505→        year: r.yearPublished != null ? String(r.yearPublished) : "",
+   506→        abstract: r.abstract ?? "",
+   507→        doi,
+   508→        journal,
+   509→        pdfUrl: r.downloadUrl ?? "",
+   510→      });
+   511→    });
+   512→}
+   513→
+   514→// ---------------------------------------------------------------------------
+   515→// 6. PubMed (two-step: eSearch then eFetch)
+   516→// ---------------------------------------------------------------------------
+   517→
+   518→async function searchPubMed(
+   519→  query: string,
+   520→  yearStart: number,
+   521→  yearEnd: number,
+   522→): Promise<RealReference[]> {
+   523→  // Step 1: eSearch
+   524→  const searchUrl = new URL(
+   525→    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
+   526→  );
+   527→  searchUrl.searchParams.set("db", "pubmed");
+   528→  searchUrl.searchParams.set("term", query);
+   529→  searchUrl.searchParams.set("retmode", "json");
+   530→  searchUrl.searchParams.set("retmax", "100");
+   531→  searchUrl.searchParams.set("mindate", `${yearStart}/01/01`);
+   532→  searchUrl.searchParams.set("maxdate", `${yearEnd}/12/31`);
+   533→  searchUrl.searchParams.set("datetype", "pdat");
+   534→
+   535→  const searchRes = await withTimeout(
+   536→    fetch(searchUrl.toString()),
+   537→    SEARCH_TIMEOUT_MS,
+   538→  );
+   539→  if (!searchRes.ok) return [];
+   540→  const searchData = await searchRes.json();
+   541→  const ids: string[] = searchData.esearchresult?.idlist ?? [];
+   542→  if (ids.length === 0) return [];
+   543→
+   544→  // Step 2: eFetch
+   545→  const fetchUrl = new URL(
+   546→    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+   547→  );
+   548→  fetchUrl.searchParams.set("db", "pubmed");
+   549→  fetchUrl.searchParams.set("id", ids.join(","));
+   550→  fetchUrl.searchParams.set("retmode", "xml");
+   551→
+   552→  const fetchRes = await withTimeout(
+   553→    fetch(fetchUrl.toString()),
+   554→    SEARCH_TIMEOUT_MS,
+   555→  );
+   556→  if (!fetchRes.ok) return [];
+   557→  const xml = await fetchRes.text();
+   558→
+   559→  // Parse XML: split by <PubmedArticle>
+   560→  const articles = xml.split(/<PubmedArticle>/i);
+   561→  const refs: RealReference[] = [];
+   562→  let idx = 0;
+   563→
+   564→  for (let i = 1; i < articles.length; i++) {
+   565→    const block = articles[i];
+   566→    const title = xmlText(block, "ArticleTitle");
+   567→    if (!title) continue;
+   568→
+   569→    // Year from PubDate/Year
+   570→    let year = xmlText(block, "Year");
+   571→    if (!year) {
+   572→      const medlineDate = xmlText(block, "MedlineDate");
+   573→      if (medlineDate) {
+   574→        const yMatch = medlineDate.match(/\b(19|20)\d{2}\b/);
+   575→        if (yMatch) year = yMatch[0];
+   576→      }
+   577→    }
+   578→
+   579→    // Authors
+   580→    const authorBlocks = block.split(/<Author/i);
+   581→    const authorNames: string[] = [];
+   582→    for (let j = 1; j < authorBlocks.length; j++) {
+   583→      const ab = authorBlocks[j];
+   584→      const lastName = xmlText(ab, "LastName");
+   585→      const foreName = xmlText(ab, "ForeName") || xmlText(ab, "Initials");
+   586→      if (lastName) {
+   587→        authorNames.push(foreName ? `${lastName} ${foreName}` : lastName);
+   588→      }
+   589→    }
+   590→
+   591→    // Abstract
+   592→    const abstractParts = xmlAll(block, "AbstractText");
+   593→    const abs = abstractParts.join(" ");
+   594→
+   595→    // DOI: find ELocationID with ELocationIDType="doi"
+   596→    const elocationBlocks = block.split(/<ELocationID/i);
+   597→    let doi = "";
+   598→    for (const eb of elocationBlocks) {
+   599→      const eidType = xmlAttr(eb, "ELocationID", "ELocationIDType");
+   600→      if (eidType.toLowerCase() === "doi") {
+   601→        // Extract the text content
+   602→        const m = eb.match(/>([^<]*)</);
+   603→        if (m) {
+   604→          doi = normalizeDoi(m[1].trim());
+   605→          break;
+   606→        }
+   607→      }
+   608→    }
+   609→    // Also try ArticleId with IdType="doi"
+   610→    if (!doi) {
+   611→      const aidBlocks = block.split(/<ArticleId/i);
+   612→      for (const ab of aidBlocks) {
+   613→        const idType = xmlAttr(ab, "ArticleId", "IdType");
+   614→        if (idType?.toLowerCase() === "doi") {
+   615→          const m = ab.match(/>([^<]*)</);
+   616→          if (m) {
+   617→            doi = normalizeDoi(m[1].trim());
+   618→            break;
+   619→          }
+   620→        }
+   621→      }
+   622→    }
+   623→
+   624→    const journal = xmlText(block, "Title");
+   625→    const volume = xmlText(block, "Volume");
+   626→    const issue = xmlText(block, "Issue");
+   627→    const pages = xmlText(block, "MedlinePgn");
+   628→
+   629→    refs.push(
+   630→      makeRef("PubMed", idx, {
+   631→        title,
+   632→        authors: authorNames.join("; "),
+   633→        year,
+   634→        abstract: abs,
+   635→        doi,
+   636→        journal,
+   637→        volume,
+   638→        issue,
+   639→        pages,
+   640→      }),
+   641→    );
+   642→    idx++;
+   643→  }
+   644→
+   645→  return refs;
+   646→}
+   647→
+   648→// ---------------------------------------------------------------------------
+   649→// 7. arXiv
+   650→// ---------------------------------------------------------------------------
+   651→
+   652→async function searchArxiv(
+   653→  query: string,
+   654→  yearStart: number,
+   655→  yearEnd: number,
+   656→): Promise<RealReference[]> {
+   657→  const url = new URL("http://export.arxiv.org/api/query");
+   658→  url.searchParams.set("search_query", `all:${query}`);
+   659→  url.searchParams.set("start", "0");
+   660→  url.searchParams.set("max_results", "100");
+   661→
+   662→  const res = await withTimeout(fetch(url.toString()), SEARCH_TIMEOUT_MS);
+   663→  if (!res.ok) return [];
+   664→
+   665→  const xml = await res.text();
+   666→  const entries = xml.split(/<entry>/i);
+   667→  const refs: RealReference[] = [];
+   668→  let idx = 0;
+   669→
+   670→  for (let i = 1; i < entries.length; i++) {
+   671→    const block = entries[i];
+   672→    const title = xmlText(block, "title");
+   673→    if (!title) continue;
+   674→
+   675→    const published = xmlText(block, "published");
+   676→    const year = published ? published.substring(0, 4) : "";
+   677→    if (year) {
+   678→      const y = parseInt(year, 10);
+   679→      if (y < yearStart || y > yearEnd) continue;
+   680→    }
+   681→
+   682→    const authorNames = xmlAll(block, "name").join("; ");
+   683→    const abs = xmlText(block, "summary");
+   684→    const arxivId = xmlText(block, "id");
+   685→
+   686→    // Find alternate link for URL
+   687→    let pdfUrl = "";
+   688→    const linkBlocks = block.split(/<link/i);
+   689→    for (const lb of linkBlocks) {
+   690→      const rel = xmlAttr(lb, "link", "rel");
+   691→      const titleAttr = xmlAttr(lb, "link", "title");
+   692→      if (rel === "alternate" || titleAttr?.toLowerCase() === "pdf") {
+   693→        const href = xmlAttr(lb, "link", "href");
+   694→        if (href) {
+   695→          if (titleAttr?.toLowerCase() === "pdf") {
+   696→            pdfUrl = href;
+   697→          } else if (!pdfUrl) {
+   698→            pdfUrl = href;
+   699→          }
+   700→        }
+   701→      }
+   702→    }
+   703→
+   704→    refs.push(
+   705→      makeRef("arXiv", idx, {
+   706→        title,
+   707→        authors: authorNames,
+   708→        year,
+   709→        abstract: abs,
+   710→        doi: "", // arXiv papers may not have DOIs
+   711→        pdfUrl,
+   712→      }),
+   713→    );
+   714→    idx++;
+   715→  }
+   716→
+   717→  return refs;
+   718→}
+   719→
+   720→// ---------------------------------------------------------------------------
+   721→// 8. BASE
+   722→// ---------------------------------------------------------------------------
+   723→
+   724→async function searchBase(
+   725→  query: string,
+   726→  yearStart: number,
+   727→  yearEnd: number,
+   728→): Promise<RealReference[]> {
+   729→  const url = new URL("https://api.base-search.net/cgi-bin/BaseHttpSearchInterface");
+   730→  url.searchParams.set("func", "PerformSearch");
+   731→  url.searchParams.set("query", query);
+   732→  url.searchParams.set("format", "json");
+   733→  url.searchParams.set("hits", "100");
+   734→
+   735→  const res = await withTimeout(fetch(url.toString()), SEARCH_TIMEOUT_MS);
+   736→  if (!res.ok) return [];
+   737→
+   738→  const data = await res.json();
+   739→  const responseDocs: any[] = data.response?.docs ?? [];
+   740→  return responseDocs
+   741→    .filter((doc: any) => {
+   742→      const dateStr = doc.dcdate ?? "";
+   743→      const y = parseInt(String(dateStr).substring(0, 4), 10);
+   744→      if (isNaN(y)) return false;
+   745→      return y >= yearStart && y <= yearEnd;
+   746→    })
+   747→    .map((doc: any, _filteredIdx: number) => {
+   748→      const year = (doc.dcdate ?? "").substring(0, 4);
+   749→      return makeRef("BASE", _filteredIdx, {
+   750→        title: doc.dctitle ?? "",
+   751→        authors: Array.isArray(doc.dccreator)
+   752→          ? doc.dccreator.join("; ")
+   753→          : (doc.dccreator ?? ""),
+   754→        year,
+   755→        abstract: doc.dcdescription ?? "",
+   756→        doi: normalizeDoi(doc.dcidentifier ?? ""),
+   757→        journal: doc.dcsource ?? "",
+   758→        pdfUrl: doc.dclink ?? "",
+   759→      });
+   760→    });
+   761→}
+   762→
+   763→// ---------------------------------------------------------------------------
+   764→// 9. PLOS
+   765→// ---------------------------------------------------------------------------
+   766→
+   767→async function searchPlos(
+   768→  query: string,
+   769→  yearStart: number,
+   770→  yearEnd: number,
+   771→): Promise<RealReference[]> {
+   772→  const url = new URL("http://api.plos.org/search");
+   773→  url.searchParams.set("q", query);
+   774→  url.searchParams.set("rows", "100");
+   775→  url.searchParams.set("wt", "json");
+   776→  url.searchParams.set(
+   777→    "fq",
+   778→    `publication_date:[${yearStart}-01-01T00:00:00Z TO ${yearEnd}-12-31T23:59:59Z]`,
+   779→  );
+   780→
+   781→  const res = await withTimeout(fetch(url.toString()), SEARCH_TIMEOUT_MS);
+   782→  if (!res.ok) return [];
+   783→
+   784→  const data = await res.json();
+   785→  const docs: any[] = data.response?.docs ?? [];
+   786→  return docs.map((doc: any, i: number) => {
+   787→    const pubDate = doc.publication_date ?? "";
+   788→    const year = pubDate.substring(0, 4);
+   789→    const abs = Array.isArray(doc.abstract) ? doc.abstract[0] : (doc.abstract ?? "");
+   790→    const authorStr = Array.isArray(doc.author_display)
+   791→      ? doc.author_display.join("; ")
+   792→      : (doc.author_display ?? "");
+   793→    // PLOS uses "id" field which is typically the DOI-like article identifier
+   794→    const doi = doc.id ? normalizeDoi(`10.1371/${doc.id}`) : "";
+   795→
+   796→    return makeRef("PLOS", i, {
+   797→      title: doc.title_display ?? "",
+   798→      authors: authorStr,
+   799→      year,
+   800→      abstract: abs,
+   801→      doi,
+   802→      journal: doc.journal ?? "",
+   803→    });
+   804→  });
+   805→}
+   806→
+   807→// ---------------------------------------------------------------------------
+   808→// 10. ERIC
+   809→// ---------------------------------------------------------------------------
+   810→
+   811→async function searchEric(
+   812→  query: string,
+   813→  yearStart: number,
+   814→  yearEnd: number,
+   815→): Promise<RealReference[]> {
+   816→  const url = new URL("https://api.ies.ed.gov/eric/");
+   817→  url.searchParams.set("search", query);
+   818→  url.searchParams.set("format", "json");
+   819→  url.searchParams.set("rows", "100");
+   820→  url.searchParams.set("ff1", `pubYear,${yearStart}-${yearEnd}`);
+   821→
+   822→  const res = await withTimeout(fetch(url.toString()), SEARCH_TIMEOUT_MS);
+   823→  if (!res.ok) return [];
+   824→
+   825→  const data = await res.json();
+   826→  const docs: any[] = data.response?.docs ?? [];
+   827→  return docs.map((doc: any, i: number) => {
+   828→    // Determine refType from ERIC's publication type
+   829→    let refType = "Report";
+   830→    if (Array.isArray(doc.publicationtypecategory)) {
+   831→      const cats = doc.publicationtypecategory.map((c: any) => (typeof c === "string" ? c.toLowerCase() : "")).join(" ");
+   832→      if (cats.includes("journal")) refType = "Journal Article";
+   833→      else if (cats.includes("conference")) refType = "Conference Paper";
+   834→      else if (cats.includes("thesis")) refType = "Thesis";
+   835→      else if (cats.includes("book")) refType = "Book";
+   836→    }
+   837→
+   838→    return makeRef("ERIC", i, {
+   839→      title: doc.title ?? "",
+   840→      authors: Array.isArray(doc.author)
+   841→        ? doc.author.join("; ")
+   842→        : (doc.author ?? ""),
+   843→      year: doc.publicationdateyear ?? "",
+   844→      abstract: Array.isArray(doc.description)
+   845→        ? doc.description.join(" ")
+   846→        : (doc.description ?? ""),
+   847→      doi: normalizeDoi(doc.doi ?? ""),
+   848→      journal: doc.source ?? "",
+   849→      refType,
+   850→    });
+   851→  });
+   852→}
+   853→
+   854→// ---------------------------------------------------------------------------
+   855→// 11. Tavily (web search fallback)
+   856→// ---------------------------------------------------------------------------
+   857→
+   858→async function searchTavily(
+   859→  query: string,
+   860→  _yearStart: number,
+   861→  _yearEnd: number,
+   862→): Promise<RealReference[]> {
+   863→  const key = process.env.TAVILY_API_KEY;
+   864→  if (!key) return [];
+   865→
+   866→  const res = await withTimeout(
+   867→    fetch("https://api.tavily.com/search", {
+   868→      method: "POST",
+   869→      headers: { "Content-Type": "application/json" },
+   870→      body: JSON.stringify({
+   871→        query: `${query} academic research paper`,
+   872→        max_results: 10,
+   873→        search_depth: "advanced",
+   874→        include_answer: false,
+   875→        api_key: key,
+   876→      }),
+   877→    }),
+   878→    SEARCH_TIMEOUT_MS,
+   879→  );
+   880→  if (!res.ok) return [];
+   881→
+   882→  const data = await res.json();
+   883→  const results: any[] = data.results ?? [];
+   884→  return results.map((r: any, i: number) => {
+   885→    // Try to extract a year from the URL or content
+   886→    let year = "";
+   887→    const yearMatch = (r.url ?? "").match(/(?:19|20)\d{2}/);
+   888→    if (yearMatch) year = yearMatch[0];
+   889→
+   890→    return makeRef("Tavily", i, {
+   891→      title: r.title ?? "",
+   892→      authors: "",
+   893→      year,
+   894→      abstract: r.content ?? "",
+   895→      doi: "",
+   896→      journal: "",
+   897→      pdfUrl: r.url ?? "",
+   898→    });
+   899→  });
+   900→}
+   901→
+   902→// ---------------------------------------------------------------------------
+   903→// Search Options
+   904→// ---------------------------------------------------------------------------
+   905→
+   906→export interface SearchOptions {
+   907→  booleanMode?: 'OR' | 'AND';
+   908→  includeKeywords?: string[];
+   909→  excludeKeywords?: string[];
+   910→  referenceTypes?: string[];
+   911→  translatedQueries?: string[][];  // Array of keyword arrays in different languages
+   912→  maxResults?: number;  // Default 500 (was 100)
+   913→}
+   914→
+   915→// ---------------------------------------------------------------------------
+   916→// Main search function
+   917→// ---------------------------------------------------------------------------
+   918→
+   919→export async function searchReferences(
+   920→  keywords: string[],
+   921→  yearStart: number,
+   922→  yearEnd: number,
+   923→  onProgress?: (progress: SearchProgress[]) => void,
+   924→  options?: SearchOptions,
+   925→): Promise<{ references: RealReference[]; meta: Record<string, number> }> {
+   926→  const booleanMode = options?.booleanMode ?? 'OR';
+   927→  const query = buildQuery(keywords, booleanMode);
+   928→  const currentYear = new Date().getFullYear();
+   929→
+   930→  // Progress tracking
+   931→  const sources = [
+   932→    "Scopus",
+   933→    "Semantic Scholar",
+   934→    "OpenAlex",
+   935→    "Crossref",
+   936→    "PubMed",
+   937→    "CORE",
+   938→    "PLOS",
+   939→    "ERIC",
+   940→    "arXiv",
+   941→    "BASE",
+   942→    "Tavily",
+   943→  ] as const;
+   944→
+   945→  const progressMap: Record<string, SearchProgress> = {};
+   946→  for (const s of sources) {
+   947→    progressMap[s] = { source: s, status: "pending", found: 0 };
+   948→  }
+   949→  const progressArray = (): SearchProgress[] =>
+   950→    sources.map((s) => progressMap[s]);
+   951→
+   952→  // Search function map
+   953→  const searchFns: Array<{
+   954→    name: string;
+   955→    fn: () => Promise<RealReference[]>;
+   956→  }> = [
+   957→    { name: "Scopus", fn: () => searchScopus(query, yearStart, yearEnd) },
+   958→    {
+   959→      name: "Semantic Scholar",
+   960→      fn: () => searchSemanticScholar(query, yearStart, yearEnd),
+   961→    },
+   962→    { name: "OpenAlex", fn: () => searchOpenAlex(query, yearStart, yearEnd) },
+   963→    { name: "Crossref", fn: () => searchCrossref(query, yearStart, yearEnd) },
+   964→    { name: "PubMed", fn: () => searchPubMed(query, yearStart, yearEnd) },
+   965→    { name: "CORE", fn: () => searchCore(query, yearStart, yearEnd) },
+   966→    { name: "PLOS", fn: () => searchPlos(query, yearStart, yearEnd) },
+   967→    { name: "ERIC", fn: () => searchEric(query, yearStart, yearEnd) },
+   968→    { name: "arXiv", fn: () => searchArxiv(query, yearStart, yearEnd) },
+   969→    { name: "BASE", fn: () => searchBase(query, yearStart, yearEnd) },
+   970→    {
+   971→      name: "Tavily",
+   972→      fn: () => searchTavily(query, yearStart, yearEnd),
+   973→    },
+   974→  ];
+   975→
+   976→  // Track raw counts per source
+   977→  const rawCounts: Record<string, number> = {};
+   978→  for (const s of sources) {
+   979→    rawCounts[SOURCE_META_KEY[s]] = 0;
+   980→  }
+   981→
+   982→  // Run all searches in parallel
+   983→  const settled = await Promise.allSettled(
+   984→    searchFns.map(async ({ name, fn }) => {
+   985→      progressMap[name].status = "searching";
+   986→      onProgress?.(progressArray());
+   987→      try {
+   988→        const results = await fn();
+   989→        progressMap[name].status = "done";
+   990→        progressMap[name].found = results.length;
+   991→        rawCounts[SOURCE_META_KEY[name]] = results.length;
+   992→        onProgress?.(progressArray());
+   993→        return results;
+   994→      } catch {
+   995→        progressMap[name].status = "error";
+   996→        progressMap[name].found = 0;
+   997→        onProgress?.(progressArray());
+   998→        return [] as RealReference[];
+   999→      }
+  1000→    }),
+  1001→  );
+  1002→
+  1003→  // Collect all results
+  1004→  let allRefs: RealReference[] = [];
+  1005→  for (const result of settled) {
+  1006→    if (result.status === "fulfilled") {
+  1007→      allRefs = allRefs.concat(result.value);
+  1008→    }
+  1009→  }
+  1010→
+  1011→  // ── Multi-language search ──────────────────────────────────────────
+  1012→  if (options?.translatedQueries?.length) {
+  1013→    for (const translatedKws of options.translatedQueries) {
+  1014→      if (!translatedKws.length) continue;
+  1015→      const translatedQuery = buildQuery(translatedKws, booleanMode);
+  1016→
+  1017→      const translatedFns = searchFns.map(({ name }) => {
+  1018→        switch (name) {
+  1019→          case 'Scopus': return () => searchScopus(translatedQuery, yearStart, yearEnd);
+  1020→          case 'Semantic Scholar': return () => searchSemanticScholar(translatedQuery, yearStart, yearEnd);
+  1021→          case 'OpenAlex': return () => searchOpenAlex(translatedQuery, yearStart, yearEnd);
+  1022→          case 'Crossref': return () => searchCrossref(translatedQuery, yearStart, yearEnd);
+  1023→          case 'PubMed': return () => searchPubMed(translatedQuery, yearStart, yearEnd);
+  1024→          case 'CORE': return () => searchCore(translatedQuery, yearStart, yearEnd);
+  1025→          case 'PLOS': return () => searchPlos(translatedQuery, yearStart, yearEnd);
+  1026→          case 'ERIC': return () => searchEric(translatedQuery, yearStart, yearEnd);
+  1027→          case 'arXiv': return () => searchArxiv(translatedQuery, yearStart, yearEnd);
+  1028→          case 'BASE': return () => searchBase(translatedQuery, yearStart, yearEnd);
+  1029→          case 'Tavily': return () => searchTavily(translatedQuery, yearStart, yearEnd);
+  1030→          default: return () => Promise.resolve([] as RealReference[]);
+  1031→        }
+  1032→      });
+  1033→
+  1034→      const translatedSettled = await Promise.allSettled(
+  1035→        translatedFns.map(async (fn) => {
+  1036→          try {
+  1037→            return await fn();
+  1038→          } catch {
+  1039→            return [] as RealReference[];
+  1040→          }
+  1041→        }),
+  1042→      );
+  1043→
+  1044→      for (const result of translatedSettled) {
+  1045→        if (result.status === 'fulfilled') {
+  1046→          allRefs = allRefs.concat(result.value);
+  1047→        }
+  1048→      }
+  1049→    }
+  1050→  }
+  1051→
+  1052→  const totalRaw = allRefs.length;
+  1053→
+  1054→  // -----------------------------------------------------------------------
+  1055→  // Deduplication
+  1056→  // -----------------------------------------------------------------------
+  1057→
+  1058→  // First pass: group by DOI (case-insensitive)
+  1059→  const doiGroups: Map<string, RealReference[]> = new Map();
+  1060→  const noDoi: RealReference[] = [];
+  1061→
+  1062→  for (const ref of allRefs) {
+  1063→    if (ref.doi) {
+  1064→      const key = ref.doi.toLowerCase();
+  1065→      const group = doiGroups.get(key) ?? [];
+  1066→      group.push(ref);
+  1067→      doiGroups.set(key, group);
+  1068→    } else {
+  1069→      noDoi.push(ref);
+  1070→    }
+  1071→  }
+  1072→
+  1073→  // For each DOI group, keep the one from highest-quality source
+  1074→  const deduped: RealReference[] = [];
+  1075→  doiGroups.forEach((group) => {
+  1076→    group.sort(
+  1077→      (a: RealReference, b: RealReference) =>
+  1078→        (SOURCE_QUALITY_RANK[a.source] ?? 99) -
+  1079→        (SOURCE_QUALITY_RANK[b.source] ?? 99),
+  1080→    );
+  1081→    deduped.push(group[0]);
+  1082→  });
+  1083→
+  1084→  // Second pass: for items without DOI, fuzzy match by title
+  1085→  const usedNoDoi = new Set<number>();
+  1086→  for (let i = 0; i < noDoi.length; i++) {
+  1087→    if (usedNoDoi.has(i)) continue;
+  1088→    const current = noDoi[i];
+  1089→    let bestMatch = -1;
+  1090→    let bestScore = 0.9; // threshold
+  1091→    let currentIsBetter = true;
+  1092→
+  1093→    // Check against already-deduped items
+  1094→    for (let j = 0; j < deduped.length; j++) {
+  1095→      const sim = titleSimilarity(current.title, deduped[j].title);
+  1096→      if (sim > bestScore) {
+  1097→        bestScore = sim;
+  1098→        // Compare data completeness
+  1099→        const currentCompleteness =
+  1100→          (current.abstract ? 1 : 0) +
+  1101→          (current.authors ? 1 : 0) +
+  1102→          (current.year ? 1 : 0) +
+  1103→          (current.journal ? 1 : 0);
+  1104→        const existingCompleteness =
+  1105→          (deduped[j].abstract ? 1 : 0) +
+  1106→          (deduped[j].authors ? 1 : 0) +
+  1107→          (deduped[j].year ? 1 : 0) +
+  1108→          (deduped[j].journal ? 1 : 0);
+  1109→        if (currentCompleteness > existingCompleteness) {
+  1110→          currentIsBetter = true;
+  1111→          bestMatch = j;
+  1112→        } else {
+  1113→          currentIsBetter = false;
+  1114→          bestMatch = j;
+  1115→        }
+  1116→      }
+  1117→    }
+  1118→
+  1119→    if (bestMatch >= 0) {
+  1120→      if (currentIsBetter) {
+  1121→        deduped[bestMatch] = current;
+  1122→      }
+  1123→      // Otherwise the existing deduped item is kept
+  1124→    } else {
+  1125→      // Also check against other no-DOI items
+  1126→      let isDuplicate = false;
+  1127→      for (let k = 0; k < i; k++) {
+  1128→        if (usedNoDoi.has(k)) continue;
+  1129→        const sim = titleSimilarity(current.title, noDoi[k].title);
+  1130→        if (sim > 0.9) {
+  1131→          // Keep the more complete one
+  1132→          const cComplete =
+  1133→            (current.abstract ? 1 : 0) +
+  1134→            (current.authors ? 1 : 0) +
+  1135→            (current.year ? 1 : 0);
+  1136→          const kComplete =
+  1137→            (noDoi[k].abstract ? 1 : 0) +
+  1138→            (noDoi[k].authors ? 1 : 0) +
+  1139→            (noDoi[k].year ? 1 : 0);
+  1140→          if (cComplete <= kComplete) {
+  1141→            isDuplicate = true;
+  1142→          } else {
+  1143→            // Replace — remove old, add new
+  1144→            usedNoDoi.add(k);
+  1145→            // The replaced one won't be added since we use usedNoDoi check
+  1146→          }
+  1147→          break;
+  1148→        }
+  1149→      }
+  1150→      if (!isDuplicate) {
+  1151→        deduped.push(current);
+  1152→      }
+  1153→      usedNoDoi.add(i);
+  1154→    }
+  1155→  }
+  1156→
+  1157→  const afterDedupe = deduped.length;
+  1158→
+  1159→  // -----------------------------------------------------------------------
+  1160→  // Relevance Scoring
+  1161→  // -----------------------------------------------------------------------
+  1162→
+  1163→  const normalizedKeywords = keywords.map((k) => k.toLowerCase());
+  1164→
+  1165→  for (const ref of deduped) {
+  1166→    const titleLower = ref.title.toLowerCase();
+  1167→    const abstractLower = ref.abstract.toLowerCase();
+  1168→
+  1169→    let titleMatches = 0;
+  1170→    for (const kw of normalizedKeywords) {
+  1171→      // Whole word match
+  1172→      const wordRe = new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+  1173→      if (wordRe.test(ref.title)) titleMatches++;
+  1174→    }
+  1175→
+  1176→    let abstractMatches = 0;
+  1177→    for (const kw of normalizedKeywords) {
+  1178→      const wordRe = new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+  1179→      if (wordRe.test(ref.abstract)) abstractMatches++;
+  1180→    }
+  1181→
+  1182→    const yearNum = parseInt(ref.year, 10);
+  1183→    const yearRecency = !isNaN(yearNum)
+  1184→      ? Math.max(0, 1 - (currentYear - yearNum) / 20)
+  1185→      : 0;
+  1186→    const hasDoi = ref.doi ? 1 : 0;
+  1187→    const hasAbstract = ref.abstract ? 1 : 0;
+  1188→
+  1189→    ref.relevanceScore =
+  1190→      titleMatches * 3 +
+  1191→      abstractMatches * 1 +
+  1192→      yearRecency * 2 +
+  1193→      hasDoi * 1 +
+  1194→      hasAbstract * 0.5;
+  1195→  }
+  1196→
+  1197→  // Sort by relevanceScore DESC
+  1198→  deduped.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  1199→
+  1200→  // ── Include/Exclude filtering (after scoring, before truncation) ───
+  1201→  let filtered = deduped;
+  1202→
+  1203→  // Include filter: keep refs whose title/abstract contains at least one include keyword
+  1204→  if (options?.includeKeywords?.length) {
+  1205→    const includeKws = options.includeKeywords.map(k => k.toLowerCase());
+  1206→    filtered = filtered.filter(ref => {
+  1207→      const text = `${ref.title} ${ref.abstract}`.toLowerCase();
+  1208→      return includeKws.some(kw => text.includes(kw));
+  1209→    });
+  1210→  }
+  1211→
+  1212→  // Exclude filter: remove refs whose title/abstract contains any exclude keyword
+  1213→  if (options?.excludeKeywords?.length) {
+  1214→    const excludeKws = options.excludeKeywords.map(k => k.toLowerCase());
+  1215→    filtered = filtered.filter(ref => {
+  1216→      const text = `${ref.title} ${ref.abstract}`.toLowerCase();
+  1217→      return !excludeKws.some(kw => text.includes(kw));
+  1218→    });
+  1219→  }
+  1220→
+  1221→  // Reference type filtering
+  1222→  if (options?.referenceTypes?.length && !options.referenceTypes.includes('all')) {
+  1223→    const typeSet = new Set(options.referenceTypes.map(t => t.toLowerCase()));
+  1224→    filtered = filtered.filter(ref => typeSet.has(ref.refType.toLowerCase()));
+  1225→  }
+  1226→
+  1227→  const maxResults = options?.maxResults || 500;
+  1228→  const finalRefs = filtered.slice(0, maxResults);
+  1229→
+  1230→  // -----------------------------------------------------------------------
+  1231→  // Build meta
+  1232→  // -----------------------------------------------------------------------
+  1233→
+  1234→  const meta: Record<string, number> = { ...rawCounts };
+  1235→  meta.totalRaw = totalRaw;
+  1236→  meta.afterDedupe = afterDedupe;
+  1237→  meta.afterCriteria = filtered.length;
+  1238→  meta.afterValidation = 0;
+  1239→
+  1240→  // Filter out references with invalid years (future dates, too old)
+  1241→  const validatedRefs = finalRefs.filter((ref) => {
+  1242→    const yearNum = parseInt(ref.year, 10);
+  1243→    if (isNaN(yearNum)) return false;
+  1244→    if (yearNum > currentYear) return false;
+  1245→    if (yearNum < 1990) return false;
+  1246→    return true;
+  1247→  });
+  1248→
+  1249→  meta.afterValidation = validatedRefs.length;
+  1250→
+  1251→  return { references: validatedRefs, meta };
+  1252→}

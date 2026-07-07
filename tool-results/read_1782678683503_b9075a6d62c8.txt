@@ -1,0 +1,402 @@
+    90→    90→    90→    console.warn(
+    91→    91→    91→      `[article-gen] ${sectionName} attempt ${attempt}/${MAX_SECTION_RETRIES} invalid: ${result.length} chars, ${wc} words, empty=${!result.trim()}`,
+    92→    92→    92→    );
+    93→    93→    93→
+    94→    94→    94→    // Content is empty/short/fallback — retry if attempts remain
+    95→    95→    95→    if (attempt < MAX_SECTION_RETRIES) {
+    96→    96→    96→      const delay = RETRY_DELAYS[attempt - 1];
+    97→    97→    97→      console.log(
+    98→    98→    98→        `[article-gen] Retrying ${sectionName} (attempt ${attempt + 1}/${MAX_SECTION_RETRIES})...`,
+    99→    99→    99→      );
+   100→   100→   100→      await new Promise<void>((r) => setTimeout(r, delay));
+   101→   101→   101→    } else {
+   102→   102→   102→      console.error(
+   103→   103→   103→        `[article-gen] ${sectionName} failed after ${MAX_SECTION_RETRIES} attempts (final: ${wc} words)`,
+   104→   104→   104→      );
+   105→   105→   105→    }
+   106→   106→   106→  }
+   107→   107→   107→
+   108→   108→   108→  return '';
+   109→   109→   109→}
+   110→   110→   110→
+   111→   111→   111→// ─── Post-Generation Word Count Expansion ─────────────────────────────────────
+   112→   112→   112→// If a section is below its target word count, this function sends an EXPANSION
+   113→   113→   113→// prompt asking the AI to lengthen the section while maintaining quality.
+   114→   114→   114→
+   115→   115→   115→async function expandSectionToTarget(
+   116→   116→   116→  sectionName: string,
+   117→   117→   117→  sectionType: string,
+   118→   118→   118→  currentContent: string,
+   119→   119→   119→  engine: AIEngineId,
+   120→   120→   120→  systemPrompt: string,
+   121→   121→   121→  maxExpansionAttempts: number = 2,
+   122→   122→   122→): Promise<string> {
+   123→   123→   123→  const currentWords = countWords(currentContent);
+   124→   124→   124→  const minWords = SECTION_MIN_WORDS[sectionType] || 500;
+   125→   125→   125→  const targetWords = SECTION_TARGET_WORDS[sectionType] || minWords;
+   126→   126→   126→
+   127→   127→   127→  // If already at or above target, no expansion needed
+   128→   128→   128→  if (currentWords >= targetWords) {
+   129→   129→   129→    console.log(`[expand] ${sectionName}: ${currentWords}/${targetWords} words — NO expansion needed`);
+   130→   130→   130→    return currentContent;
+   131→   131→   131→  }
+   132→   132→   132→
+   133→   133→   133→  // If below minimum, definitely expand. If between min and target, also expand.
+   134→   134→   134→  const deficit = targetWords - currentWords;
+   135→   135→   135→  console.log(`[expand] ${sectionName}: ${currentWords}/${targetWords} words — EXPANDING by ~${deficit} words`);
+   136→   136→   136→
+   137→   137→   137→  let content = currentContent;
+   138→   138→   138→
+   139→   139→   139→  for (let attempt = 1; attempt <= maxExpansionAttempts; attempt++) {
+   140→   140→   140→    const wordsNow = countWords(content);
+   141→   141→   141→    const remainingDeficit = targetWords - wordsNow;
+   142→   142→   142→
+   143→   143→   143→    if (remainingDeficit <= 0) {
+   144→   144→   144→      console.log(`[expand] ${sectionName}: reached ${wordsNow} words after expansion — SUCCESS`);
+   145→   145→   145→      break;
+   146→   146→   146→    }
+   147→   147→   147→
+   148→   148→   148→    const expansionPrompt = `## SECTION EXPANSION TASK
+   149→   149→   149→
+   150→   150→   150→The following ${sectionName} section currently has ${wordsNow} words but MUST reach at least ${targetWords} words (currently short by ~${remainingDeficit} words).
+   151→   151→   151→
+   152→   152→   152→YOUR TASK: Expand this section by adding approximately ${remainingDeficit} MORE words of high-quality academic content. Follow these rules precisely:
+   153→   153→   153→
+   154→   154→   154→1. **DO NOT delete or significantly rewrite** any existing content — ADD new material
+   155→   155→   155→2. **Insert new paragraphs** in logical positions where they naturally fit the argument flow
+   156→   156→   156→3. **Add more detailed analysis** — expand claims with additional evidence, deeper reasoning, and more nuanced discussion
+   157→   157→   157→4. **Add more scholarly dialogue** — introduce additional citation synthesis where the argument can be strengthened
+   158→   158→   158→5. **Expand existing paragraphs** that are thin (under 100 words) by adding supporting evidence and elaboration
+   159→   159→   159→6. **Maintain the same writing quality** — formal British English, hedging language, sophisticated transitions
+   160→   160→   160→7. **Do NOT add new section headings** — only expand within the existing structure
+   161→   161→   161→8. **Do NOT include any preamble** — output the COMPLETE expanded section from start to finish
+   162→   162→   162→
+   163→   163→   163→CRITICAL: The output must be the COMPLETE ${sectionName} section (not just the new parts). It must read as a cohesive, naturally-flowing academic text.
+   164→   164→   164→
+   165→   165→   165→## CURRENT ${sectionName.toUpperCase()} SECTION (${wordsNow} words):
+   166→   166→   166→
+   167→   167→   167→${content}
+   168→   168→   168→
+   169→   169→   169→OUTPUT THE COMPLETE EXPANDED ${sectionName.toUpperCase()} SECTION ABOVE. No preamble. No commentary. Start from the very first sentence.`;
+   170→   170→   170→
+   171→   171→   171→    try {
+   172→   172→   172→      const expandedResult = await generateWithEngine(
+   173→   173→   173→        engine,
+   174→   174→   174→        systemPrompt,
+   175→   175→   175→        expansionPrompt,
+   176→   176→   176→        { maxTokens: 32000 },
+   177→   177→   177→      );
+   178→   178→   178→
+   179→   179→   179→      if (expandedResult && expandedResult.trim().length > 0 && !FALLBACK_PATTERN.test(expandedResult)) {
+   180→   180→   180→        const newWordCount = countWords(expandedResult);
+   181→   181→   181→        if (newWordCount > wordsNow) {
+   182→   182→   182→          const improvement = newWordCount - wordsNow;
+   183→   183→   183→          console.log(`[expand] ${sectionName} attempt ${attempt}: ${wordsNow} → ${newWordCount} words (+${improvement})`);
+   184→   184→   184→          content = expandedResult;
+   185→   185→   185→
+   186→   186→   186→          if (newWordCount >= targetWords) {
+   187→   187→   187→            console.log(`[expand] ${sectionName}: TARGET REACHED at ${newWordCount} words`);
+   188→   188→   188→            break;
+   189→   189→   189→          }
+   190→   190→   190→        } else {
+   191→   191→   191→          console.warn(`[expand] ${sectionName} attempt ${attempt}: no improvement (${newWordCount} words)`);
+   192→   192→   192→        }
+   193→   193→   193→      } else {
+   194→   194→   194→        console.warn(`[expand] ${sectionName} attempt ${attempt}: invalid/empty result`);
+   195→   195→   195→      }
+   196→   196→   196→    } catch (err) {
+   197→   197→   197→      console.error(`[expand] ${sectionName} attempt ${attempt} error:`, err);
+   198→   198→   198→    }
+   199→   199→   199→
+   200→   200→   200→    // Wait between expansion attempts
+   201→   201→   201→    if (attempt < maxExpansionAttempts) {
+   202→   202→   202→      await new Promise<void>((r) => setTimeout(r, 10000));
+   203→   203→   203→    }
+   204→   204→   204→  }
+   205→   205→   205→
+   206→   206→   206→  const finalWords = countWords(content);
+   207→   207→   207→  if (finalWords < minWords) {
+   208→   208→   208→    console.warn(`[expand] ${sectionName}: WARNING — final ${finalWords} words is still below minimum ${minWords}`);
+   209→   209→   209→  } else if (finalWords < targetWords) {
+   210→   210→   210→    console.log(`[expand] ${sectionName}: final ${finalWords} words (above minimum ${minWords}, below target ${targetWords})`);
+   211→   211→   211→  } else {
+   212→   212→   212→    console.log(`[expand] ${sectionName}: final ${finalWords} words — TARGET MET ✓`);
+   213→   213→   213→  }
+   214→   214→   214→
+   215→   215→   215→  return content;
+   216→   216→   216→}
+   217→   217→   217→
+   218→   218→   218→// ─── POST Handler ──────────────────────────────────────────────────────────────
+   219→   219→   219→
+   220→   220→   220→export async function POST(request: Request) {
+   221→   221→   221→  try {
+   222→   222→   222→    const body = await request.json();
+   223→   223→   223→    const { title, keywords, references, researchMethod, additionalInstructions, engineId } = body;
+   224→   224→   224→
+   225→   225→   225→    if (!title || !keywords || !references || !researchMethod) {
+   226→   226→   226→      return NextResponse.json(
+   227→   227→   227→        { success: false, error: 'Missing required fields' },
+   228→   228→   228→        { status: 400 },
+   229→   229→   229→      );
+   230→   230→   230→    }
+   231→   231→   231→
+   232→   232→   232→    if (!Array.isArray(references) || references.length < 3) {
+   233→   233→   233→      return NextResponse.json(
+   234→   234→   234→        { success: false, error: 'At least 3 references are required' },
+   235→   235→   235→        { status: 400 },
+   236→   236→   236→      );
+   237→   237→   237→    }
+   238→   238→   238→
+   239→   239→   239→    // Validate engine ID
+   240→   240→   240→    const engine: AIEngineId = AI_ENGINES.some(e => e.id === engineId) ? engineId : 'zai';
+   241→   241→   241→
+   242→   242→   242→    // Convert researchMethod slug to a human-readable label
+   243→   243→   243→    const methodLabel = (researchMethod as string)
+   244→   244→   244→      .replace(/-/g, ' ')
+   245→   245→   245→      .replace(/\b\w/g, (l: string) => l.toUpperCase());
+   246→   246→   246→
+   247→   247→   247→    const selectedRefs = references.filter((r: Reference) => r.isSelected);
+   248→   248→   248→
+   249→   249→   249→    // Filter out invalid references (future years, too old, empty titles)
+   250→   250→   250→    const currentYear = new Date().getFullYear();
+   251→   251→   251→    const validSelectedRefs = selectedRefs.filter((r: Reference) => {
+   252→   252→   252→      const year = typeof r.year === 'number' ? r.year : parseInt(String(r.year)) || 0;
+   253→   253→   253→      if (year > currentYear || year < 1990) return false;
+   254→   254→   254→      if (!r.title || r.title.trim().length < 5) return false;
+   255→   255→   255→      return true;
+   256→   256→   256→    });
+   257→   257→   257→    // Use validSelectedRefs instead of selectedRefs for everything below
+   258→   258→   258→
+   259→   259→   259→    // Build reference list for PROMPT INCLUSION — first 50 for richer context
+   260→   260→   260→    const refListForPrompt = validSelectedRefs
+   261→   261→   261→      .slice(0, 50)
+   262→   262→   262→      .map(
+   263→   263→   263→        (r: Reference) => {
+   264→   264→   264→          const year = typeof r.year === 'number' ? r.year : (parseInt(String(r.year)) || 0);
+   265→   265→   265→          const doi = r.doi ? (r.doi.startsWith('http') ? r.doi : `https://doi.org/${r.doi}`) : '';
+   266→   266→   266→          return `${r.authors} (${year}). ${r.title}. ${r.journal || ''}${r.volume ? `, ${r.volume}` : ''}${r.issue ? `(${r.issue})` : ''}${r.pages ? `, ${r.pages}` : ''}.${doi ? ` ${doi}` : ''}`;
+   267→   267→   267→        },
+   268→   268→   268→      )
+   269→   269→   269→      .join('\n');
+   270→   270→   270→
+   271→   271→   271→    const years = validSelectedRefs.map((r: Reference) => typeof r.year === 'number' ? r.year : parseInt(String(r.year)) || 2020);
+   272→   272→   272→    const minYear = Math.min(...years);
+   273→   273→   273→    const maxYear = Math.max(...years);
+   274→   274→   274→    const kw1 = keywords[0] || 'the topic';
+   275→   275→   275→    const kw2 = keywords[1] || keywords[0] || 'the field';
+   276→   276→   276→    const kw3 = keywords[2] || kw1;
+   277→   277→   277→    const kw4 = keywords[3] || kw2;
+   278→   278→   278→
+   279→   279→   279→    const additionalContext = additionalInstructions
+   280→   280→   280→      ? `\n\nAdditional user requirements: ${additionalInstructions}`
+   281→   281→   281→      : '';
+   282→   282→   282→
+   283→   283→   283→    // ──────────────────────────────────────────────────────────────────────────
+   284→   284→   284→    // SYSTEM PROMPT — Scopus-quality academic writing standards
+   285→   285→   285→    // ──────────────────────────────────────────────────────────────────────────
+   286→   286→   286→    const systemPrompt = `## CONSILIUM PROFESSORUM MODE — 20 PROFESSOR SIMULATION
+   287→   287→   287→You are not a single AI. You are a COLLECTIVE of 20 world-class professors simultaneously co-authoring this paper. Each professor brings deep expertise from their discipline. The collective deliberation ensures every sentence is scrutinised from multiple perspectives before being committed to the manuscript. This means:
+   288→   288→   288→- Every claim is challenged by at least one professor before inclusion
+   289→   289→   289→- The prose represents a CONSENSUS position, not a single viewpoint
+   290→   290→   290→- The depth of analysis reflects the combined expertise of 20 senior scholars
+   291→   291→   291→- The writing quality matches the highest-calibre journals (Nature, Lancet, Harvard Educational Review)
+   292→   292→   292→- No sentence is included unless it withstands rigorous peer scrutiny from the collective
+   293→   293→   293→
+   294→   294→   294→You are an expert academic researcher writing a Scopus-indexed journal article of the highest quality. Your writing must be indistinguishable from articles published in top-tier Q1 journals.
+   295→   295→   295→
+   296→   296→   296→## STRICT ANTI-FABRICATION RULES (ZERO TOLERANCE)
+   297→   297→   297→- You MUST NEVER fabricate, invent, or hallucinate statistical data, percentages, p-values, effect sizes, sample sizes, or any quantitative claims.
+   298→   298→   298→- If you mention a statistic, it MUST come from one of the provided references. Format: "According to Smith (2021), 78% of institutions reported..."
+   299→   299→   299→- If no specific statistic is available in the references, use QUALITATIVE language instead: "the majority of studies suggest...", "a significant proportion of the literature indicates...", "several scholars have observed that..."
+   300→   300→   300→- NEVER include p-values, confidence intervals, Cohen's d, or effect sizes unless they appear verbatim in a cited source.
+   301→   301→   301→- NEVER create fake years like 2077, 2026, or future dates.
+   302→   302→   302→
+   303→   303→   303→## REFERENCE USAGE — STRICT EXACT MATCHING RULE (ZERO TOLERANCE)
+   304→   304→   304→- You MUST ONLY cite references from the "References available" list provided in each prompt.
+   305→   305→   305→- NEVER invent, fabricate, or hallucinate a reference that is not in the provided list.
+   306→   306→   306→- NEVER cite a reference about a completely different topic (e.g., if the article is about education, do NOT cite references about AI cybersecurity, energy systems, or organisational resilience unless they appear in the provided list).
+   307→   307→   307→- If you cannot support a claim with a provided reference, either rephrase the claim as a general observation or omit it entirely.
+   308→   308→   308→- Cross-check EVERY (Author, Year) citation against the provided list before including it.
+   309→   309→   309→- CRITICAL: Every single reference you cite in the body text MUST appear in the References list at the end. Do NOT cite any reference that is not in the provided list. Do NOT omit any cited reference from the bibliography.
+   310→   310→   310→- The bibliography must contain EXACTLY the references you cited in the text — no more, no fewer. If you cited (Smith, 2021) in the text, Smith (2021) MUST appear in the references. If a reference in the list was never cited, do NOT include it in the bibliography.
+   311→   311→   311→
+   312→   312→   312→## ANTI-REPETITION RULES
+   313→   313→   313→- Never repeat the same phrase, sentence structure, or transition within 3 consecutive paragraphs.
+   314→   314→   314→- Never start two consecutive paragraphs with the same word or phrase.
+   315→   315→   315→- If you have used a transition phrase, do not reuse it within 500 words.
+   316→   316→   316→- Vary sentence length: mix short impactful sentences with longer complex ones.
+   317→   317→   317→- Keep paragraphs concise: each paragraph should make ONE main point (80-150 words).
+   318→   318→   318→- Never repeat the same citation within 200 words.
+   319→   319→   319→
+   320→   320→   320→## FORMATTING RULES
+   321→   321→   321→- Do NOT include "Introduction", "Abstract", "Conclusion" etc. as headings at the start of sections — start directly with the content.
+   322→   322→   322→- Output ONLY the section content — no preamble, no meta-commentary, no "Here is the introduction:".
+   323→   323→   323→- Do NOT include page numbers, headers, or footers.
+   324→   324→   324→- Do NOT include "Keywords:" or "Word count:" at the start or end of any section.
+   325→   325→   325→
+   326→   326→   326→## LANGUAGE STANDARDS
+   327→   327→   327→- Use formal British English exclusively (analyse, organisation, behaviour, programme, favour, colour, centre, rigour, endeavour, modelling, fulfil, recognise — never American spellings).
+   328→   328→   328→- Employ sophisticated academic vocabulary and nuanced, complex sentence structures.
+   329→   329→   329→- Use present tense for established knowledge and general truths; past tense for specific study methodologies and findings.
+   330→   330→   330→- No colloquial language, contractions, bullet-point lists in body text, or informal tone whatsoever.
+   331→   331→   331→
+   332→   332→   332→## HEDGING LANGUAGE (MANDATORY THROUGHOUT)
+   333→   333→   333→You must use hedging language to signal academic caution and epistemological humility. Use these and similar constructions frequently:
+   334→   334→   334→- "suggests that", "may indicate", "appears to", "seems likely", "could be interpreted as"
+   335→   335→   335→- "it is plausible that", "there is evidence to suggest", "tends to", "is arguably"
+   336→   336→   336→- "provides tentative support for", "might partly explain", "raises the possibility that"
+   337→   337→   337→- "the data are consistent with", "one interpretation is that", "it remains unclear whether"
+   338→   338→   338→NEVER use absolute certainty language such as "proves that", "definitely", "undoubtedly", "clearly shows" (except when referring to a citation's own claim with attribution).
+   339→   339→   339→
+   340→   340→   340→## CITATION INTEGRATION — SYNTHESIS, NOT LISTING
+   341→   341→   341→Every claim must be supported by APA 7th edition bodynote format (Author, Year). However, citations must be SYNTHESISED into scholarly dialogue, NEVER listed in isolation.
+   342→   342→   342→
+   343→   343→   343→WEAK citation pattern (DO NOT USE):
+   344→   344→   344→"Smith (2020) studied X. Jones (2021) found Y. Brown (2022) argued Z."
+   345→   345→   345→
+   346→   346→   346→STRONG citation pattern (USE THIS):
+   347→   347→   347→"Whilst Smith (2020) demonstrated that institutional factors mediate the relationship between X and Y, Jones (2021) presented compelling evidence that individual agency is the dominant determinant, suggesting a paradigm shift in how the phenomenon is conceptualised. This tension is further complicated by Brown (2022), who proposed a dialectical model wherein structural constraints and agentic responses co-constitute outcomes — a position that builds upon earlier work by Lee (2019) but challenges the unidirectional causality assumed by both Smith and Jones."
+   348→   348→   348→
+   349→   349→   349→Citations must engage in genuine scholarly dialogue: agreeing, extending, qualifying, contradicting, or synthesising previous work. Multiple citations per sentence are encouraged when they relate to the same argument.
+   350→   350→   350→
+   351→   351→   351→## PREFERRED ACADEMIC TRANSITION PHRASES
+   352→   352→   352→Use these and similar phrases to create smooth, sophisticated flow between and within paragraphs:
+   353→   353→   353→1. "A growing body of literature suggests that..."
+   354→   354→   354→2. "Building upon the work of..."
+   355→   355→   355→3. "In comparison with..."
+   356→   356→   356→4. "In contrast to the findings of..."
+   357→   357→   357→5. "Whilst considerable attention has been paid to..., less is known about..."
+   358→   358→   358→6. "Moreover, the relationship between X and Y remains underexplored..."
+   359→   359→   359→7. "Furthermore, it is noteworthy that..."
+   360→   360→   360→8. "Notwithstanding these advances..."
+   361→   361→   361→9. "Several scholars have argued that..."
+   362→   362→   362→10. "Consistent with this perspective..."
+   363→   363→   363→11. "Drawing upon the theoretical framework of..."
+   364→   364→   364→12. "To the extent that..."
+   365→   365→   365→13. "In light of these findings..."
+   366→   366→   366→14. "It follows from this that..."
+   367→   367→   367→15. "Consequently, there is a pressing need to..."
+   368→   368→   368→16. "The aforementioned findings collectively suggest that..."
+   369→   369→   369→17. "In a similar vein..."
+   370→   370→   370→18. "From a different theoretical standpoint..."
+   371→   371→   371→19. "Against this backdrop..."
+   372→   372→   372→20. "The implications of these observations extend beyond..."
+   373→   373→   373→21. "Recent scholarship has begun to challenge the assumption that..."
+   374→   374→   374→22. "An alternative interpretation, advanced by..."
+   375→   375→   375→23. "This raises important questions about..."
+   376→   376→   376→24. "As a corollary..."
+   377→   377→   377→25. "Taken together, these studies indicate that..."
+   378→   378→   378→
+   379→   379→   379→## WEAK VS STRONG ACADEMIC WRITING
+   380→   380→   380→WEAK: "Many researchers have studied this topic. The results show different things."
+   381→   381→   381→STRONG: "Despite a substantial body of empirical work, the literature on this topic remains characterised by significant theoretical fragmentation, with findings that are often contradictory and difficult to reconcile across methodological paradigms."
+   382→   382→   382→
+   383→   383→   383→WEAK: "This study is important because it fills a gap."
+   384→   384→   384→STRONG: "The present study addresses a critical lacuna in the extant literature by offering an integrative analysis that synthesises hitherto disparate theoretical perspectives and empirical findings."
+   385→   385→   385→
+   386→   386→   386→WEAK: "The results showed that X affects Y."
+   387→   387→   387→STRONG: "The analysis suggests that X may exert a significant influence on Y, although the strength and direction of this relationship appear to be contingent upon several moderating variables."
+   388→   388→   388→
+   389→   389→   389→## STRUCTURAL REQUIREMENTS
+   390→   390→   390→- Each paragraph must flow naturally into the next through transitional phrases — the prose must read as a cohesive, intellectually compelling argument, not a series of disconnected observations.
+   391→   391→   391→- Ensure precise operational definitions and conceptual clarity throughout.
+   392→   392→   392→- Vary your evidence base — never repeat the same citation in consecutive sentences.
+   393→   393→   393→- Engage critically with sources through scholarly dialogue, not mere summary.
+   394→   394→   394→- The overall article should read as if the referenced scholars are engaged in a vibrant, ongoing academic conversation.`;
+   395→   395→   395→
+   396→   396→   396→    // ──────────────────────────────────────────────────────────────────────────
+   397→   397→   397→    // TITLE GENERATION (target 10-15 words)
+   398→   398→   398→    // ──────────────────────────────────────────────────────────────────────────
+   399→   399→   399→    const titlePrompt = `The current working title is: "${title}"
+   400→   400→   400→
+   401→   401→   401→Your goal is to produce a title of exactly 10-15 words — this is a TARGET to achieve. The title must clearly convey the research topic, method, and scope.
+   402→   402→   402→
+   403→   403→   403→If the title is shorter than 10 words, expand it to reach the target range by adding specificity about the research scope, method, or context.
+   404→   404→   404→
+   405→   405→   405→If the title is already 10-15 words, return it exactly as provided — do not change it.
+   406→   406→   406→
+   407→   407→   407→If the title exceeds 15 words, refine it to fit within 15 words while preserving the full scholarly meaning, specificity, and academic rigour.
+   408→   408→   408→
+   409→   409→   409→Output ONLY the final title — nothing else. No quotation marks, no explanation.`;
+   410→   410→   410→
+   411→   411→   411→    // Helper: delay between section calls to avoid Z.ai rate limiting (429)
+   412→   412→   412→    // 8 seconds between sections prevents 429s across all engines
+   413→   413→   413→    const interSectionDelay = () => new Promise<void>((r) => setTimeout(r, 8000));
+   414→   414→   414→
+   415→   415→   415→    const titleCompletion = await generateWithEngine(engine, systemPrompt, titlePrompt);
+   416→   416→   416→    const finalTitle = (titleCompletion || title).replace(/^["']|["']$/g, '').trim();
+   417→   417→   417→    console.log(`[article-gen] Title: ${finalTitle.length} chars, ${countWords(finalTitle)} words`);
+   418→   418→   418→
+   419→   419→   419→    // ──────────────────────────────────────────────────────────────────────────
+   420→   420→   420→    // SECTION 1: ABSTRACT (250-350 words, single paragraph, Scopus pattern)
+   421→   421→   421→    // ──────────────────────────────────────────────────────────────────────────
+   422→   422→   422→    const abstractPrompt = `OUTPUT THE ABSTRACT DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first sentence of the abstract.
+   423→   423→   423→
+   424→   424→   424→Write a Scopus-quality ABSTRACT for the following research article. The abstract must be between 250 and 350 words, written as a SINGLE cohesive paragraph with no line breaks, no headings, and no subheadings. This is a firm target range — do not write less than 250 words, and aim for richness and thoroughness.
+   425→   425→   425→
+   426→   426→   426→Title: "${finalTitle}"
+   427→   427→   427→Keywords: ${keywords.join(', ')}
+   428→   428→   428→Research Method: ${methodLabel}
+   429→   429→   429→Number of references analysed: ${validSelectedRefs.length}
+   430→   430→   430→Publication year range: ${minYear}-${maxYear}
+   431→   431→   431→
+   432→   432→   432→The abstract must follow this precise narrative flow, as is standard in Scopus-indexed journals:
+   433→   433→   433→
+   434→   434→   434→1. **Global context and significance (1-2 sentences):** Open with a broad, compelling statement about the worldwide relevance and contemporary urgency of ${kw1}. This should establish why the topic matters on a global scale. Reference 1-2 sources to ground the claim.
+   435→   435→   435→
+   436→   436→   436→2. **Research gap/problem (1 sentence):** State concisely what is missing, contested, or insufficiently understood in the current literature. This should create intellectual tension that the article resolves.
+   437→   437→   437→
+   438→   438→   438→3. **Research objective (1 sentence):** State precisely and unambiguously what this article aims to investigate, analyse, or synthesise.
+   439→   439→   439→
+   440→   440→   440→4. **Methodology (1-2 sentences):** Describe the ${methodLabel} approach, including data sources (databases, year range) and the analytical framework employed.
+   441→   441→   441→
+   442→   442→   442→5. **Key findings (3-4 sentences — THIS IS THE LONGEST PART):** Report the most significant, specific discoveries with concrete details. Mention the main themes, patterns, or relationships that emerged. Reference at least 3 sources. This section should be substantially longer than any other part of the abstract.
+   443→   443→   443→
+   444→   444→   444→6. **Implications and contribution (1-2 sentences):** Articulate what is genuinely novel about this article's contribution and its theoretical, practical, or policy implications.
+   445→   445→   445→
+   446→   446→   446→HEDGING: Use hedging language throughout — "suggests", "may indicate", "appears to", "provides tentative support for". Never claim certainty.
+   447→   447→   447→
+   448→   448→   448→CITATIONS: Weave APA bodynote citations (Author, Year) naturally into the prose. Multiple citations should be synthesised, not listed. Only cite references from the provided list.
+   449→   449→   449→
+   450→   450→   450→WORD COUNT: The abstract MUST be at least 250 words. If you fall short, expand the findings section with more specific details, additional citations, and deeper analytical observations. Writing up to 350 words is encouraged.
+   451→   451→   451→
+   452→   452→   452→OUTPUT THE ABSTRACT DIRECTLY. No preamble, no "Here is the abstract:", no section headers. Start with the first sentence.
+   453→   453→   453→
+   454→   454→   454→References available:
+   455→   455→   455→${refListForPrompt}
+   456→   456→   456→${additionalContext}`;
+   457→   457→   457→
+   458→   458→   458→    let abstractContent = await generateSectionWithRetry('Abstract', engine, systemPrompt, abstractPrompt, { maxTokens: 16000 });
+   459→   459→   459→    abstractContent = await expandSectionToTarget('Abstract', 'abstract', abstractContent, engine, systemPrompt);
+   460→   460→   460→    await interSectionDelay();
+   461→   461→   461→
+   462→   462→   462→    // ──────────────────────────────────────────────────────────────────────────
+   463→   463→   463→    // SECTION 2: INTRODUCTION (1000-1500 words, 7-10 paragraphs, NO subheadings)
+   464→   464→   464→    // Funnel approach: broad context → specific gap → research questions
+   465→   465→   465→    // ──────────────────────────────────────────────────────────────────────────
+   466→   466→   466→    const introPrompt = `OUTPUT THE INTRODUCTION SECTION DIRECTLY. Do not include any preamble, meta-commentary, or section headers. Start immediately with the first paragraph of the introduction.
+   467→   467→   467→
+   468→   468→   468→Write a Scopus-quality INTRODUCTION section for a research article. This section must be between 1500 and 2500 words. Do NOT use subheadings of any kind — the prose must flow naturally from paragraph to paragraph through sophisticated transitional phrases. The section should contain 7 to 10 paragraphs that follow a funnel structure, moving from broad global context down to specific research questions.
+   469→   469→   469→
+   470→   470→   470→Title: "${finalTitle}"
+   471→   471→   471→Keywords: ${keywords.join(', ')}
+   472→   472→   472→
+   473→   473→   473→NARRATIVE FLOW — follow this intellectual trajectory, but allow the prose to develop naturally rather than mechanically:
+   474→   474→   474→
+   475→   475→   475→**Stage 1 — Broad Context and Contemporary Significance (2 paragraphs):**
+   476→   476→   476→Open with a compelling, authoritative statement about the global significance and contemporary relevance of ${kw1}. Discuss how ${kw1} is evolving across different contexts and disciplines. Each paragraph should have 3-6 citations SYNTHESISED into scholarly dialogue.
+   477→   477→   477→
+   478→   478→   478→**Stage 2 — Theoretical Landscape (1-2 paragraphs):**
+   479→   479→   479→Present the key theoretical foundations underpinning research on ${kw1}. Trace how theoretical understanding has evolved. Show how scholars have built upon, challenged, or extended each other's work.
+   480→   480→   480→
+   481→   481→   481→**Stage 3 — Research Problem and Gap Identification (2-3 paragraphs):**
+   482→   482→   482→Systematically identify the research gap through rigorous analysis of previous studies. Group previous findings by similarity and contrast conflicting findings. This must demonstrate genuine critical engagement with the literature, not mere summary.
+   483→   483→   483→
+   484→   484→   484→**Stage 4 — Position Statement and Article Contribution (1 paragraph):**
+   485→   485→   485→Clearly state how this article's position strengthens, challenges, or extends specific prior work.
+   486→   486→   486→
+   487→   487→   487→**Stage 5 — Research Questions (1 paragraph):**
+   488→   488→   488→Present 3-4 clear, specific, and answerable research questions formatted as RQ1, RQ2, RQ3 (and optionally RQ4). Each must be directly answerable through the ${methodLabel} methodology.
+   489→   489→   489→
+
+[showing lines 90-489 of 861; use offset=490 with limit to continue reading]

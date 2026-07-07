@@ -1,0 +1,658 @@
+     1→import { NextResponse } from 'next/server';
+     2→import { generateWithEngine } from '@/lib/ai-engine';
+     3→import { AI_ENGINES, type AIEngineId } from '@/lib/ai-engine-config';
+     4→
+     5→// ---------------------------------------------------------------------------
+     6→// Types
+     7→// ---------------------------------------------------------------------------
+     8→
+     9→interface PolishSection {
+    10→  type: string;
+    11→  content: string;
+    12→  wordCount: number;
+    13→}
+    14→
+    15→interface PolishOptions {
+    16→  structural?: boolean;
+    17→  tone?: boolean;
+    18→  citations?: boolean;
+    19→  coherence?: boolean;
+    20→  clarity?: boolean;
+    21→  vocabulary?: boolean;
+    22→  grammar?: boolean;
+    23→  formatting?: boolean;
+    24→}
+    25→
+    26→interface SectionNames {
+    27→  [key: string]: string;
+    28→}
+    29→
+    30→// ---------------------------------------------------------------------------
+    31→// Constants
+    32→// ---------------------------------------------------------------------------
+    33→
+    34→const SECTION_NAMES: SectionNames = {
+    35→  abstract: 'Abstract',
+    36→  introduction: 'Introduction',
+    37→  method: 'Methodology',
+    38→  results: 'Results & Discussion',
+    39→  conclusion: 'Conclusion',
+    40→  bibliography: 'Bibliography',
+    41→};
+    42→
+    43→/** Max tokens per section — based on expected word counts (~1.3 tokens per word) */
+    44→const SECTION_MAX_TOKENS: Record<string, number> = {
+    45→  abstract: 16000,
+    46→  introduction: 32000,
+    47→  method: 32000,
+    48→  results: 32000,
+    49→  conclusion: 16000,
+    50→};
+    51→
+    52→const POLISH_TEMPERATURE = 0.85;
+    53→const INTER_SECTION_DELAY_MS = 5000; // 5 seconds between sections to avoid rate limits
+    54→
+    55→// ---------------------------------------------------------------------------
+    56→// Shared system prompt with BEFORE/AFTER examples and transformation rules
+    57→// ---------------------------------------------------------------------------
+    58→
+    59→const BASE_SYSTEM_PROMPT = `You are Dr. Eleanor Whitfield, a senior academic editor with 30 years of experience editing manuscripts for Nature, Science, The Lancet, and top-tier field-specific journals. You have an impeccable command of British English academic prose and are known for transforming competent drafts into publication-ready scholarship.
+    60→
+    61→## YOUR APPROACH: REWRITE, NOT PROOFREAD
+    62→
+    63→You MUST produce SUBSTANTIALLY DIFFERENT text. At least 30% of sentences must be RESTRUCTURED — not merely tweaked with a synonym swap. This is a comprehensive academic REWRITE that transforms the text while preserving all factual meaning and citations.
+    64→
+    65→## BEFORE/AFTER EXAMPLES OF YOUR EDITING
+    66→
+    67→### Example 1 — Vague to Specific
+    68→BEFORE: "This study looks at the impact of social media on students."
+    69→AFTER: "This study examines the multifaceted impact of social media platforms on student engagement, academic performance, and psychosocial well-being within higher education contexts."
+    70→
+    71→### Example 2 — Weak Citing to Rich Literature Synthesis
+    72→BEFORE: "Many researchers have found that AI is important."
+    73→AFTER: "A growing body of literature underscores the transformative role of artificial intelligence across diverse sectors (Chen, 2023; Kumar et al., 2022), with recent empirical evidence suggesting its significance extends beyond operational efficiency to encompass strategic decision-making and competitive advantage (Williams & Johnson, 2024)."
+    74→
+    75→### Example 3 — Bare Results to Analytical Reporting
+    76→BEFORE: "The results show that there is a significant difference."
+    77→AFTER: "The analysis reveals a statistically significant difference (p < 0.05) between the experimental and control groups, thereby supporting the hypothesis that the intervention yielded measurable improvements in participant outcomes."
+    78→
+    79→### Example 4 — Simple Transition to Sophisticated Linkage
+    80→BEFORE: "Also, the study had some limitations."
+    81→AFTER: "Whilst these findings offer valuable insights, it is important to acknowledge several methodological limitations that may constrain the generalisability of the results."
+    82→
+    83→### Example 5 — Generic Conclusion to Impactful Close
+    84→BEFORE: "In conclusion, more research is needed on this topic."
+    85→AFTER: "In conclusion, this study contributes to the growing discourse on [topic] by demonstrating [key finding]. Future research should employ longitudinal designs to examine the sustainability of these effects and explore the moderating role of contextual factors across diverse populations."
+    86→
+    87→## FORBIDDEN PATTERNS (things to REMOVE or REWRITE)
+    88→- "This study looks at" → use "examines", "investigates", "explores", "scrutinises"
+    89→- "A lot of" → use "a substantial body of", "a considerable number of", "numerous"
+    90→- "Good" / "bad" → use "favourable" / "unfavourable", "robust" / "limited"
+    91→- "Important" → use "significant", "noteworthy", "consequential", "pivotal"
+    92→- "Shows that" → use "demonstrates", "reveals", "indicates", "suggests"
+    93→- "Used" (as main verb) → use "employed", "utilised", "applied", "implemented"
+    94→- "Need" → use "require", "necessitate", "warrant", "call for"
+    95→- "Help" → use "facilitate", "contribute to", "enable", "support"
+    96→- "Make" → use "constitute", "establish", "yield", "produce"
+    97→- "Find" (as in discover) → use "identify", "ascertain", "establish", "determine"
+    98→- "Get" → use "obtain", "derive", "acquire", "achieve"
+    99→- Sentence starters: "Also," "And," "But," "So," → use "Furthermore,", "Moreover,", "However,", "Consequently,"
+   100→- Passive voice without clear agent where active is stronger
+   101→- Run-on sentences without proper subordination
+   102→- Citations in parenthetical-only form without integrating them into the narrative
+   103→
+   104→## PREFERRED PATTERNS (things to ADD)
+   105→- Multi-source synthesis: "Several studies (Author, Year; Author, Year) have demonstrated..."
+   106→- Hedging language: "suggests", "indicates", "may", "appears to", "it is plausible that"
+   107→- Transition phrases: "whilst", "moreover", "furthermore", "nevertheless", "in contrast", "consequently", "notably", "significantly"
+   108→- Nominalisation where appropriate: "the development of" instead of "developing"
+   109→- Subordinate clauses for complexity: "Although prior research has established..., the present study extends this by..."
+   110→- Precise statistical language: "statistically significant (p < 0.05)", "effect size of d = 0.72"
+   111→- Thematic topic sentences at the start of each paragraph
+   112→- Source dialogue: "Whilst Author (Year) argues X, Author (Year) contends Y, suggesting..."
+   113→- Concrete examples after general claims
+   114→- British English spelling throughout: organisation, analyse, programme, behaviour, colour, centre, favour, labour, modelling, fulfil
+   115→
+   116→## CRITICAL RULES
+   117→1. You MUST restructure at least 30% of sentences — merge, split, reorder, or completely rephrase them
+   118→2. Keep ALL original citations in APA 7 format (Author, Year)
+   119→3. Do NOT add new references that were not in the original text
+   120→4. Maintain the same approximate word count (±15%) to preserve section balance
+   121→5. Use British English spelling exclusively
+   122→6. Return ONLY the polished section text — no preamble, no commentary, no markdown code fences
+   123→7. Preserve any markdown formatting present in the original (bold, italic, headings, lists)
+   124→8. The output must read as a REWRITTEN version, not a lightly edited copy`;
+   125→
+   126→// ---------------------------------------------------------------------------
+   127→// Section-specific polish prompts
+   128→// ---------------------------------------------------------------------------
+   129→
+   130→function getSectionPrompt(
+   131→  sectionType: string,
+   132→  sectionContent: string,
+   133→  title: string,
+   134→  keywords: string[],
+   135→  options: PolishOptions,
+   136→): string {
+   137→  const sectionName = SECTION_NAMES[sectionType] || sectionType;
+   138→
+   139→  // Build the enabled options list
+   140→  const enabledDims: string[] = [];
+   141→  if (options.grammar) enabledDims.push('grammar and syntax correction');
+   142→  if (options.vocabulary) enabledDims.push('vocabulary enrichment with precise academic terminology');
+   143→  if (options.tone) enabledDims.push('elevation to formal British English academic tone');
+   144→  if (options.clarity) enabledDims.push('clarity improvement (simplifying without losing rigour)');
+   145→  if (options.coherence) enabledDims.push('coherence enhancement (transitions and logical flow)');
+   146→  if (options.citations) enabledDims.push('citation format consistency and integration into narrative');
+   147→  if (options.structural) enabledDims.push('structural improvement (paragraph organisation, topic sentences)');
+   148→  if (options.formatting) enabledDims.push('formatting consistency');
+   149→
+   150→  const dimsText = enabledDims.length > 0
+   151→    ? enabledDims.join(', ')
+   152→    : 'all dimensions of academic writing quality';
+   153→
+   154→  // Common wrapper
+   155→  const articleContext = `ARTICLE TITLE: "${title}"
+   156→KEYWORDS: ${keywords.join(', ') || 'N/A'}
+   157→POLISH DIMENSIONS ENABLED: ${dimsText}`;
+   158→
+   159→  switch (sectionType) {
+   160→    case 'abstract':
+   161→      return `${articleContext}
+   162→
+   163→## SECTION: Abstract
+   164→
+   165→## SECTION-SPECIFIC INSTRUCTIONS:
+   166→1. **Structure verification**: Ensure the abstract follows the Background → Objective → Method → Results → Conclusion flow. If any element is missing or misplaced, reorganise accordingly.
+   167→2. **Quantitative specificity**: Add or strengthen specific quantitative details (sample sizes, key statistics, effect sizes, p-values) wherever the original text is vague. For example, change "a significant improvement" to "a statistically significant improvement (p < 0.01, d = 0.68)".
+   168→3. **Citation weaving**: Ensure at least 3 citations are naturally woven into the narrative, not just listed parenthetically. Each citation should contribute to the argument (e.g., "Building on prior work by Author (Year), this study...").
+   169→4. **Word count**: The abstract should be at least 250 words. If it is shorter, expand by adding methodological detail, contextual significance, and stronger implications.
+   170→5. **The "so what?" factor**: Strengthen the implications sentence(s) at the end. The reader should finish the abstract understanding WHY this research matters. Transform vague impact claims into specific, concrete contributions.
+   171→6. **Rewrite requirement**: RESTRUCTURE at least 40% of sentences. Merge short choppy sentences. Expand thin claims. Split overly long ones.
+   172→
+   173→## ABSTRACT TO POLISH:
+   174→
+   175→${sectionContent}`;
+   176→
+   177→    case 'introduction':
+   178→      return `${articleContext}
+   179→
+   180→## SECTION: Introduction
+   181→
+   182→## SECTION-SPECIFIC INSTRUCTIONS:
+   183→1. **Funnel structure verification**: Ensure the introduction moves from broad context (first 1-2 paragraphs establishing the field and its importance) → narrow focus (identifying the specific problem/gap) → research questions/objectives (final paragraph). If the structure is flat, reorganise paragraphs to create this funnel.
+   184→2. **Citation synthesis improvement**: Citations must be grouped BY THEME, not listed one-by-one. Transform "Author1 (Year) found X. Author2 (Year) found Y." into "A growing body of literature demonstrates that X is influenced by several factors, including Y (Author1, Year; Author2, Year) and Z (Author3 et al., Year)." Show debates and contradictions between sources.
+   185→3. **Hedging language**: Add appropriate hedging where claims are not yet proven: "may suggest", "appears to", "it is plausible that", "tends to", "is associated with". Remove inappropriate certainty where evidence is limited.
+   186→4. **Paragraph transitions**: Ensure EVERY paragraph opens with a transition that connects it to the preceding paragraph. Use phrases like "Whilst the aforementioned studies established...", "Building upon this foundation...", "In contrast to these findings...", "Furthermore, recent scholarship has...". Remove any paragraph that starts abruptly without connecting to the prior discourse.
+   187→5. **Research questions clarity**: The final paragraph must end with clearly stated Research Questions (RQs). If RQs are missing, vague, or buried mid-paragraph, extract and clearly format them. Use "This study is guided by the following research questions:" or similar.
+   188→6. **Transition enrichment**: Add "whilst", "moreover", "furthermore", "nevertheless", "notably" and other academic connectors where the original uses plain "also", "and", "but", "so".
+   189→7. **Rewrite requirement**: RESTRUCTURE at least 35% of sentences. The introduction must flow as a compelling academic narrative, not read like an annotated bibliography.
+   190→
+   191→## INTRODUCTION TO POLISH:
+   192→
+   193→${sectionContent}`;
+   194→
+   195→    case 'literature_review':
+   196→      return `${articleContext}
+   197→
+   198→## SECTION: Literature Review
+   199→
+   200→## SECTION-SPECIFIC INSTRUCTIONS:
+   201→1. **Thematic organisation**: The literature review MUST be organised by THEMES or CONCEPTUAL FRAMEWORKS, not chronologically. If sources are listed in chronological order (Author1, 2019; Author2, 2020; Author3, 2021), REORGANISE them by theme. Each thematic cluster should discuss multiple sources in dialogue.
+   202→2. **Source dialogue quality**: Sources MUST debate, contrast, and build upon each other. Transform laundry-list patterns like "Author1 (Year) said X. Author2 (Year) said Y. Author3 (Year) said Z." into scholarly dialogue: "Whilst Author1 (Year) emphasises X, Author2 (Year) contends Y, and more recently Author3 et al. (Year) have demonstrated that Z — suggesting an evolving understanding of the phenomenon."
+   203→3. **Gap identification**: At the END of each thematic section, explicitly identify what is missing or underexplored. Use language like "Despite these advances, a notable gap remains...", "However, limited attention has been paid to...", "The existing literature has predominantly focused on X, leaving Y largely unexamined."
+   204→4. **Remove laundry-list citations**: Any pattern of "(Author, Year; Author, Year; Author, Year)" with 4+ sources listed without narrative integration must be REWRITTEN. Group by sub-theme and add brief descriptions of each source's contribution.
+   205→5. **Theoretical synthesis**: Strengthen the theoretical framework. If the review lacks theoretical grounding, add sentences connecting findings to relevant theories. If theories are mentioned, ensure they are properly explained and their relevance justified.
+   206→6. **Paragraph-level coherence**: Each paragraph should have a clear topic sentence, supporting evidence from multiple sources, and a concluding sentence that transitions to the next theme.
+   207→7. **Rewrite requirement**: RESTRUCTURE at least 40% of sentences. The literature review must read as a coherent scholarly synthesis, not a catalogue of summaries.
+   208→
+   209→## LITERATURE REVIEW TO POLISH:
+   210→
+   211→${sectionContent}`;
+   212→
+   213→    case 'method':
+   214→      return `${articleContext}
+   215→
+   216→## SECTION: Methodology
+   217→
+   218→## SECTION-SPECIFIC INSTRUCTIONS:
+   219→1. **Sub-section verification**: Ensure ALL of the following sub-sections are present. If any are missing or merged without clear separation, ADD appropriate sub-headings and content:
+   220→   - Research Philosophy (e.g., interpretivism, positivism, pragmatism) with justification
+   221→   - Research Design (e.g., case study, survey, experimental, mixed methods) with rationale
+   222→   - Search Strategy / Data Collection (where, how, inclusion/exclusion criteria)
+   223→   - Data Analysis approach (step-by-step, not just name of technique)
+   224→   - Trustworthiness / Rigour (credibility, transferability, dependability, confirmability — or equivalent for quantitative)
+   225→   - Ethical Considerations (informed consent, anonymity, institutional approval)
+   226→2. **Methodological detail and justification**: For EVERY methodological choice, add or strengthen the JUSTIFICATION. Why this method? Why not alternatives? Use methodological citations to support choices (e.g., "Following the approach advocated by Creswell (2014), a mixed-methods design was employed..."). Add citations like Braun & Clarke (2006) for thematic analysis, Creswell (2014) for research design, Yin (2018) for case studies, etc., where the methodology aligns with established frameworks.
+   227→3. **Past tense for procedures**: ALL procedures that were carried out MUST be in past tense: "Data were collected", "Participants were recruited", "Analysis was conducted". If any procedure is in present tense, convert it.
+   228→4. **Precision**: Replace vague quantifiers with specific details. Change "several" to exact numbers. Change "various journals" to specific database names if inferable. Change "a period of time" to actual durations.
+   229→5. **Voice and formality**: Ensure consistent use of passive voice for procedures ("Semi-structured interviews were conducted" not "We conducted semi-structured interviews") unless the journal style actively prefers first person.
+   230→6. **Rewrite requirement**: RESTRUCTURE at least 30% of sentences. Add missing sub-sections and justifications.
+   231→
+   232→## METHODOLOGY TO POLISH:
+   233→
+   234→${sectionContent}`;
+   235→
+   236→    case 'results':
+   237→      return `${articleContext}
+   238→
+   239→## SECTION: Results
+   240→
+   241→## SECTION-SPECIFIC INSTRUCTIONS:
+   242→1. **RQ-addressed structure**: Verify that EACH Research Question is explicitly addressed with clear presentation of relevant findings. If any RQ is not addressed, add a section.
+   243→2. **Data presentation**: Ensure all quantitative data is presented with precision — include specific statistics (means, standard deviations, effect sizes, p-values, confidence intervals) rather than vague descriptions.
+   244→3. **Table/figure references**: If the text mentions or implies data that should be in a table or figure, add natural references like "As shown in Table 1," "These patterns are further illustrated in Figure 2,".
+   245→4. **Analytical depth**: Move beyond description ("X was higher than Y") to interpretation ("The higher levels of X may reflect the influence of..."). Every major finding should be followed by a "what this means" statement.
+   246→5. **Thematic organisation**: Group findings by theme or research question, not by source. Use clear sub-headings where appropriate.
+   247→6. **Precise language**: Replace vague quantifiers with specific details. Change "several" to exact numbers where inferable.
+   248→7. **Rewrite requirement**: RESTRUCTURE at least 35% of sentences. The results section must demonstrate clarity and analytical rigour.
+   249→
+   250→## RESULTS TO POLISH:
+   251→
+   252→${sectionContent}`;
+   253→
+   254→    case 'discussion':
+   255→      return `${articleContext}
+   256→
+   257→## SECTION: Discussion
+   258→
+   259→## SECTION-SPECIFIC INSTRUCTIONS:
+   260→1. **Source dialogue quality**: For each finding, integrate the discussion with existing literature. Use patterns like: "This finding aligns with Author (Year), who similarly found... However, in contrast to Author (Year), the present study suggests..." Sources must ENGAGE with the findings, not merely be cited.
+   261→2. **Theoretical implications**: Explicitly connect findings to theoretical frameworks. Use language like "These findings lend support to the theoretical proposition that...", "From the perspective of [Theory], the results suggest..."
+   262→3. **Hedging language enrichment**: Add appropriate hedging around interpretive claims: "may indicate", "could be attributed to", "it is conceivable that", "one possible explanation is that". Remove unjustified certainty where the evidence is correlational or suggestive.
+   263→4. **Practical implications**: Include a clear discussion of practical implications for practitioners, policymakers, or the field at large.
+   264→5. **Honest and specific limitations**: Generic limitations must be made specific. Each limitation should include its IMPLICATION (how it affects interpretation). Add at least 2-3 specific limitations.
+   265→6. **Concrete future research directions**: Vague suggestions like "more research is needed" must be replaced with SPECIFIC proposals.
+   266→7. **Rewrite requirement**: RESTRUCTURE at least 35% of sentences. The discussion must demonstrate analytical depth and scholarly engagement.
+   267→
+   268→## DISCUSSION TO POLISH:
+   269→
+   270→${sectionContent}`;
+   271→
+   272→    case 'conclusion':
+   273→      return `${articleContext}
+   274→
+   275→## SECTION: Conclusion
+   276→
+   277→## SECTION-SPECIFIC INSTRUCTIONS:
+   278→1. **NO new citations**: The conclusion must NOT introduce any new references. It should only reference sources already discussed in the body of the paper. Remove any citations that appear for the first time in the conclusion.
+   279→2. **Contribution statement strengthening**: The contribution statement must be specific and concrete. Transform "This study contributes to the literature" into "This study makes three principal contributions to the literature on [topic]: first, it demonstrates [specific finding]; second, it provides empirical evidence for [specific claim]; third, it offers a framework for [specific application]."
+   280→3. **Honest and specific limitations**: Generic limitations like "the sample was small" must be made specific: "the sample comprised 45 participants from a single institution, which may limit the generalisability of findings to broader populations." Add at least 3 specific limitations if fewer exist. Each limitation should include its IMPLICATION (how it affects interpretation).
+   281→4. **Concrete future research directions**: Vague suggestions like "more research is needed" must be replaced with SPECIFIC proposals: "Future research should employ longitudinal designs to examine the sustainability of these effects over time," or "Subsequent studies might explore the moderating role of cultural context by conducting cross-national comparative analyses." Provide at least 2-3 concrete, actionable research directions.
+   282→5. **Strong closing statement**: The final 1-2 sentences should leave the reader with a clear sense of the study's significance. Avoid ending with a generic restatement. Instead, close with the broader implications or a compelling thought.
+   283→6. **Rewrite requirement**: RESTRUCTURE at least 35% of sentences. The conclusion must be impactful, honest, and forward-looking.
+   284→
+   285→## CONCLUSION TO POLISH:
+   286→
+   287→${sectionContent}`;
+   288→
+   289→    default:
+   290→      // Fallback for unknown section types — still apply strong polish
+   291→      return `${articleContext}
+   292→
+   293→## SECTION: ${sectionName}
+   294→
+   295→## INSTRUCTIONS:
+   296→Apply comprehensive academic polish across all enabled dimensions: ${dimsText}.
+   297→RESTRUCTURE at least 30% of sentences. The output must be substantively different from the input while preserving all meaning and citations.
+   298→
+   299→## ${sectionName.toUpperCase()} TO POLISH:
+   300→
+   301→${sectionContent}`;
+   302→  }
+   303→}
+   304→
+   305→// ---------------------------------------------------------------------------
+   306→// Word-level difference calculation
+   307→// ---------------------------------------------------------------------------
+   308→
+   309→function calculateChangePercentage(original: string, polished: string): number {
+   310→  const normalize = (text: string): string[] =>
+   311→    text
+   312→      .toLowerCase()
+   313→      .replace(/[^a-z0-9\s]/g, '')
+   314→      .split(/\s+/)
+   315→      .filter((w: string) => w.length > 0);
+   316→
+   317→  const originalWords = normalize(original);
+   318→  const polishedWords = normalize(polished);
+   319→
+   320→  if (originalWords.length === 0) return 0;
+   321→
+   322→  // Use a set-based approach: count words in polished that are NOT in the same position in original
+   323→  let changedWords = 0;
+   324→
+   325→  // For each word in polished, check if it differs from the corresponding word in original
+   326→  const maxLen = Math.max(originalWords.length, polishedWords.length);
+   327→  for (let i = 0; i < maxLen; i++) {
+   328→    const oWord = i < originalWords.length ? originalWords[i] : null;
+   329→    const pWord = i < polishedWords.length ? polishedWords[i] : null;
+   330→    if (oWord !== pWord) {
+   331→      changedWords++;
+   332→    }
+   333→  }
+   334→
+   335→  return Math.round((changedWords / maxLen) * 100);
+   336→}
+   337→
+   338→// ---------------------------------------------------------------------------
+   339→// Stronger retry prompt for when the first attempt is too similar
+   340→// ---------------------------------------------------------------------------
+   341→
+   342→const RETRY_SYSTEM_PROMPT = `You are Dr. Eleanor Whitfield, a ruthless academic rewriter. Your job is to take academic text and REWRITE it so aggressively that the original and output look like they were written by two different people who read the same sources.
+   343→
+   344→CRITICAL: Your previous attempt was REJECTED because it was too similar to the original. You changed too few words.
+   345→
+   346→RULES FOR THIS ATTEMPT:
+   347→1. RESTRUCTURE every single sentence. Change sentence order, merge short sentences, split long ones.
+   348→2. Replace ALL vague words with precise academic alternatives.
+   349→3. Add sophisticated transitions between every paragraph.
+   350→4. Rewrite every topic sentence to be more specific and compelling.
+   351→5. Integrate all parenthetical citations into the narrative flow.
+   352→6. Change the sentence structure: if the original is SVO, make it passive or start with an adverbial clause. If passive, consider making it active with a different subject.
+   353→7. Use completely different phrasing while keeping the same meaning.
+   354→
+   355→DO NOT be conservative. Be BOLD. The goal is a REWRITE, not a proofread.
+   356→
+   357→Return ONLY the rewritten text. No commentary. No code fences.`;
+   358→
+   359→// ---------------------------------------------------------------------------
+   360→// POST handler
+   361→// ---------------------------------------------------------------------------
+   362→
+   363→export async function POST(request: Request) {
+   364→  try {
+   365→    const body = await request.json();
+   366→    const { article, options, engineId } = body;
+   367→
+   368→    if (!article || !article.sections || !article.title) {
+   369→      return NextResponse.json(
+   370→        { success: false, error: 'Article data is required' },
+   371→        { status: 400 },
+   372→      );
+   373→    }
+   374→
+   375→    const polishOptions: PolishOptions = options || {
+   376→      structural: true,
+   377→      tone: true,
+   378→      citations: true,
+   379→      coherence: true,
+   380→      clarity: true,
+   381→      vocabulary: true,
+   382→      grammar: true,
+   383→      formatting: true,
+   384→    };
+   385→
+   386→    // Use zai as default polish engine for reliability, fall back to gemini, then grok
+   387→    const polishEngine: AIEngineId = engineId || 'zai';
+   388→    const validEngine: AIEngineId = AI_ENGINES.some(e => e.id === polishEngine)
+   389→      ? polishEngine
+   390→      : 'zai';
+   391→
+   392→    const keywords: string[] = article.keywords || [];
+   393→
+   394→    // Track metrics
+   395→    let totalChangePercentage = 0;
+   396→    let sectionsActuallyModified = 0;
+   397→    const improvementsLog: string[] = [];
+   398→    let sectionsFailed = 0;
+   399→
+   400→    // Polish each section SEQUENTIALLY with delays to avoid rate limit exhaustion
+   401→    const sectionsToPolish = article.sections.filter(
+   402→      (s: PolishSection) => s.type !== 'bibliography' && s.content?.trim().length > 0,
+   403→    );
+   404→
+   405→    const polishedSectionsMap: Record<string, PolishSection> = {};
+   406→
+   407→    for (let i = 0; i < sectionsToPolish.length; i++) {
+   408→      const section = sectionsToPolish[i];
+   409→      const sectionName = SECTION_NAMES[section.type] || section.type;
+   410→
+   411→      try {
+   412→        console.log(`[polish] Processing section ${i + 1}/${sectionsToPolish.length}: ${sectionName} (${section.wordCount || '?'} words)`);
+   413→
+   414→        const userPrompt = getSectionPrompt(
+   415→          section.type,
+   416→          section.content,
+   417→          article.title,
+   418→          keywords,
+   419→          polishOptions,
+   420→        );
+   421→
+   422→        const maxTokens = SECTION_MAX_TOKENS[section.type] || 16000;
+   423→
+   424→        // First attempt
+   425→        let polishedContent = await generateWithEngine(
+   426→          validEngine,
+   427→          BASE_SYSTEM_PROMPT,
+   428→          userPrompt,
+   429→          { temperature: POLISH_TEMPERATURE, maxTokens },
+   430→        );
+   431→
+   432→        // If content is empty or generation failed, return original
+   433→        if (!polishedContent || polishedContent.trim().length === 0) {
+   434→          console.warn(`[polish] Section "${sectionName}" returned empty, keeping original`);
+   435→          polishedSectionsMap[section.type] = section;
+   436→          sectionsFailed++;
+   437→          continue;
+   438→        }
+   439→
+   440→        // Calculate change percentage
+   441→        let changePct = calculateChangePercentage(section.content, polishedContent);
+   442→
+   443→        // If too similar (>95% identical), retry with stronger prompt
+   444→        if (changePct < 5) {
+   445→          console.log(
+   446→            `[polish] Section "${sectionName}" only ${changePct}% changed, retrying with stronger prompt...`,
+   447→          );
+   448→
+   449→          // Wait before retry to avoid rate limit
+   450→          await new Promise<void>((r) => setTimeout(r, 8000));
+   451→
+   452→          const retryPrompt = `You are rewriting a ${sectionName} section for an academic article titled "${article.title}".
+   453→
+   454→The previous rewrite was REJECTED because it was too similar to the original. You must REWRITE this text more aggressively.
+   455→
+   456→ORIGINAL TEXT (do NOT copy this — REWRITE it):
+   457→${section.content}
+   458→
+   459→REWRITE THE ABOVE TEXT. Make it sound like a different author wrote it while keeping the same meaning and all citations. Return ONLY the rewritten text.`;
+   460→
+   461→          const retryResult = await generateWithEngine(
+   462→            validEngine,
+   463→            RETRY_SYSTEM_PROMPT,
+   464→            retryPrompt,
+   465→            { temperature: 0.95, maxTokens },
+   466→          );
+   467→
+   468→          if (retryResult && retryResult.trim().length > 0) {
+   469→            const retryChangePct = calculateChangePercentage(
+   470→              section.content,
+   471→              retryResult,
+   472→            );
+   473→            if (retryChangePct > changePct) {
+   474→              polishedContent = retryResult;
+   475→              changePct = retryChangePct;
+   476→              console.log(
+   477→                `[polish] Retry for "${sectionName}" achieved ${changePct}% change`,
+   478→              );
+   479→            }
+   480→          }
+   481→        }
+   482→
+   483→        // Track metrics
+   484→        totalChangePercentage += changePct;
+   485→
+   486→        if (changePct >= 5) {
+   487→          sectionsActuallyModified++;
+   488→        }
+   489→
+   490→        // Generate a brief summary of what likely changed
+   491→        const improvement = generateImprovementSummary(
+   492→          section.type,
+   493→          changePct,
+   494→          section.content,
+   495→          polishedContent,
+   496→        );
+   497→        improvementsLog.push(`${sectionName}: ${improvement}`);
+   498→
+   499→        const wordCount = polishedContent
+   500→          .split(/\s+/)
+   501→          .filter((w: string) => w.length > 0).length;
+   502→
+   503→        polishedSectionsMap[section.type] = {
+   504→          type: section.type,
+   505→          content: polishedContent,
+   506→          wordCount,
+   507→        };
+   508→
+   509→        console.log(`[polish] Section "${sectionName}" polished successfully (${changePct}% change, ${wordCount} words)`);
+   510→      } catch (sectionError) {
+   511→        console.error(`[polish] Error polishing "${sectionName}":`, sectionError);
+   512→        // Return original section on error — don't fail the entire polish
+   513→        polishedSectionsMap[section.type] = section;
+   514→        sectionsFailed++;
+   515→        improvementsLog.push(`${sectionName}: ERROR - kept original`);
+   516→      }
+   517→
+   518→      // Delay between sections to avoid rate limiting (skip after the last section)
+   519→      if (i < sectionsToPolish.length - 1) {
+   520→        console.log(`[polish] Waiting ${INTER_SECTION_DELAY_MS / 1000}s before next section...`);
+   521→        await new Promise<void>((r) => setTimeout(r, INTER_SECTION_DELAY_MS));
+   522→      }
+   523→    }
+   524→
+   525→    // Rebuild sections array preserving original order, including bibliography
+   526→    const polishedSections: PolishSection[] = article.sections.map((section: PolishSection) => {
+   527→      if (section.type === 'bibliography') return section; // Keep bibliography as-is
+   528→      return polishedSectionsMap[section.type] || section; // Return polished if available, else original
+   529→    });
+   530→
+   531→    const totalWordCount = polishedSections.reduce(
+   532→      (sum: number, s: PolishSection) => sum + (s.wordCount || 0),
+   533→      0,
+   534→    );
+   535→
+   536→    // Calculate average change percentage across polished sections
+   537→    const polishedSectionCount = sectionsToPolish.length;
+   538→    const avgChangePercentage =
+   539→      polishedSectionCount > 0
+   540→        ? Math.round(totalChangePercentage / polishedSectionCount)
+   541→        : 0;
+   542→
+   543→    const polishedArticle = {
+   544→      ...article,
+   545→      sections: polishedSections,
+   546→      totalWordCount,
+   547→      isPolished: true,
+   548→    };
+   549→
+   550→    const changesSummary = {
+   551→      structural: polishOptions.structural ?? false,
+   552→      tone: polishOptions.tone ?? false,
+   553→      citations: polishOptions.citations ?? false,
+   554→      coherence: polishOptions.coherence ?? false,
+   555→      clarity: polishOptions.clarity ?? false,
+   556→      vocabulary: polishOptions.vocabulary ?? false,
+   557→      grammar: polishOptions.grammar ?? false,
+   558→      formatting: polishOptions.formatting ?? false,
+   559→      originalWordCount: article.totalWordCount || 0,
+   560→      polishedWordCount: totalWordCount,
+   561→      wordCountChange: totalWordCount - (article.totalWordCount || 0),
+   562→      sectionsPolished: sectionsActuallyModified,
+   563→      sectionsFailed,
+   564→      changePercentage: avgChangePercentage,
+   565→      improvementsMade: improvementsLog.join('; '),
+   566→    };
+   567→
+   568→    return NextResponse.json({
+   569→      success: true,
+   570→      article: polishedArticle,
+   571→      changes: changesSummary,
+   572→    });
+   573→  } catch (error) {
+   574→    console.error('Article polish error:', error);
+   575→    return NextResponse.json(
+   576→      { success: false, error: 'Failed to polish article. Please try again.' },
+   577→      { status: 500 },
+   578→    );
+   579→  }
+   580→}
+   581→
+   582→// ---------------------------------------------------------------------------
+   583→// Helpers
+   584→// ---------------------------------------------------------------------------
+   585→
+   586→/** Consider a section "substantively changed" if at least 5% of words differ */
+   587→function isSubstantivelyChanged(changePct: number): boolean {
+   588→  return changePct >= 5;
+   589→}
+   590→
+   591→/**
+   592→ * Generate a brief human-readable summary of what likely changed in a section.
+   593→ * Uses simple heuristics by comparing original and polished text.
+   594→ */
+   595→function generateImprovementSummary(
+   596→  sectionType: string,
+   597→  changePct: number,
+   598→  original: string,
+   599→  polished: string,
+   600→): string {
+   601→  const changes: string[] = [];
+   602→
+   603→  if (changePct >= 30) {
+   604→    changes.push('extensive rewrite');
+   605→  } else if (changePct >= 15) {
+   606→    changes.push('significant restructuring');
+   607→  } else if (changePct >= 5) {
+   608→    changes.push('moderate improvements');
+   609→  } else {
+   610→    changes.push('minor refinements');
+   611→  }
+   612→
+   613→  // Check for specific improvements via heuristic keyword analysis
+   614→  const origLower = original.toLowerCase();
+   615→  const polishedLower = polished.toLowerCase();
+   616→
+   617→  // Transition words added
+   618→  const transitions = [
+   619→    'furthermore', 'moreover', 'nevertheless', 'whilst', 'consequently',
+   620→    'notably', 'significantly', 'in contrast', 'in addition', 'building upon',
+   621→  ];
+   622→  const newTransitions = transitions.filter(
+   623→    t => polishedLower.includes(t) && !origLower.includes(t),
+   624→  );
+   625→  if (newTransitions.length > 0) {
+   626→    changes.push(`${newTransitions.length} new transition(s) added`);
+   627→  }
+   628→
+   629→  // Hedging language added
+   630→  const hedges = ['may', 'might', 'could', 'suggests', 'appears to', 'it is plausible', 'tends to'];
+   631→  const newHedges = hedges.filter(
+   632→    h => polishedLower.includes(h) && !origLower.includes(h),
+   633→  );
+   634→  if (newHedges.length > 0) {
+   635→    changes.push('hedging language enriched');
+   636→  }
+   637→
+   638→  // Word count change
+   639→  const origWords = original.split(/\s+/).filter(w => w.length > 0).length;
+   640→  const polishedWords = polished.split(/\s+/).filter(w => w.length > 0).length;
+   641→  const wordDiff = polishedWords - origWords;
+   642→  if (Math.abs(wordDiff) > 20) {
+   643→    changes.push(
+   644→      wordDiff > 0
+   645→        ? `expanded by ${wordDiff} words`
+   646→        : `condensed by ${Math.abs(wordDiff)} words`,
+   647→    );
+   648→  }
+   649→
+   650→  // Vocabulary richness proxy: unique words ratio
+   651→  const origUnique = new Set(origLower.split(/\s+/)).size;
+   652→  const polishedUnique = new Set(polishedLower.split(/\s+/)).size;
+   653→  if (polishedUnique > origUnique * 1.05) {
+   654→    changes.push('vocabulary diversity improved');
+   655→  }
+   656→
+   657→  return changes.join(', ');
+   658→}

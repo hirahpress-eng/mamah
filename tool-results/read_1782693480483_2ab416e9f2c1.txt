@@ -1,0 +1,1327 @@
+     1→/**
+     2→ * SuperBot Engine — Custom Academic Reference Search & Download Bot
+     3→ * ════════════════════════════════════════════════════════════════════
+     4→ *
+     5→ * A comprehensive bot engine that uses CUSTOM LOGIC (not AI) for browsing,
+     6→ * scoring, and downloading academic references. AI is used ONCE at the
+     7→ * strategy-planning phase via z-ai-web-dev-sdk.
+     8→ *
+     9→ * Architecture:
+    10→ *   1. Types & Interfaces      — Data contracts for the entire pipeline
+    11→ *   2. Scoring Module           — Custom 0-100 scoring algorithm (NO AI)
+    12→ *   3. Human Mimicry Module     — Anti-detection helper functions
+    13→ *   4. Extraction Module        — Regex-based HTML content extraction
+    14→ *   5. SuperBot Class           — Main orchestrator with phased execution
+    15→ *   6. Z.ai Strategy Integration — One-shot AI for search strategy planning
+    16→ *   7. External Integration     — Database configs & Telegram storage
+    17→ *
+    18→ * SERVER-SIDE ONLY. Do NOT import on the client.
+    19→ */
+    20→
+    21→import { DATABASE_CONFIGS, getEnabledDatabases, getDatabasesByIds } from './database-configs';
+    22→import { uploadToTelegram } from './telegram-storage';
+    23→
+    24→// ═══════════════════════════════════════════════════════════════════════════════
+    25→// §1. TYPES & INTERFACES
+    26→// ═══════════════════════════════════════════════════════════════════════════════
+    27→
+    28→/** A single search result from any database, enriched with a custom score */
+    29→export interface BotSearchResult {
+    30→  id: string;
+    31→  databaseId: string;
+    32→  databaseName: string;
+    33→  title: string;
+    34→  authors: string;
+    35→  year: number | null;
+    36→  abstract: string | null;
+    37→  journal: string | null;
+    38→  doi: string | null;
+    39→  pdfUrl: string | null;
+    40→  citations: number | null;
+    41→  isOpenAccess: boolean;
+    42→  /** Custom scoring algorithm result (0-100) */
+    43→  score: number;
+    44→  /** Which database produced this result */
+    45→  source: string;
+    46→}
+    47→
+    48→/** Strategy generated once by Z.ai to guide all subsequent searches */
+    49→export interface BotSearchStrategy {
+    50→  keywords: string[];
+    51→  criteria: {
+    52→    yearFrom: number;
+    53→    yearTo: number;
+    54→    openAccessOnly: boolean;
+    55→    minCitations: number;
+    56→    preferredJournals: string[];
+    57→    languages: string[];
+    58→  };
+    59→}
+    60→
+    61→/** Real-time progress callback payload for the UI */
+    62→export interface BotProgress {
+    63→  phase: 'init' | 'strategy' | 'searching' | 'scoring' | 'downloading' | 'uploading' | 'complete' | 'error';
+    64→  currentDatabase: string;
+    65→  databasesSearched: string[];
+    66→  totalDatabases: number;
+    67→  resultsFound: number;
+    68→  currentPercent: number;
+    69→  message: string;
+    70→  startTime: number;
+    71→}
+    72→
+    73→/** Top-level configuration passed to SuperBot.run() */
+    74→export interface BotRunConfig {
+    75→  topic: string;
+    76→  keywords: string[];
+    77→  maxResults: number;
+    78→  autoDownload: boolean;
+    79→  downloadLimit: number;
+    80→  minScoreThreshold: number;
+    81→  /** Specific database IDs, or undefined for all enabled databases */
+    82→  databases?: string[];
+    83→}
+    84→
+    85→/** Internal raw result before scoring */
+    86→interface RawSearchResult {
+    87→  title: string;
+    88→  authors: string;
+    89→  year: number | null;
+    90→  abstract: string | null;
+    91→  journal: string | null;
+    92→  doi: string | null;
+    93→  pdfUrl: string | null;
+    94→  citations: number | null;
+    95→  isOpenAccess: boolean;
+    96→}
+    97→
+    98→/** Response from the mini-service bot-search API */
+    99→interface BotSearchApiResponse {
+   100→  success: boolean;
+   101→  results: RawSearchResult[];
+   102→  error?: string;
+   103→  databaseId: string;
+   104→  query: string;
+   105→}
+   106→
+   107→/** Proxy configuration for requests */
+   108→export interface BotProxyConfig {
+   109→  protocol?: 'http' | 'https' | 'socks4' | 'socks5';
+   110→  host: string;
+   111→  port: number;
+   112→  username?: string;
+   113→  password?: string;
+   114→}
+   115→
+   116→/** Deduplication key extracted from a result */
+   117→interface DedupKey {
+   118→  doi?: string;
+   119→  titleNormalized?: string;
+   120→}
+   121→
+   122→// ═══════════════════════════════════════════════════════════════════════════════
+   123→// §2. SCORING MODULE — Custom Algorithm (NO AI)
+   124→// ═══════════════════════════════════════════════════════════════════════════════
+   125→
+   126→/**
+   127→ * Score a single search result on a 0-100 scale using a custom algorithm.
+   128→ *
+   129→ * Breakdown:
+   130→ *   - Year recency .............. max 20 pts  (linear degradation)
+   131→ *   - Open access ............... max 15 pts  (binary)
+   132→ *   - Citation count ............ max 20 pts  (log₁₀ scale, capped)
+   133→ *   - Title/abstract relevance .. max 25 pts  (keyword matching)
+   134→ *   - Journal quality ........... max 10 pts  (preferred journal match)
+   135→ *   - Language match ............ max 10 pts  (preferred language)
+   136→ */
+   137→export function scoreResult(
+   138→  result: BotSearchResult,
+   139→  strategy: BotSearchStrategy,
+   140→): number {
+   141→  let score = 0;
+   142→
+   143→  // ── Year recency (max 20 pts) ────────────────────────────────────────────
+   144→  // Full 20 pts if within last 3 years. Degrades linearly to 0 over 15 years.
+   145→  const currentYear = new Date().getFullYear();
+   146→  const year = result.year ?? 0;
+   147→  const age = Math.max(0, currentYear - year);
+   148→  const yearScore = Math.max(0, 20 - (age * 20) / 15);
+   149→  score += Math.round(yearScore * 10) / 10;
+   150→
+   151→  // ── Open access (max 15 pts) ─────────────────────────────────────────────
+   152→  if (result.isOpenAccess) {
+   153→    score += 15;
+   154→  } else if (strategy.criteria.openAccessOnly) {
+   155→    // Hard penalty if user requires OA but result isn't
+   156→    score -= 30;
+   157→  }
+   158→
+   159→  // ── Citation count (max 20 pts, logarithmic) ─────────────────────────────
+   160→  // log₁₀(citations + 1) * 6.67, capped at 20
+   161→  const rawCitations = result.citations ?? 0;
+   162→  if (rawCitations > 0) {
+   163→    const citationScore = Math.min(20, Math.log10(rawCitations + 1) * 6.67);
+   164→    score += Math.round(citationScore * 10) / 10;
+   165→  }
+   166→
+   167→  // ── Title/abstract relevance (max 25 pts) ────────────────────────────────
+   168→  // Count strategy keywords found in title (weighted 2x) and abstract
+   169→  const allKeywords = [...strategy.keywords, ...extractSignificantWords(strategy.keywords)];
+   170→  const textToSearch = [
+   171→    result.title.toLowerCase(),
+   172→    result.abstract?.toLowerCase() ?? '',
+   173→  ].join(' ');
+   174→
+   175→  const matchedKeywords = new Set<string>();
+   176→  for (const kw of allKeywords) {
+   177→    const kwLower = kw.toLowerCase();
+   178→    if (kwLower.length >= 3 && textToSearch.includes(kwLower)) {
+   179→      matchedKeywords.add(kwLower);
+   180→    }
+   181→  }
+   182→
+   183→  // Each unique keyword match contributes proportionally (max 25)
+   184→  const maxPossibleMatches = Math.max(allKeywords.length, 1);
+   185→  const relevanceScore = Math.min(25, (matchedKeywords.size / maxPossibleMatches) * 25);
+   186→  score += Math.round(relevanceScore * 10) / 10;
+   187→
+   188→  // ── Journal quality (max 10 pts) ─────────────────────────────────────────
+   189→  if (result.journal && strategy.criteria.preferredJournals.length > 0) {
+   190→    const journalLower = result.journal.toLowerCase();
+   191→    const matched = strategy.criteria.preferredJournals.some(pj =>
+   192→      journalLower.includes(pj.toLowerCase())
+   193→    );
+   194→    if (matched) {
+   195→      score += 10;
+   196→    }
+   197→  }
+   198→
+   199→  // ── Language match (max 10 pts) ──────────────────────────────────────────
+   200→  const detectedLang = detectLanguage(result.title + ' ' + (result.abstract ?? ''));
+   201→  if (strategy.criteria.languages.includes(detectedLang)) {
+   202→    score += 10;
+   203→  }
+   204→
+   205→  return Math.max(0, Math.min(100, Math.round(score)));
+   206→}
+   207→
+   208→/**
+   209→ * Score, deduplicate, and rank an array of results.
+   210→ */
+   211→export function scoreAndRank(
+   212→  results: BotSearchResult[],
+   213→  strategy: BotSearchStrategy,
+   214→): BotSearchResult[] {
+   215→  // 1. Score each result
+   216→  const scored = results.map(result => ({
+   217→    ...result,
+   218→    score: scoreResult(result, strategy),
+   219→  }));
+   220→
+   221→  // 2. Deduplicate by DOI first, then by normalized title
+   222→  const seen = new Map<string, BotSearchResult>();
+   223→  for (const result of scored) {
+   224→    const key = result.doi
+   225→      ? `doi:${result.doi.toLowerCase()}`
+   226→      : `title:${normalizeTitle(result.title)}`;
+   227→
+   228→    const existing = seen.get(key);
+   229→    if (!existing || result.score > existing.score) {
+   230→      seen.set(key, result);
+   231→    }
+   232→  }
+   233→
+   234→  // 3. Sort by score descending
+   235→  return Array.from(seen.values()).sort((a, b) => b.score - a.score);
+   236→}
+   237→
+   238→/**
+   239→ * Filter results suitable for download based on score threshold and limit.
+   240→ */
+   241→export function selectForDownload(
+   242→  results: BotSearchResult[],
+   243→  limit: number,
+   244→  minScore: number,
+   245→): BotSearchResult[] {
+   246→  return results
+   247→    .filter(r => r.score >= minScore && r.pdfUrl !== null)
+   248→    .slice(0, limit);
+   249→}
+   250→
+   251→// ── Scoring Helpers ──────────────────────────────────────────────────────────
+   252→
+   253→/** Extract significant individual words from keyword phrases for fuzzy matching */
+   254→function extractSignificantWords(keywords: string[]): string[] {
+   255→  const stopWords = new Set([
+   256→    'the', 'a', 'an', 'in', 'on', 'at', 'of', 'for', 'to', 'and',
+   257→    'or', 'but', 'with', 'by', 'from', 'is', 'are', 'was', 'were',
+   258→    'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+   259→    'its', 'this', 'that', 'these', 'those', 'as', 'if', 'not', 'no',
+   260→    'so', 'than', 'too', 'very', 'just', 'about', 'above', 'after',
+   261→    'again', 'all', 'am', 'any', 'because', 'before', 'between',
+   262→    'can', 'could', 'each', 'few', 'further', 'get', 'he', 'her',
+   263→    'here', 'how', 'i', 'into', 'it', 'my', 'myself', 'now', 'of',
+   264→    'only', 'other', 'our', 'own', 'same', 'she', 'should', 'some',
+   265→    'such', 'then', 'there', 'they', 'their', 'through', 'under',
+   266→    'until', 'up', 'we', 'what', 'when', 'where', 'which', 'while',
+   267→    'who', 'whom', 'why', 'will', 'would', 'you', 'your',
+   268→    // Indonesian stop words
+   269→    'yang', 'dan', 'di', 'ke', 'dari', 'untuk', 'pada', 'dengan',
+   270→    'adalah', 'ini', 'itu', 'atau', 'dalam', 'tidak', 'akan', 'sudah',
+   271→    'juga', 'oleh', 'sebuah', 'tersebut', 'bagi', 'sebagai', 'masih',
+   272→  ]);
+   273→
+   274→  return keywords
+   275→    .flatMap(kw => kw.toLowerCase().split(/\s+/))
+   276→    .filter(w => w.length >= 3 && !stopWords.has(w));
+   277→}
+   278→
+   279→/** Simple heuristic language detection based on character patterns */
+   280→function detectLanguage(text: string): string {
+   281→  if (!text) return 'unknown';
+   282→
+   283→  const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
+   284→  const totalChars = text.replace(/\s/g, '').length;
+   285→  if (totalChars === 0) return 'unknown';
+   286→
+   287→  // Indonesian detection: common Indonesian words
+   288→  const indonesianMarkers = [
+   289→    'yang', 'dengan', 'untuk', 'dari', 'dalam', 'pada', 'adalah',
+   290→    'pendidikan', 'pembelajaran', 'siswa', 'guru', 'sekolah', 'kajian',
+   291→    'penelitian', 'hasil', 'dapat', 'melalui', 'berdasarkan', 'menunjukkan',
+   292→    'kata', 'kunci', 'abstrak', 'universitas', 'fakultas', 'program',
+   293→    'studi', 'meningkatkan', 'pengaruh', 'penggunaan', 'model',
+   294→  ];
+   295→  const textLower = text.toLowerCase();
+   296→  const indoMatches = indonesianMarkers.filter(m => textLower.includes(m)).length;
+   297→
+   298→  if (indoMatches >= 3) return 'id';
+   299→
+   300→  // Default: assume English for Latin-script academic text
+   301→  if (latinChars / totalChars > 0.7) return 'en';
+   302→
+   303→  return 'unknown';
+   304→}
+   305→
+   306→/** Normalize a title for deduplication purposes */
+   307→function normalizeTitle(title: string): string {
+   308→  return title
+   309→    .toLowerCase()
+   310→    .replace(/[^a-z0-9\s]/g, '')
+   311→    .replace(/\s+/g, ' ')
+   312→    .trim();
+   313→}
+   314→
+   315→// ═══════════════════════════════════════════════════════════════════════════════
+   316→// §3. HUMAN MIMICRY MODULE
+   317→// ═══════════════════════════════════════════════════════════════════════════════
+   318→
+   319→/**
+   320→ * Introduce a random delay between min and max milliseconds.
+   321→ * Uses a slightly non-linear distribution to feel more natural.
+   322→ */
+   323→export function humanDelay(min: number, max: number): Promise<void> {
+   324→  // Gaussian-ish distribution: average of 3 uniform randoms
+   325→  const r1 = Math.random();
+   326→  const r2 = Math.random();
+   327→  const r3 = Math.random();
+   328→  const normalized = (r1 + r2 + r3) / 3;
+   329→  const delay = min + normalized * (max - min);
+   330→  return new Promise(resolve => setTimeout(resolve, delay));
+   331→}
+   332→
+   333→/**
+   334→ * Scroll a page by a random amount in the given direction.
+   335→ * This is a Playwright helper — returns the pixel delta.
+   336→ */
+   337→export function randomScroll(direction: 'up' | 'down'): number {
+   338→  const min = 100;
+   339→  const max = 500;
+   340→  const delta = Math.floor(min + Math.random() * (max - min));
+   341→  return direction === 'down' ? delta : -delta;
+   342→}
+   343→
+   344→/**
+   345→ * Build a typing sequence with random per-character delays.
+   346→ * Returns an array of { char, delayMs } entries for the browser to replay.
+   347→ */
+   348→export function simulateTyping(
+   349→  text: string,
+   350→  baseDelay: number = 50,
+   351→  jitter: number = 80,
+   352→): Array<{ char: string; delayMs: number }> {
+   353→  const sequence: Array<{ char: string; delayMs: number }> = [];
+   354→  for (const char of text) {
+   355→    // Occasionally insert a longer "thinking" pause
+   356→    const isThinkingPause = Math.random() < 0.05;
+   357→    const delay = isThinkingPause
+   358→      ? baseDelay + jitter * 3
+   359→      : baseDelay + Math.random() * jitter;
+   360→    sequence.push({ char, delayMs: delay });
+   361→  }
+   362→  return sequence;
+   363→}
+   364→
+   365→/**
+   366→ * Generate a random mouse movement path (series of {x, y} coordinates).
+   367→ * Simulates a natural curved path from origin to destination.
+   368→ */
+   369→export function randomMouseMovement(
+   370→  viewportWidth: number,
+   371→  viewportHeight: number,
+   372→): Array<{ x: number; y: number; delayMs: number }> {
+   373→  const steps = 3 + Math.floor(Math.random() * 5);
+   374→  const path: Array<{ x: number; y: number; delayMs: number }> = [];
+   375→
+   376→  let currentX = viewportWidth * (0.3 + Math.random() * 0.4);
+   377→  let currentY = viewportHeight * (0.3 + Math.random() * 0.4);
+   378→
+   379→  for (let i = 0; i < steps; i++) {
+   380→    const targetX = viewportWidth * (0.2 + Math.random() * 0.6);
+   381→    const targetY = viewportHeight * (0.2 + Math.random() * 0.6);
+   382→
+   383→    // Interpolate with slight acceleration
+   384→    const intermediateSteps = 2 + Math.floor(Math.random() * 3);
+   385→    for (let j = 1; j <= intermediateSteps; j++) {
+   386→      const t = j / intermediateSteps;
+   387→      const eased = t * t * (3 - 2 * t); // smoothstep
+   388→      currentX = currentX + (targetX - currentX) * eased * 0.5;
+   389→      currentY = currentY + (targetY - currentY) * eased * 0.5;
+   390→
+   391→      path.push({
+   392→        x: Math.round(currentX),
+   393→        y: Math.round(currentY),
+   394→        delayMs: 10 + Math.floor(Math.random() * 30),
+   395→      });
+   396→    }
+   397→  }
+   398→
+   399→  return path;
+   400→}
+   401→
+   402→/**
+   403→ * Random pause between 1-3 seconds to simulate human reading/thinking.
+   404→ */
+   405→export function waitForHumanThinking(): Promise<void> {
+   406→  return humanDelay(1000, 3000);
+   407→}
+   408→
+   409→/**
+   410→ * Generate a random "session fingerprint" (user agent tweaks, viewport sizes)
+   411→ * to reduce detection across multiple requests.
+   412→ */
+   413→export function generateSessionFingerprint(): {
+   414→  viewport: { width: number; height: number };
+   415→  userAgentTweak: string;
+   416→  acceptLanguage: string;
+   417→} {
+   418→  const viewports = [
+   419→    { width: 1366, height: 768 },
+   420→    { width: 1440, height: 900 },
+   421→    { width: 1536, height: 864 },
+   422→    { width: 1600, height: 900 },
+   423→    { width: 1920, height: 1080 },
+   424→    { width: 1280, height: 720 },
+   425→  ];
+   426→
+   427→  const languages = [
+   428→    'en-US,en;q=0.9',
+   429→    'en-US,en;q=0.9,id;q=0.8',
+   430→    'en-GB,en;q=0.9',
+   431→    'en-US,en;q=0.9,de;q=0.7',
+   432→  ];
+   433→
+   434→  return {
+   435→    viewport: viewports[Math.floor(Math.random() * viewports.length)],
+   436→    userAgentTweak: `Chrome/${115 + Math.floor(Math.random() * 10)}.0.${Math.floor(Math.random() * 9000)}.${Math.floor(Math.random() * 200)}`,
+   437→    acceptLanguage: languages[Math.floor(Math.random() * languages.length)],
+   438→  };
+   439→}
+   440→
+   441→// ═══════════════════════════════════════════════════════════════════════════════
+   442→// §4. EXTRACTION MODULE
+   443→// ═══════════════════════════════════════════════════════════════════════════════
+   444→
+   445→/** Options passed to the extraction function */
+   446→interface ExtractionConfig {
+   447→  databaseId: string;
+   448→  databaseName: string;
+   449→  keywords: string[];
+   450→}
+   451→
+   452→/**
+   453→ * Extract search results from raw HTML/JSON content using regex patterns.
+   454→ *
+   455→ * This is resilient to page structure changes — if the primary extraction
+   456→ * fails, it falls back to a series of looser heuristics:
+   457→ *   1. Try database-specific patterns
+   458→ *   2. Try JSON API response parsing
+   459→ *   3. Fallback: brute-force regex scan for DOIs, titles, years
+   460→ */
+   461→export function extractResultsFromHtml(
+   462→  html: string,
+   463→  config: ExtractionConfig,
+   464→): RawSearchResult[] {
+   465→  const dbConfig = DATABASE_CONFIGS[config.databaseId];
+   466→  const results: RawSearchResult[] = [];
+   467→
+   468→  if (!dbConfig || !html) {
+   469→    return results;
+   470→  }
+   471→
+   472→  // ── Strategy 1: JSON API Response ─────────────────────────────────────────
+   473→  if (isJsonResponse(html)) {
+   474→    const jsonResults = extractFromJson(html, config);
+   475→    if (jsonResults.length > 0) return jsonResults;
+   476→  }
+   477→
+   478→  // ── Strategy 2: Database-specific regex extraction ────────────────────────
+   479→  const patterns = dbConfig.patterns;
+   480→
+   481→  // Extract individual result blocks
+   482→  const resultBlocks = html.match(patterns.resultBlock) || [];
+   483→
+   484→  for (const block of resultBlocks) {
+   485→    const titleMatch = block.match(patterns.title);
+   486→    const authorsMatch = block.match(patterns.authors);
+   487→    const yearMatch = block.match(patterns.year);
+   488→    const doiMatch = block.match(patterns.doi);
+   489→    const abstractMatch = block.match(patterns.abstract);
+   490→    const journalMatch = block.match(patterns.journal);
+   491→    const citationsMatch = block.match(patterns.citations);
+   492→    const pdfMatch = block.match(patterns.pdfUrl);
+   493→    const oaMatch = block.match(patterns.openAccess);
+   494→
+   495→    const title = titleMatch
+   496→      ? decodeHtmlEntities(titleMatch[1]?.trim() || '')
+   497→      : '';
+   498→
+   499→    // Skip entries without titles
+   500→    if (!title || title.length < 5) continue;
+   501→
+   502→    results.push({
+   503→      title,
+   504→      authors: authorsMatch ? decodeHtmlEntities(authorsMatch[1]?.trim() || '') : null,
+   505→      year: yearMatch ? parseInt(yearMatch[1], 10) : null,
+   506→      abstract: abstractMatch ? decodeHtmlEntities(stripHtmlTags(abstractMatch[1]?.trim() || '')) : null,
+   507→      journal: journalMatch ? decodeHtmlEntities(journalMatch[1]?.trim() || '') : null,
+   508→      doi: doiMatch ? doiMatch[1].trim() : null,
+   509→      pdfUrl: pdfMatch ? decodeHtmlEntities(pdfMatch[1]?.trim() || '') : null,
+   510→      citations: citationsMatch ? parseInt(citationsMatch[1], 10) : null,
+   511→      isOpenAccess: !!oaMatch,
+   512→    });
+   513→  }
+   514→
+   515→  // ── Strategy 3: Fallback brute-force extraction ───────────────────────────
+   516→  if (results.length === 0) {
+   517→    return fallbackExtraction(html, config);
+   518→  }
+   519→
+   520→  return results.slice(0, dbConfig.maxResultsPerPage * dbConfig.maxPages);
+   521→}
+   522→
+   523→/**
+   524→ * Try to parse as JSON and extract structured results.
+   525→ */
+   526→function extractFromJson(
+   527→  jsonStr: string,
+   528→  config: ExtractionConfig,
+   529→): RawSearchResult[] {
+   530→  const results: RawSearchResult[] = [];
+   531→
+   532→  try {
+   533→    const data = JSON.parse(jsonStr);
+   534→
+   535→    // OpenAlex format
+   536→    if (data.results && Array.isArray(data.results)) {
+   537→      for (const work of data.results) {
+   538→        const authors = (work.authorships || [])
+   539→          .map((a: { author?: { display_name?: string } }) => a.author?.display_name)
+   540→          .filter(Boolean)
+   541→          .slice(0, 5)
+   542→          .join(', ');
+   543→
+   544→        results.push({
+   545→          title: work.title || work.display_name || '',
+   546→          authors: authors || null,
+   547→          year: work.publication_year || null,
+   548→          abstract: work.abstract_inverted_index
+   549→            ? reconstructAbstract(work.abstract_inverted_index)
+   550→            : null,
+   551→          journal: work.primary_location?.source?.display_name || null,
+   552→          doi: work.doi?.replace('https://doi.org/', '') || null,
+   553→          pdfUrl: work.primary_location?.pdf_url || null,
+   554→          citations: work.cited_by_count || null,
+   555→          isOpenAccess: work.open_access?.is_oa || false,
+   556→        });
+   557→      }
+   558→    }
+   559→
+   560→    // Semantic Scholar format
+   561→    if (data.data && Array.isArray(data.data)) {
+   562→      for (const paper of data.data) {
+   563→        const authors = (paper.authors || [])
+   564→          .map((a: { name?: string }) => a.name)
+   565→          .filter(Boolean)
+   566→          .join(', ');
+   567→
+   568→        results.push({
+   569→          title: paper.title || '',
+   570→          authors: authors || null,
+   571→          year: paper.year || null,
+   572→          abstract: paper.abstract || null,
+   573→          journal: paper.journal?.name || null,
+   574→          doi: paper.externalIds?.DOI || null,
+   575→          pdfUrl: paper.openAccessPdf?.url || null,
+   576→          citations: paper.citationCount || null,
+   577→          isOpenAccess: paper.isOpenAccess || false,
+   578→        });
+   579→      }
+   580→    }
+   581→
+   582→    // CrossRef format
+   583→    if (data.message?.items && Array.isArray(data.message.items)) {
+   584→      for (const item of data.message.items) {
+   585→        const authors = (item.author || [])
+   586→          .map((a: { given?: string; family?: string }) =>
+   587→            [a.given, a.family].filter(Boolean).join(' ')
+   588→          )
+   589→          .filter(Boolean)
+   590→          .join(', ');
+   591→
+   592→        const yearPart = item.published?.['date-parts']?.[0]?.[0]
+   593→          || item.issued?.['date-parts']?.[0]?.[0]
+   594→          || null;
+   595→
+   596→        results.push({
+   597→          title: (item.title || [''])[0] || '',
+   598→          authors: authors || null,
+   599→          year: yearPart ? parseInt(String(yearPart), 10) : null,
+   600→          abstract: item.abstract ? stripHtmlTags(item.abstract) : null,
+   601→          journal: (item['container-title'] || [''])[0] || null,
+   602→          doi: item.DOI || null,
+   603→          pdfUrl: item.link?.find((l: { 'content-type'?: string; URL?: string }) =>
+   604→            l['content-type']?.includes('pdf')
+   605→          )?.URL || null,
+   606→          citations: item['is-referenced-by-count'] || null,
+   607→          isOpenAccess: !!item.license,
+   608→        });
+   609→      }
+   610→    }
+   611→
+   612→    // PubMed eSearch format — returns IDs only, needs fetch
+   613→    if (data.esearchresult?.idlist) {
+   614→      // PubMed needs a separate fetch for summaries; return empty and let
+   615→      // the caller handle it via the API route
+   616→      return results;
+   617→    }
+   618→
+   619→    // CORE format
+   620→    if (data.results && Array.isArray(data.results)) {
+   621→      for (const item of data.results) {
+   622→        const authors = (item.authors || [])
+   623→          .map((a: { name?: string }) => a.name)
+   624→          .filter(Boolean)
+   625→          .join(', ');
+   626→
+   627→        results.push({
+   628→          title: item.title || '',
+   629→          authors: authors || null,
+   630→          year: item.yearPublished ? parseInt(String(item.yearPublished), 10) : null,
+   631→          abstract: item.abstract || null,
+   632→          journal: item.publisher || null,
+   633→          doi: item.doi || null,
+   634→          pdfUrl: item.downloadUrl || null,
+   635→          citations: item.citationCount || null,
+   636→          isOpenAccess: item.isOa || false,
+   637→        });
+   638→      }
+   639→    }
+   640→
+   641→    // BASE format
+   642→    if (data.response?.docs && Array.isArray(data.response.docs)) {
+   643→      for (const doc of data.response.docs) {
+   644→        results.push({
+   645→          title: doc.dctitle || '',
+   646→          authors: Array.isArray(doc.dccreator) ? doc.dccreator.join(', ') : doc.dccreator || null,
+   647→          year: doc.dcdate ? parseInt(String(doc.dcdate).substring(0, 4), 10) : null,
+   648→          abstract: doc.dcdescription || null,
+   649→          journal: doc.dcpublisher || null,
+   650→          doi: doc.dcdoi || null,
+   651→          pdfUrl: Array.isArray(doc.dclink)
+   652→            ? doc.dclink.find((l: string) => l.includes('.pdf'))
+   653→            : doc.dclink || null,
+   654→          citations: null,
+   655→          isOpenAccess: doc.oa === true || doc.oa === '1',
+   656→        });
+   657→      }
+   658→    }
+   659→
+   660→  } catch {
+   661→    // JSON parse failed — not a valid JSON response
+   662→    return [];
+   663→  }
+   664→
+   665→  // Filter out empty titles
+   666→  return results.filter(r => r.title && r.title.length >= 5);
+   667→}
+   668→
+   669→/**
+   670→ * Fallback extraction when database-specific patterns fail.
+   671→ * Uses generic heuristics to find anything useful.
+   672→ */
+   673→function fallbackExtraction(
+   674→  html: string,
+   675→  config: ExtractionConfig,
+   676→): RawSearchResult[] {
+   677→  const results: RawSearchResult[] = [];
+   678→
+   679→  // Try to find DOIs as anchors
+   680→  const doiPattern = /10\.\d{4,}\/[^\s"'<>]+/gi;
+   681→  const dois = html.match(doiPattern) || [];
+   682→
+   683→  // Try to find titles in common HTML patterns
+   684→  const titlePatterns = [
+   685→    /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi,
+   686→    /<a[^>]*class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/a>/gi,
+   687→    /<cite[^>]*>([\s\S]*?)<\/cite>/gi,
+   688→    /<span[^>]*class="[^"]*title[^"]*"[^>]*>([\s\S]*?)<\/span>/gi,
+   689→  ];
+   690→
+   691→  const years = html.match(/\b((?:19|20)\d{2})\b/g) || [];
+   692→
+   693→  for (let i = 0; i < Math.min(dois.length, 50); i++) {
+   694→    const doi = dois[i].trim().replace(/[.,;:]+$/, '');
+   695→    const year = years[i] ? parseInt(years[i], 10) : null;
+   696→
+   697→    // Try to find a nearby title
+   698→    let title = '';
+   699→    for (const pattern of titlePatterns) {
+   700→      pattern.lastIndex = 0;
+   701→      const matches = html.match(pattern) || [];
+   702→      if (matches[i]) {
+   703→        const contentMatch = matches[i].match(/>([\s\S]*?)<\//);
+   704→        if (contentMatch) {
+   705→          title = decodeHtmlEntities(stripHtmlTags(contentMatch[1])).trim();
+   706→          break;
+   707→        }
+   708→      }
+   709→    }
+   710→
+   711→    if (title && title.length >= 10) {
+   712→      results.push({
+   713→        title,
+   714→        authors: null,
+   715→        year,
+   716→        abstract: null,
+   717→        journal: null,
+   718→        doi,
+   719→        pdfUrl: null,
+   720→        citations: null,
+   721→        isOpenAccess: false,
+   722→      });
+   723→    }
+   724→  }
+   725→
+   726→  return results;
+   727→}
+   728→
+   729→// ── Extraction Helpers ───────────────────────────────────────────────────────
+   730→
+   731→/** Check if a response looks like JSON */
+   732→function isJsonResponse(text: string): boolean {
+   733→  const trimmed = text.trim();
+   734→  return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+   735→         (trimmed.startsWith('[') && trimmed.endsWith(']'));
+   736→}
+   737→
+   738→/** Decode HTML entities (non-exhaustive but covers common ones) */
+   739→function decodeHtmlEntities(text: string): string {
+   740→  return text
+   741→    .replace(/&amp;/g, '&')
+   742→    .replace(/&lt;/g, '<')
+   743→    .replace(/&gt;/g, '>')
+   744→    .replace(/&quot;/g, '"')
+   745→    .replace(/&#39;/g, "'")
+   746→    .replace(/&#x27;/g, "'")
+   747→    .replace(/&apos;/g, "'")
+   748→    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+   749→    .replace(/&nbsp;/g, ' ')
+   750→    .replace(/&mdash;/g, '—')
+   751→    .replace(/&ndash;/g, '–')
+   752→    .replace(/&hellip;/g, '…')
+   753→    .replace(/<[^>]*>/g, '') // strip remaining tags
+   754→    .trim();
+   755→}
+   756→
+   757→/** Strip all HTML tags from text */
+   758→function stripHtmlTags(text: string): string {
+   759→  return text.replace(/<[^>]*>/g, '').trim();
+   760→}
+   761→
+   762→/** Reconstruct abstract from OpenAlex inverted index format */
+   763→function reconstructAbstract(
+   764→  index: Record<string, Array<{ position: number }>>
+   765→): string {
+   766→  const wordMap: Record<number, string> = {};
+   767→  for (const [word, positions] of Object.entries(index)) {
+   768→    for (const pos of positions) {
+   769→      wordMap[pos.position] = word;
+   770→    }
+   771→  }
+   772→  return Object.entries(wordMap)
+   773→    .sort(([a], [b]) => Number(a) - Number(b))
+   774→    .map(([, w]) => w)
+   775→    .join(' ');
+   776→}
+   777→
+   778→// ═══════════════════════════════════════════════════════════════════════════════
+   779→// §5. MAIN SuperBot CLASS
+   780→// ═══════════════════════════════════════════════════════════════════════════════
+   781→
+   782→/**
+   783→ * SuperBot — The core orchestrator for academic reference search.
+   784→ *
+   785→ * Execution flow:
+   786→ *   1. init       → Validate config, setup session
+   787→ *   2. strategy   → One-shot Z.ai call for search strategy (with fallback)
+   788→ *   3. searching  → Loop through databases, call mini-service API
+   789→ *   4. scoring    → Score all results with custom algorithm
+   790→ *   5. downloading→ Download top PDFs (optional)
+   791→ *   6. uploading  → Upload to Telegram cold storage (optional)
+   792→ *   7. complete   → Return final scored results
+   793→ *
+   794→ * The actual browsing/playwright operations are delegated to a mini-service
+   795→ * HTTP API at `/api/bot/search` since Playwright can't run inside
+   796→ * Next.js serverless functions.
+   797→ */
+   798→export class SuperBot {
+   799→  private proxyConfig: BotProxyConfig | null;
+   800→  private abortController: AbortController | null = null;
+   801→  private fingerprint: ReturnType<typeof generateSessionFingerprint>;
+   802→
+   803→  constructor(proxyConfig?: BotProxyConfig) {
+   804→    this.proxyConfig = proxyConfig ?? null;
+   805→    this.fingerprint = generateSessionFingerprint();
+   806→  }
+   807→
+   808→  // ── Abort running operation ────────────────────────────────────────────────
+   809→
+   810→  /** Cancel any in-progress search operation */
+   811→  abort(): void {
+   812→    if (this.abortController) {
+   813→      this.abortController.abort();
+   814→      this.abortController = null;
+   815→    }
+   816→  }
+   817→
+   818→  // ── Main Execution ─────────────────────────────────────────────────────────
+   819→
+   820→  /**
+   821→   * Run the full SuperBot pipeline.
+   822→   *
+   823→   * @param config   - Search configuration
+   824→   * @param onProgress - Optional callback for real-time UI updates
+   825→   * @returns Sorted and scored search results
+   826→   */
+   827→  async run(
+   828→    config: BotRunConfig,
+   829→    onProgress?: (progress: BotProgress) => void,
+   830→  ): Promise<BotSearchResult[]> {
+   831→    this.abortController = new AbortController();
+   832→    const signal = this.abortController.signal;
+   833→    const startTime = Date.now();
+   834→
+   835→    const report = (partial: Partial<BotProgress>): void => {
+   836→      onProgress?.({
+   837→        phase: 'init',
+   838→        currentDatabase: '',
+   839→        databasesSearched: [],
+   840→        totalDatabases: 0,
+   841→        resultsFound: 0,
+   842→        currentPercent: 0,
+   843→        message: '',
+   844→        startTime,
+   845→        ...partial,
+   846→      });
+   847→    };
+   848→
+   849→    try {
+   850→      // ── Phase 1: Init ─────────────────────────────────────────────────────
+   851→      report({
+   852→        phase: 'init',
+   853→        currentPercent: 0,
+   854→        message: 'Initializing SuperBot engine...',
+   855→      });
+   856→
+   857→      this.fingerprint = generateSessionFingerprint();
+   858→      await humanDelay(200, 500);
+   859→
+   860→      if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+   861→
+   862→      // ── Phase 2: Strategy ─────────────────────────────────────────────────
+   863→      report({
+   864→        phase: 'strategy',
+   865→        currentPercent: 5,
+   866→        message: 'Generating search strategy via AI...',
+   867→      });
+   868→
+   869→      const strategy = await this.getSearchStrategy(config.topic);
+   870→      const allKeywords = [...new Set([...strategy.keywords, ...config.keywords])];
+   871→
+   872→      report({
+   873→        phase: 'strategy',
+   874→        currentPercent: 10,
+   875→        message: `Strategy ready: ${allKeywords.length} keywords, ${strategy.criteria.yearFrom}–${strategy.criteria.yearTo}`,
+   876→      });
+   877→
+   878→      // ── Phase 3: Searching ────────────────────────────────────────────────
+   879→      const databases = config.databases
+   880→        ? getDatabasesByIds(config.databases)
+   881→        : getEnabledDatabases();
+   882→
+   883→      const totalDatabases = databases.length;
+   884→      if (totalDatabases === 0) {
+   885→        throw new Error('No databases available for searching');
+   886→      }
+   887→
+   888→      const allRawResults: Array<RawSearchResult & { databaseId: string; databaseName: string }> = [];
+   889→      const databasesSearched: string[] = [];
+   890→
+   891→      for (let i = 0; i < totalDatabases; i++) {
+   892→        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+   893→
+   894→        const db = databases[i];
+   895→        const progressPercent = 10 + Math.round(((i) / totalDatabases) * 50);
+   896→
+   897→        report({
+   898→          phase: 'searching',
+   899→          currentDatabase: db.name,
+   900→          databasesSearched: [...databasesSearched],
+   901→          totalDatabases,
+   902→          resultsFound: allRawResults.length,
+   903→          currentPercent: progressPercent,
+   904→          message: `Searching ${db.name}... (${i + 1}/${totalDatabases})`,
+   905→        });
+   906→
+   907→        // Build search query from keywords
+   908→        const query = allKeywords.slice(0, 5).join(' ');
+   909→
+   910→        // Call mini-service API
+   911→        const results = await this.searchDatabase(
+   912→          db.id,
+   913→          db.name,
+   914→          query,
+   915→          config.maxResults,
+   916→          strategy.criteria,
+   917→          signal,
+   918→        );
+   919→
+   920→        allRawResults.push(...results);
+   921→        databasesSearched.push(db.name);
+   922→
+   923→        report({
+   924→          phase: 'searching',
+   925→          currentDatabase: db.name,
+   926→          databasesSearched: [...databasesSearched],
+   927→          totalDatabases,
+   928→          resultsFound: allRawResults.length,
+   929→          currentPercent: progressPercent,
+   930→          message: `${db.name}: found ${results.length} results. Total: ${allRawResults.length}`,
+   931→        });
+   932→
+   933→        // Respect rate limits between databases
+   934→        if (i < totalDatabases - 1) {
+   935→          await humanDelay(db.rateLimitMs * 0.5, db.rateLimitMs);
+   936→        }
+   937→      }
+   938→
+   939→      // ── Phase 4: Scoring ──────────────────────────────────────────────────
+   940→      report({
+   941→        phase: 'scoring',
+   942→        currentPercent: 65,
+   943→        message: `Scoring ${allRawResults.length} results...`,
+   944→      });
+   945→
+   946→      // Convert raw results to BotSearchResult format
+   947→      const scoredResults: BotSearchResult[] = allRawResults.map((raw, idx) => ({
+   948→        id: `bot-${raw.databaseId}-${idx}`,
+   949→        databaseId: raw.databaseId,
+   950→        databaseName: raw.databaseName,
+   951→        title: raw.title,
+   952→        authors: raw.authors ?? '',
+   953→        year: raw.year,
+   954→        abstract: raw.abstract,
+   955→        journal: raw.journal,
+   956→        doi: raw.doi,
+   957→        pdfUrl: raw.pdfUrl,
+   958→        citations: raw.citations,
+   959→        isOpenAccess: raw.isOpenAccess,
+   960→        score: 0, // Will be set by scoreAndRank
+   961→        source: raw.databaseName,
+   962→      }));
+   963→
+   964→      // Score, deduplicate, and rank
+   965→      const rankedResults = scoreAndRank(scoredResults, strategy);
+   966→
+   967→      report({
+   968→        phase: 'scoring',
+   969→        currentPercent: 75,
+   970→        resultsFound: rankedResults.length,
+   971→        message: `Scored ${rankedResults.length} unique results. Top score: ${rankedResults[0]?.score ?? 0}`,
+   972→      });
+   973→
+   974→      await humanDelay(300, 700);
+   975→
+   976→      // ── Phase 5: Downloading (optional) ───────────────────────────────────
+   977→      if (config.autoDownload) {
+   978→        report({
+   979→          phase: 'downloading',
+   980→          currentPercent: 80,
+   981→          message: `Preparing to download top PDFs...`,
+   982→        });
+   983→
+   984→        const downloadCandidates = selectForDownload(
+   985→          rankedResults,
+   986→          config.downloadLimit,
+   987→          config.minScoreThreshold,
+   988→        );
+   989→
+   990→        for (let i = 0; i < downloadCandidates.length; i++) {
+   991→          if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+   992→
+   993→          const result = downloadCandidates[i];
+   994→          const dlPercent = 80 + Math.round(((i + 1) / downloadCandidates.length) * 10);
+   995→
+   996→          report({
+   997→            phase: 'downloading',
+   998→            currentPercent: dlPercent,
+   999→            message: `Downloading PDF ${i + 1}/${downloadCandidates.length}: ${result.title.substring(0, 60)}...`,
+  1000→          });
+  1001→
+  1002→          try {
+  1003→            const pdfBuffer = await this.downloadPdf(result.pdfUrl!);
+  1004→            if (pdfBuffer) {
+  1005→              result.pdfUrl = `buffer://${result.id}`; // Mark as downloaded
+  1006→            }
+  1007→          } catch (err) {
+  1008→            console.warn(`[SuperBot] Failed to download PDF for "${result.title}":`, err);
+  1009→          }
+  1010→
+  1011→          // Delay between downloads
+  1012→          await humanDelay(1500, 3000);
+  1013→        }
+  1014→      }
+  1015→
+  1016→      // ── Phase 6: Uploading (optional) ─────────────────────────────────────
+  1017→      if (config.autoDownload && config.minScoreThreshold > 0) {
+  1018→        report({
+  1019→          phase: 'uploading',
+  1020→          currentPercent: 92,
+  1021→          message: 'Uploading PDFs to Telegram cold storage...',
+  1022→        });
+  1023→
+  1024→        // Upload logic is delegated to the caller or a separate process
+  1025→        // since Telegram uploads are handled by the telegram-storage module
+  1026→      }
+  1027→
+  1028→      // ── Phase 7: Complete ─────────────────────────────────────────────────
+  1029→      const elapsed = Date.now() - startTime;
+  1030→      report({
+  1031→        phase: 'complete',
+  1032→        currentPercent: 100,
+  1033→        databasesSearched,
+  1034→        totalDatabases,
+  1035→        resultsFound: rankedResults.length,
+  1036→        message: `Complete! ${rankedResults.length} results in ${(elapsed / 1000).toFixed(1)}s`,
+  1037→      });
+  1038→
+  1039→      return rankedResults;
+  1040→
+  1041→    } catch (error) {
+  1042→      if (error instanceof DOMException && error.name === 'AbortError') {
+  1043→        report({
+  1044→          phase: 'error',
+  1045→          currentPercent: 0,
+  1046→          message: 'Search cancelled by user.',
+  1047→        });
+  1048→        return [];
+  1049→      }
+  1050→
+  1051→      const errorMessage = error instanceof Error ? error.message : String(error);
+  1052→      console.error('[SuperBot] Run error:', errorMessage);
+  1053→
+  1054→      report({
+  1055→        phase: 'error',
+  1056→        currentPercent: 0,
+  1057→        message: `Error: ${errorMessage}`,
+  1058→      });
+  1059→
+  1060→      throw error;
+  1061→    } finally {
+  1062→      this.abortController = null;
+  1063→    }
+  1064→  }
+  1065→
+  1066→  // ── Search a Single Database ───────────────────────────────────────────────
+  1067→
+  1068→  /**
+  1069→   * Search a single database via the mini-service API.
+  1070→   * Falls back to direct API calls for JSON-based databases.
+  1071→   */
+  1072→  private async searchDatabase(
+  1073→    databaseId: string,
+  1074→    databaseName: string,
+  1075→    query: string,
+  1076→    maxResults: number,
+  1077→    criteria: BotSearchStrategy['criteria'],
+  1078→    signal: AbortSignal,
+  1079→  ): Promise<Array<RawSearchResult & { databaseId: string; databaseName: string }>> {
+  1080→    const dbConfig = DATABASE_CONFIGS[databaseId];
+  1081→    if (!dbConfig) return [];
+  1082→
+  1083→    // Try mini-service first (for HTML-scraping databases like Google Scholar)
+  1084→    if (dbConfig.requiresProxy || dbConfig.searchUrl.includes('scholar.google.com')) {
+  1085→      try {
+  1086→        return await this.searchViaMiniService(
+  1087→          databaseId,
+  1088→          databaseName,
+  1089→          query,
+  1090→          maxResults,
+  1091→          criteria,
+  1092→          signal,
+  1093→        );
+  1094→      } catch (err) {
+  1095→        console.warn(`[SuperBot] Mini-service failed for ${databaseName}, trying direct API:`, err);
+  1096→      }
+  1097→    }
+  1098→
+  1099→    // Direct API call for JSON-based databases
+  1100→    try {
+  1101→      return await this.searchViaDirectApi(
+  1102→        databaseId,
+  1103→        databaseName,
+  1104→        query,
+  1105→        maxResults,
+  1106→        criteria,
+  1107→        signal,
+  1108→      );
+  1109→    } catch (err) {
+  1110→      console.error(`[SuperBot] Direct API failed for ${databaseName}:`, err);
+  1111→      return [];
+  1112→    }
+  1113→  }
+  1114→
+  1115→  /**
+  1116→   * Search via the mini-service bot API (Playwright-based scraping).
+  1117→   * Calls `/api/bot/search` which proxies to the mini-service.
+  1118→   */
+  1119→  private async searchViaMiniService(
+  1120→    databaseId: string,
+  1121→    databaseName: string,
+  1122→    query: string,
+  1123→    maxResults: number,
+  1124→    criteria: BotSearchStrategy['criteria'],
+  1125→    signal: AbortSignal,
+  1126→  ): Promise<Array<RawSearchResult & { databaseId: string; databaseName: string }>> {
+  1127→    const searchUrl = buildSearchUrl(databaseId, query, maxResults, criteria);
+  1128→
+  1129→    const response = await fetch('/api/bot/search', {
+  1130→      method: 'POST',
+  1131→      headers: { 'Content-Type': 'application/json' },
+  1132→      body: JSON.stringify({
+  1133→        databaseId,
+  1134→        searchUrl,
+  1135→        maxResults,
+  1136→        headers: DATABASE_CONFIGS[databaseId]?.headers || {},
+  1137→        encoding: DATABASE_CONFIGS[databaseId]?.encoding || 'utf-8',
+  1138→        proxy: this.proxyConfig,
+  1139→        fingerprint: this.fingerprint,
+  1140→      }),
+  1141→      signal,
+  1142→    });
+  1143→
+  1144→    if (!response.ok) {
+  1145→      throw new Error(`Mini-service returned ${response.status}`);
+  1146→    }
+  1147→
+  1148→    const data: BotSearchApiResponse = await response.json();
+  1149→    if (!data.success) {
+  1150→      throw new Error(data.error || 'Mini-service search failed');
+  1151→    }
+  1152→
+  1153→    return data.results.map(r => ({
+  1154→      ...r,
+  1155→      databaseId,
+  1156→      databaseName,
+  1157→    }));
+  1158→  }
+  1159→
+  1160→  /**
+  1161→   * Search via direct API call (for JSON-based databases like OpenAlex, CrossRef, etc.)
+  1162→   */
+  1163→  private async searchViaDirectApi(
+  1164→    databaseId: string,
+  1165→    databaseName: string,
+  1166→    query: string,
+  1167→    maxResults: number,
+  1168→    criteria: BotSearchStrategy['criteria'],
+  1169→    signal: AbortSignal,
+  1170→  ): Promise<Array<RawSearchResult & { databaseId: string; databaseName: string }>> {
+  1171→    const dbConfig = DATABASE_CONFIGS[databaseId];
+  1172→    if (!dbConfig) return [];
+  1173→
+  1174→    const searchUrl = buildSearchUrl(databaseId, query, maxResults, criteria);
+  1175→
+  1176→    const response = await fetch(searchUrl, {
+  1177→      headers: {
+  1178→        ...dbConfig.headers,
+  1179→        ...(this.proxyConfig ? { 'X-Proxy': JSON.stringify(this.proxyConfig) } : {}),
+  1180→      },
+  1181→      signal,
+  1182→    });
+  1183→
+  1184→    if (!response.ok) {
+  1185→      throw new Error(`API returned ${response.status} for ${databaseName}`);
+  1186→    }
+  1187→
+  1188→    const text = await response.text();
+  1189→    const extracted = extractFromJson(text, {
+  1190→      databaseId,
+  1191→      databaseName,
+  1192→      keywords: [query],
+  1193→    });
+  1194→
+  1195→    return extracted.map(r => ({
+  1196→      ...r,
+  1197→      databaseId,
+  1198→      databaseName,
+  1199→    }));
+  1200→  }
+  1201→
+  1202→  // ── PDF Download ───────────────────────────────────────────────────────────
+  1203→
+  1204→  /**
+  1205→   * Download a PDF from a URL with human-like delays and proper headers.
+  1206→   */
+  1207→  async downloadPdf(url: string): Promise<Buffer | null> {
+  1208→    try {
+  1209→      // Add a small thinking delay before download
+  1210→      await waitForHumanThinking();
+  1211→
+  1212→      const response = await fetch(url, {
+  1213→        headers: {
+  1214→          'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ${this.fingerprint.userAgentTweak} Safari/537.36`,
+  1215→          'Accept': 'application/pdf,*/*',
+  1216→          'Accept-Language': this.fingerprint.acceptLanguage,
+  1217→          'Referer': new URL(url).origin + '/',
+  1218→        },
+  1219→        signal: AbortSignal.timeout(120_000),
+  1220→        redirect: 'follow',
+  1221→      });
+  1222→
+  1223→      if (!response.ok) {
+  1224→        console.warn(`[SuperBot] PDF download failed: ${response.status}`);
+  1225→        return null;
+  1226→      }
+  1227→
+  1228→      const contentType = response.headers.get('content-type') || '';
+  1229→      if (!contentType.includes('pdf') && !contentType.includes('octet-stream')) {
+  1230→        console.warn(`[SuperBot] Unexpected content type for PDF: ${contentType}`);
+  1231→        // Continue anyway — some servers misreport content type
+  1232→      }
+  1233→
+  1234→      const arrayBuffer = await response.arrayBuffer();
+  1235→      return Buffer.from(arrayBuffer);
+  1236→    } catch (error) {
+  1237→      console.error(`[SuperBot] PDF download error for ${url}:`, error);
+  1238→      return null;
+  1239→    }
+  1240→  }
+  1241→
+  1242→  // ── Upload PDFs to Telegram ────────────────────────────────────────────────
+  1243→
+  1244→  /**
+  1245→   * Upload a single PDF buffer to Telegram cold storage.
+  1246→   * Delegates to the telegram-storage module.
+  1247→   */
+  1248→  async uploadPdfToTelegram(
+  1249→    buffer: Buffer,
+  1250→    fileName: string,
+  1251→    caption?: string,
+  1252→  ): Promise<{ success: boolean; fileId?: string; error?: string }> {
+  1253→    try {
+  1254→      const result = await uploadToTelegram(buffer, fileName, caption);
+  1255→      return {
+  1256→        success: result.success,
+  1257→        fileId: result.fileId ?? undefined,
+  1258→        error: result.error,
+  1259→      };
+  1260→    } catch (error) {
+  1261→      const msg = error instanceof Error ? error.message : String(error);
+  1262→      return { success: false, error: msg };
+  1263→    }
+  1264→  }
+  1265→
+  1266→  // ── Public Utility Methods ─────────────────────────────────────────────────
+  1267→
+  1268→  /**
+  1269→   * Get the current session fingerprint.
+  1270→   */
+  1271→  getSessionFingerprint(): ReturnType<typeof generateSessionFingerprint> {
+  1272→    return this.fingerprint;
+  1273→  }
+  1274→
+  1275→  /**
+  1276→   * Get the proxy configuration (if set).
+  1277→   */
+  1278→  getProxyConfig(): BotProxyConfig | null {
+  1279→    return this.proxyConfig;
+  1280→  }
+  1281→}
+  1282→
+  1283→// ═══════════════════════════════════════════════════════════════════════════════
+  1284→// §6. Z.AI STRATEGY INTEGRATION
+  1285→// ═══════════════════════════════════════════════════════════════════════════════
+  1286→
+  1287→/**
+  1288→ * Build a search URL from a database config with query and criteria.
+  1289→ */
+  1290→function buildSearchUrl(
+  1291→  databaseId: string,
+  1292→  query: string,
+  1293→  maxResults: number,
+  1294→  criteria: BotSearchStrategy['criteria'],
+  1295→): string {
+  1296→  const db = DATABASE_CONFIGS[databaseId];
+  1297→  if (!db) return '';
+  1298→
+  1299→  return db.searchUrl
+  1300→    .replace('{query}', encodeURIComponent(query))
+  1301→    .replace('{count}', String(Math.min(maxResults, db.maxResultsPerPage)))
+  1302→    .replace('{yearFrom}', String(criteria.yearFrom))
+  1303→    .replace('{yearTo}', String(criteria.yearTo));
+  1304→}
+  1305→
+  1306→// ── Module-level singleton (optional, for convenience) ────────────────────────
+  1307→
+  1308→let _botInstance: SuperBot | null = null;
+  1309→
+  1310→/**
+  1311→ * Get a shared SuperBot instance (singleton pattern).
+  1312→ * Pass a proxy config only on first call; subsequent calls reuse the instance.
+  1313→ */
+  1314→export function getSuperBot(proxyConfig?: BotProxyConfig): SuperBot {
+  1315→  if (!_botInstance) {
+  1316→    _botInstance = new SuperBot(proxyConfig);
+  1317→  }
+  1318→  return _botInstance;
+  1319→}
+  1320→
+  1321→/**
+  1322→ * Create a fresh SuperBot instance (bypasses singleton).
+  1323→ */
+  1324→export function createSuperBot(proxyConfig?: BotProxyConfig): SuperBot {
+  1325→  return new SuperBot(proxyConfig);
+  1326→}
+  1327→

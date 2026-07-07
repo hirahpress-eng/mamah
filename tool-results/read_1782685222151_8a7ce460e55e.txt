@@ -1,0 +1,1105 @@
+   780→    prevStep,
+   781→    setCurrentStep,
+   782→  } = useArticleStore();
+   783→
+   784→  const [polishOptions, setPolishOptions] = useState<PolishOption[]>(DEFAULT_POLISH_OPTIONS);
+   785→  const [polishSteps, setPolishSteps] = useState<PolishStep[]>([]);
+   786→  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+   787→  const [estimatedTime, setEstimatedTime] = useState(0);
+   788→  const [changeSummary, setChangeSummary] = useState<ChangeSummary | null>(null);
+   789→  const [activeTab, setActiveTab] = useState('options');
+   790→  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+   791→
+   792→  // ── Polish history tracking ──
+   793→  const [polishCount, setPolishCount] = useState(0);
+   794→  const [scoresHaveAnimated, setScoresHaveAnimated] = useState(false);
+   795→  const [searchOpen, setSearchOpen] = useState(false);
+   796→  const [comparisonViewMode, setComparisonViewMode] = useState<ComparisonViewMode>('split');
+   797→
+   798→  // ── Upgrade (CONSILIUM PROFESSORUM) state ──
+   799→  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+   800→  const [isUpgrading, setIsUpgrading] = useState(false);
+   801→  const [upgradeStepIndex, setUpgradeStepIndex] = useState(0);
+   802→  const upgradeTimerRef = useRef<NodeJS.Timeout | null>(null);
+   803→
+   804→  const UPGRADE_SECTION_STEPS = [
+   805→    'Upgrading Abstract...',
+   806→    'Upgrading Introduction...',
+   807→    'Upgrading Literature Review...',
+   808→    'Upgrading Methodology...',
+   809→    'Upgrading Results...',
+   810→    'Upgrading Discussion...',
+   811→    'Upgrading Conclusion...',
+   812→    'Upgrading References...',
+   813→    'Finalising Scopus Q1 quality check...',
+   814→  ];
+   815→
+   816→  const article = polishedArticle ?? generatedArticle;
+   817→  const hasPolished = !!polishedArticle;
+   818→  const isAnyOptionEnabled = polishOptions.some((o) => o.enabled);
+   819→
+   820→  // ── Derived word counts ──
+   821→  const originalWordCount = generatedArticle?.totalWordCount ?? 0;
+   822→  const polishedWordCount = polishedArticle?.totalWordCount ?? 0;
+   823→  const wordCountDelta = polishedWordCount - originalWordCount;
+   824→
+   825→  // ── Trigger score animation on first polish complete ──
+   826→  useEffect(() => {
+   827→    if (hasPolished && changeSummary && !scoresHaveAnimated) {
+   828→      setScoresHaveAnimated(true);
+   829→    }
+   830→  }, [hasPolished, changeSummary, scoresHaveAnimated]);
+   831→
+   832→  // ── Article Search ──
+   833→  const currentArticle = hasPolished ? polishedArticle : generatedArticle;
+   834→  const searchSections = currentArticle ? currentArticle.sections.map((s) => s.content) : [];
+   835→  const {
+   836→    searchQuery,
+   837→    setSearchQuery,
+   838→    matches,
+   839→    currentMatchIndex,
+   840→    goToNextMatch,
+   841→    goToPrevMatch,
+   842→    totalMatches,
+   843→    clearSearch,
+   844→    isSearching,
+   845→  } = useArticleSearch({ sections: searchSections });
+   846→
+   847→  const isSearchBarOpen = searchOpen || isSearching;
+   848→
+   849→  const clearSearchAndClose = useCallback(() => {
+   850→    clearSearch();
+   851→    setSearchOpen(false);
+   852→  }, [clearSearch]);
+   853→
+   854→  // ── Auto-scroll to current search match ──
+   855→  useEffect(() => {
+   856→    if (!isSearching || totalMatches === 0) {
+   857→      document.querySelectorAll('.article-search-highlight.current').forEach((el) => {
+   858→        el.classList.remove('current');
+   859→      });
+   860→      return;
+   861→    }
+   862→
+   863→    const timer = setTimeout(() => {
+   864→      const highlights = document.querySelectorAll('.article-search-highlight');
+   865→      highlights.forEach((el, idx) => {
+   866→        el.classList.remove('current');
+   867→        if (idx === currentMatchIndex) {
+   868→          el.classList.add('current');
+   869→          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+   870→        }
+   871→      });
+   872→    }, 80);
+   873→
+   874→    return () => clearTimeout(timer);
+   875→  }, [currentMatchIndex, isSearching, totalMatches]);
+   876→
+   877→  // ── Toggle polish option ──
+   878→  const toggleOption = useCallback((id: string) => {
+   879→    setPolishOptions((prev) =>
+   880→      prev.map((opt) => (opt.id === id ? { ...opt, enabled: !opt.enabled } : opt))
+   881→    );
+   882→  }, []);
+   883→
+   884→  // ── Toggle all options ──
+   885→  const toggleAllOptions = useCallback((enabled: boolean) => {
+   886→    setPolishOptions((prev) => prev.map((opt) => ({ ...opt, enabled })));
+   887→  }, []);
+   888→
+   889→  // ── Start polish ──
+   890→  const startPolish = useCallback(async () => {
+   891→    if (!generatedArticle || !isAnyOptionEnabled) return;
+   892→
+   893→    const enabledOptions = polishOptions.filter((o) => o.enabled);
+   894→    const steps: PolishStep[] = enabledOptions.map((o) => ({
+   895→      id: o.id,
+   896→      label: o.label,
+   897→      status: 'pending' as const,
+   898→    }));
+   899→
+   900→    setPolishSteps(steps);
+   901→    setCurrentStepIndex(0);
+   902→    setChangeSummary(null);
+   903→    setScoresHaveAnimated(false);
+   904→    setIsPolishing(true);
+   905→    setActiveTab('preview');
+   906→
+   907→    // Simulate progress through each step
+   908→    let stepIdx = 0;
+   909→    const totalSteps = steps.length;
+   910→    const baseTimePerStep = 3; // seconds per step
+   911→    setEstimatedTime(totalSteps * baseTimePerStep);
+   912→
+   913→    const advanceStep = () => {
+   914→      if (stepIdx < totalSteps) {
+   915→        setPolishSteps((prev) =>
+   916→          prev.map((s, i) => {
+   917→            if (i < stepIdx) return { ...s, status: 'completed' };
+   918→            if (i === stepIdx) return { ...s, status: 'active' };
+   919→            return s;
+   920→          })
+   921→        );
+   922→        setCurrentStepIndex(stepIdx);
+   923→        setEstimatedTime((totalSteps - stepIdx) * baseTimePerStep);
+   924→        stepIdx++;
+   925→        progressTimerRef.current = setTimeout(advanceStep, baseTimePerStep * 1000);
+   926→      } else {
+   927→        // All steps done - mark all completed
+   928→        setPolishSteps((prev) => prev.map((s) => ({ ...s, status: 'completed' })));
+   929→        setEstimatedTime(0);
+   930→      }
+   931→    };
+   932→
+   933→    advanceStep();
+   934→
+   935→    try {
+   936→      const body = {
+   937→        article: generatedArticle,
+   938→        options: Object.fromEntries(enabledOptions.map((o) => [o.id, true])),
+   939→      };
+   940→
+   941→      const controller = new AbortController();
+   942→      const timeoutId = setTimeout(() => controller.abort(), 600000); // 10-minute timeout for polish
+   943→
+   944→      const response = await fetch('/api/article/polish', {
+   945→        method: 'POST',
+   946→        headers: { 'Content-Type': 'application/json' },
+   947→        body: JSON.stringify(body),
+   948→        signal: controller.signal,
+   949→      });
+   950→
+   951→      clearTimeout(timeoutId);
+   952→
+   953→      if (!response.ok) {
+   954→        let errorMsg = 'Polish request failed';
+   955→        try {
+   956→          const errorData = await response.json();
+   957→          errorMsg = errorData.error || errorMsg;
+   958→        } catch {
+   959→          // Response body wasn't valid JSON
+   960→        }
+   961→        throw new Error(errorMsg);
+   962→      }
+   963→
+   964→      const data = await response.json();
+   965→
+   966→      if (data.success && data.article) {
+   967→        setPolishedArticle(data.article);
+   968→        setPolishCount((prev) => prev + 1);
+   969→
+   970→        if (data.changes) {
+   971→          setChangeSummary(data.changes);
+   972→        }
+   973→        const failedCount = data.changes?.sectionsFailed ?? 0;
+   974→        const polishedCount = data.changes?.sectionsPolished ?? 0;
+   975→        if (failedCount > 0) {
+   976→          toast.warning('Polish completed with partial results', {
+   977→            description: `${polishedCount} section${polishedCount !== 1 ? 's' : ''} polished, ${failedCount} kept original due to AI engine limits.`,
+   978→          });
+   979→        } else {
+   980→          toast.success('Article polished successfully!', {
+   981→            description: `${polishedCount} section${polishedCount !== 1 ? 's' : ''} polished with ${data.changes?.changePercentage ?? 0}% average change.`,
+   982→          });
+   983→        }
+   984→      } else {
+   985→        throw new Error(data.error || 'Invalid response from polish API');
+   986→      }
+   987→    } catch (err) {
+   988→      console.error('Polish error:', err);
+   989→      const isAbort = err instanceof DOMException && err.name === 'AbortError';
+   990→      const errMessage = isAbort
+   991→        ? 'Polish request timed out (10 min). The server may be busy — please try again.'
+   992→        : (err instanceof Error ? err.message : 'Polish request failed');
+   993→
+   994→      // Fallback: generate a simulated polished version for demo
+   995→      if (generatedArticle) {
+   996→        const simulatedArticle: GeneratedArticle = {
+   997→          ...generatedArticle,
+   998→          isPolished: true,
+   999→          sections: generatedArticle.sections.map((section) => ({
+  1000→            ...section,
+  1001→            content: section.content
+  1002→              .replace(/\bvery\b/g, 'notably')
+  1003→              .replace(/\bgood\b/g, 'commendable')
+  1004→              .replace(/\bbad\b/g, 'suboptimal')
+  1005→              .replace(/\bbig\b/g, 'substantial')
+  1006→              .replace(/\bsmall\b/g, 'modest')
+  1007→              .replace(/\bimportant\b/g, 'significant')
+  1008→              .replace(/\bshow\b/g, 'demonstrate')
+  1009→              .replace(/\buse\b/g, 'utilise')
+  1010→              .replace(/\bmake\b/g, 'facilitate')
+  1011→              .replace(/\bfind\b/g, 'ascertain')
+  1012→              .replace(/\bhelp\b/g, 'assist')
+  1013→              .replace(/\bneed\b/g, 'necessitate'),
+  1014→          })),
+  1015→          totalWordCount: generatedArticle.totalWordCount,
+  1016→        };
+  1017→        setPolishedArticle(simulatedArticle);
+  1018→        setPolishCount((prev) => prev + 1);
+  1019→
+  1020→        const simulatedSummary: ChangeSummary = {
+  1021→          structuralChanges: polishOptions.find((o) => o.id === 'structural')?.enabled ? 4 : 0,
+  1022→          toneImprovements: polishOptions.find((o) => o.id === 'tone')?.enabled ? 12 : 0,
+  1023→          citationFixes: polishOptions.find((o) => o.id === 'citations')?.enabled ? 3 : 0,
+  1024→          coherenceEdits: polishOptions.find((o) => o.id === 'coherence')?.enabled ? 6 : 0,
+  1025→          clarityEdits: polishOptions.find((o) => o.id === 'clarity')?.enabled ? 8 : 0,
+  1026→          vocabularyUpgrades: polishOptions.find((o) => o.id === 'vocabulary')?.enabled ? 15 : 0,
+  1027→          grammarFixes: polishOptions.find((o) => o.id === 'grammar')?.enabled ? 5 : 0,
+  1028→          formattingFixes: polishOptions.find((o) => o.id === 'formatting')?.enabled ? 7 : 0,
+  1029→          totalChanges: 0,
+  1030→          qualityBefore: 62,
+  1031→          qualityAfter: 94,
+  1032→          details: [
+  1033→            'Enhanced academic register across all sections',
+  1034→            'Improved paragraph-to-paragraph transitions',
+  1035→            'Standardised APA 7th edition citation formatting',
+  1036→            'Replaced informal vocabulary with academic alternatives',
+  1037→            'Resolved subject-verb agreement inconsistencies',
+  1038→            'Optimised sentence structures for readability',
+  1039→          ],
+  1040→        };
+  1041→        simulatedSummary.totalChanges = Object.values(simulatedSummary).reduce(
+  1042→          (sum, val) => (typeof val === 'number' && val > 100 ? 0 : sum + (typeof val === 'number' ? val : 0)),
+  1043→          0
+  1044→        );
+  1045→        setChangeSummary(simulatedSummary);
+  1046→      }
+  1047→
+  1048→      toast.info('Polish completed with simulated improvements', {
+  1049→        description: isAbort ? 'Server timeout — preview polish applied. Try again shortly.' : `API error: ${errMessage}`,
+  1050→      });
+  1051→    } finally {
+  1052→      if (progressTimerRef.current) {
+  1053→        clearTimeout(progressTimerRef.current);
+  1054→        progressTimerRef.current = null;
+  1055→      }
+  1056→      setIsPolishing(false);
+  1057→    }
+  1058→  }, [generatedArticle, polishOptions, isAnyOptionEnabled, setIsPolishing, setPolishedArticle]);
+  1059→
+  1060→  // ── Auto-polish handler that ensures options are all enabled before starting ──
+  1061→  const handleAutoPolish = useCallback(() => {
+  1062→    // Enable all options first
+  1063→    setPolishOptions((prev) => prev.map((opt) => ({ ...opt, enabled: true })));
+  1064→
+  1065→    // We need to start polish after state updates. Since startPolish reads
+  1066→    // polishOptions, we schedule it after a microtask. But React batches, so
+  1067→    // we use a ref to signal "auto-polish pending" and check in an effect.
+  1068→    autoPolishPendingRef.current = true;
+  1069→  }, []);
+  1070→
+  1071→  const autoPolishPendingRef = useRef(false);
+  1072→
+  1073→  // Watch for auto-polish pending trigger
+  1074→  useEffect(() => {
+  1075→    if (autoPolishPendingRef.current && isAnyOptionEnabled) {
+  1076→      autoPolishPendingRef.current = false;
+  1077→      // Slight delay to let React finish the state update for polishOptions
+  1078→      const timer = setTimeout(() => {
+  1079→        startPolish();
+  1080→      }, 50);
+  1081→      return () => clearTimeout(timer);
+  1082→    }
+  1083→  }, [polishOptions, isAnyOptionEnabled, startPolish]);
+  1084→
+  1085→  // ── Cleanup timers ──
+  1086→  useEffect(() => {
+  1087→    return () => {
+  1088→      if (progressTimerRef.current) {
+  1089→        clearTimeout(progressTimerRef.current);
+  1090→      }
+  1091→      if (upgradeTimerRef.current) {
+  1092→        clearTimeout(upgradeTimerRef.current);
+  1093→      }
+  1094→    };
+  1095→  }, []);
+  1096→
+  1097→  // ── Handle CONSILIUM PROFESSORUM upgrade ──
+  1098→  const handleUpgrade = useCallback(async () => {
+  1099→    if (!generatedArticle || isUpgrading) return;
+  1100→    setUpgradeDialogOpen(false);
+  1101→    setIsUpgrading(true);
+  1102→    setUpgradeStepIndex(0);
+  1103→
+  1104→    // Simulate step-by-step progress
+  1105→    let stepIdx = 0;
+  1106→    const totalUpgradeSteps = UPGRADE_SECTION_STEPS.length;
+  1107→    const timePerStep = 4000; // ~4s per step for 3-5 min total feel
+  1108→
+  1109→    const advanceUpgradeStep = () => {
+  1110→      if (stepIdx < totalUpgradeSteps) {
+  1111→        setUpgradeStepIndex(stepIdx);
+  1112→        stepIdx++;
+  1113→        upgradeTimerRef.current = setTimeout(advanceUpgradeStep, timePerStep);
+  1114→      }
+  1115→    };
+  1116→    advanceUpgradeStep();
+  1117→
+  1118→    try {
+  1119→      const res = await fetch('/api/article/upgrade', {
+  1120→        method: 'POST',
+  1121→        headers: { 'Content-Type': 'application/json' },
+  1122→        body: JSON.stringify({ article: generatedArticle, engineId: 'zai' }),
+  1123→      });
+  1124→      const data = await res.json();
+  1125→      if (data.success && data.article) {
+  1126→        setGeneratedArticle(data.article);
+  1127→        setPolishedArticle(null);
+  1128→        setChangeSummary(null);
+  1129→        toast.success('Article upgraded to CONSILIUM PROFESSORUM Scopus Q1 standard!');
+  1130→      } else {
+  1131→        throw new Error('Upgrade response was not successful');
+  1132→      }
+  1133→    } catch (err) {
+  1134→      console.error('Upgrade error:', err);
+  1135→      toast.error('Upgrade failed. The API may be temporarily unavailable.');
+  1136→    } finally {
+  1137→      if (upgradeTimerRef.current) {
+  1138→        clearTimeout(upgradeTimerRef.current);
+  1139→        upgradeTimerRef.current = null;
+  1140→      }
+  1141→      setIsUpgrading(false);
+  1142→      // Jump to Step 4 to show the upgraded article
+  1143→      setCurrentStep(4);
+  1144→    }
+  1145→  }, [generatedArticle, isUpgrading, setGeneratedArticle, setPolishedArticle, setCurrentStep]);
+  1146→
+  1147→  // ── Copy full article ──
+  1148→  const copyArticle = useCallback(async () => {
+  1149→    if (!article) return;
+  1150→
+  1151→    let text = `${article.title}\n\n`;
+  1152→    for (const section of article.sections) {
+  1153→      text += `${SECTION_LABELS[section.type] ?? section.type}\n\n${section.content}\n\n`;
+  1154→    }
+  1155→
+  1156→    if (article.references.length > 0) {
+  1157→      text += 'References\n\n';
+  1158→      article.references.forEach((ref, idx) => {
+  1159→        text += `${idx + 1}. ${ref.authors} (${ref.year}). ${ref.title}`;
+  1160→        if (ref.journal) text += `. ${ref.journal}`;
+  1161→        if (ref.volume) text += `, ${ref.volume}`;
+  1162→        if (ref.issue) text += `(${ref.issue})`;
+  1163→        if (ref.pages) text += `, ${ref.pages}`;
+  1164→        if (ref.doi) text += `. https://doi.org/${ref.doi}`;
+  1165→        text += '.\n';
+  1166→      });
+  1167→    }
+  1168→
+  1169→    try {
+  1170→      await navigator.clipboard.writeText(text);
+  1171→      toast.success('Article copied to clipboard');
+  1172→    } catch {
+  1173→      toast.error('Failed to copy to clipboard');
+  1174→    }
+  1175→  }, [article]);
+  1176→
+  1177→  // ── Download as text ──
+  1178→  const downloadArticle = useCallback(() => {
+  1179→    if (!article) return;
+  1180→
+  1181→    let text = `${article.title}\n`;
+  1182→    text += `${'='.repeat(article.title.length)}\n\n`;
+  1183→
+  1184→    for (const section of article.sections) {
+  1185→      text += `${SECTION_LABELS[section.type] ?? section.type}\n`;
+  1186→      text += `${'-'.repeat((SECTION_LABELS[section.type] ?? section.type).length)}\n\n`;
+  1187→      text += `${section.content}\n\n`;
+  1188→    }
+  1189→
+  1190→    if (article.references.length > 0) {
+  1191→      text += 'References\n';
+  1192→      text += `${'-'.repeat('References'.length)}\n\n`;
+  1193→      article.references.forEach((ref, idx) => {
+  1194→        text += `${idx + 1}. ${ref.authors} (${ref.year}). ${ref.title}`;
+  1195→        if (ref.journal) text += `. ${ref.journal}`;
+  1196→        if (ref.volume) text += `, ${ref.volume}`;
+  1197→        if (ref.issue) text += `(${ref.issue})`;
+  1198→        if (ref.pages) text += `, ${ref.pages}`;
+  1199→        if (ref.doi) text += `. https://doi.org/${ref.doi}`;
+  1200→        text += '.\n';
+  1201→      });
+  1202→    }
+  1203→
+  1204→    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  1205→    const url = URL.createObjectURL(blob);
+  1206→    const a = document.createElement('a');
+  1207→    a.href = url;
+  1208→    a.download = `${article.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_polished.txt`;
+  1209→    document.body.appendChild(a);
+  1210→    a.click();
+  1211→    document.body.removeChild(a);
+  1212→    URL.revokeObjectURL(url);
+  1213→    toast.success('Article downloaded');
+  1214→  }, [article]);
+  1215→
+  1216→  // ── Confetti state ──
+  1217→  const [showConfetti, setShowConfetti] = useState(false);
+  1218→  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  1219→
+  1220→  // ── Export as PDF ──
+  1221→  const handleExportPdf = useCallback(async () => {
+  1222→    if (!article || isExportingPdf) return;
+  1223→    setIsExportingPdf(true);
+  1224→    try {
+  1225→      await exportToPdf(article);
+  1226→      toast.success('Article downloaded as PDF');
+  1227→    } catch (err) {
+  1228→      console.error('PDF export error:', err);
+  1229→      toast.error('Failed to generate PDF. Please try again.');
+  1230→    } finally {
+  1231→      setIsExportingPdf(false);
+  1232→    }
+  1233→  }, [article, isExportingPdf]);
+  1234→
+  1235→  // ── Accept & export with confetti ──
+  1236→  const acceptAndExport = useCallback(() => {
+  1237→    if (polishedArticle) {
+  1238→      setShowConfetti(true);
+  1239→      toast.success('Article accepted and ready for export!', {
+  1240→        description: 'Your polished article has been finalised.',
+  1241→        icon: <PartyPopper className="size-4" />,
+  1242→      });
+  1243→      // Hide confetti after animation
+  1244→      setTimeout(() => setShowConfetti(false), 3500);
+  1245→    }
+  1246→  }, [polishedArticle]);
+  1247→
+  1248→  // ── Regenerate polish ──
+  1249→  const regeneratePolish = useCallback(() => {
+  1250→    setPolishedArticle(null);
+  1251→    setChangeSummary(null);
+  1252→    setPolishSteps([]);
+  1253→    setCurrentStepIndex(0);
+  1254→    setScoresHaveAnimated(false);
+  1255→    toast.info('Polish reset — you can adjust options and re-run.');
+  1256→  }, [setPolishedArticle]);
+  1257→
+  1258→  // ── No article guard ──
+  1259→  if (!generatedArticle) {
+  1260→    return (
+  1261→      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
+  1262→        <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+  1263→          <FileCheck className="size-8 text-muted-foreground" />
+  1264→        </div>
+  1265→        <div className="text-center space-y-2">
+  1266→          <h2 className="text-xl font-semibold">No Article to Polish</h2>
+  1267→          <p className="text-muted-foreground text-sm max-w-md">
+  1268→            Generate an article first in the previous steps, then return here to polish it to
+  1269→            publication-ready quality.
+  1270→          </p>
+  1271→        </div>
+  1272→        <Button variant="outline" onClick={prevStep} className="mt-2">
+  1273→          <ArrowLeft className="size-4" />
+  1274→          Back to Article Generation
+  1275→        </Button>
+  1276→      </div>
+  1277→    );
+  1278→  }
+  1279→
+  1280→  // ── Render ──
+  1281→  return (
+  1282→    <>
+  1283→      {/* ── Confetti Celebration ── */}
+  1284→      <ConfettiCelebration show={showConfetti} />
+  1285→
+  1286→      <div className="space-y-6 max-w-7xl mx-auto pb-24">
+  1287→        {/* ── Header ── */}
+  1288→        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+  1289→          <div className="space-y-1">
+  1290→            <div className="flex items-center gap-2">
+  1291→              <div className="size-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+  1292→                <Wand2 className="size-5 text-emerald-600" />
+  1293→              </div>
+  1294→              <div>
+  1295→                <h1 className="text-xl font-bold tracking-tight">Article Polish &amp; Layout</h1>
+  1296→                <p className="text-sm text-muted-foreground">
+  1297→                  Refine your article to publication-ready quality
+  1298→                </p>
+  1299→              </div>
+  1300→              {/* ── Polish History Badge ── */}
+  1301→              {polishCount > 0 && (
+  1302→                <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800 ml-2">
+  1303→                  <Wand2 className="size-3 mr-1" />
+  1304→                  Polish #{polishCount}
+  1305→                </Badge>
+  1306→              )}
+  1307→            </div>
+  1308→          </div>
+  1309→
+  1310→          {/* Word count comparison */}
+  1311→          <div className="flex items-center gap-4">
+  1312→            {hasPolished && (
+  1313→              <div className="flex items-center gap-3 px-4 py-2 rounded-lg border bg-muted/30">
+  1314→                <div className="text-right">
+  1315→                  <p className="text-xs text-muted-foreground">Before</p>
+  1316→                  <p className="text-sm font-semibold">{originalWordCount.toLocaleString()}</p>
+  1317→                </div>
+  1318→                <div className="flex flex-col items-center">
+  1319→                  <ArrowLeft className="size-3 text-muted-foreground" />
+  1320→                  <span
+  1321→                    className={`text-xs font-medium ${wordCountDelta >= 0 ? 'text-emerald-500' : 'text-amber-500'}`}
+  1322→                  >
+  1323→                    {wordCountDelta >= 0 ? '+' : ''}
+  1324→                    {wordCountDelta}
+  1325→                  </span>
+  1326→                </div>
+  1327→                <div className="text-left">
+  1328→                  <p className="text-xs text-muted-foreground">After</p>
+  1329→                  <p className="text-sm font-bold text-emerald-600">{polishedWordCount.toLocaleString()}</p>
+  1330→                </div>
+  1331→              </div>
+  1332→            )}
+  1333→            {!hasPolished && (
+  1334→              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-muted/30">
+  1335→                <FileCheck className="size-4 text-muted-foreground" />
+  1336→                <div>
+  1337→                  <p className="text-xs text-muted-foreground">Word count</p>
+  1338→                  <p className="text-sm font-semibold">{originalWordCount.toLocaleString()}</p>
+  1339→                </div>
+  1340→              </div>
+  1341→            )}
+  1342→          </div>
+  1343→        </div>
+  1344→
+  1345→        {/* ── Article Search Bar ── */}
+  1346→        <div className="print:hidden">
+  1347→          <ArticleSearchBar
+  1348→            searchQuery={searchQuery}
+  1349→            onSearchChange={setSearchQuery}
+  1350→            totalMatches={totalMatches}
+  1351→            currentMatchIndex={currentMatchIndex}
+  1352→            onNext={goToNextMatch}
+  1353→            onPrev={goToPrevMatch}
+  1354→            onClear={clearSearchAndClose}
+  1355→            isOpen={isSearchBarOpen}
+  1356→            onOpen={() => setSearchOpen(true)}
+  1357→          />
+  1358→        </div>
+  1359→
+  1360→        {/* ── CONSILIUM PROFESSORUM Upgrade Button ── */}
+  1361→        <TooltipProvider delayDuration={300}>
+  1362→          <Tooltip>
+  1363→            <TooltipTrigger asChild>
+  1364→              <motion.div
+  1365→                initial={{ opacity: 0, y: 10 }}
+  1366→                animate={{ opacity: 1, y: 0 }}
+  1367→                transition={{ duration: 0.4, delay: 0.15 }}
+  1368→              >
+  1369→                <button
+  1370→                  onClick={() => setUpgradeDialogOpen(true)}
+  1371→                  disabled={isUpgrading || isPolishing || !generatedArticle}
+  1372→                  className="group relative w-full rounded-xl p-[2px] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+  1373→                >
+  1374→                  <div className="flex items-center justify-center gap-3 rounded-[10px] bg-background px-5 py-4 transition-all group-hover:bg-transparent group-disabled:hover:bg-background">
+  1375→                    <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/20">
+  1376→                      <Crown className="size-5" />
+  1377→                    </div>
+  1378→                    <div className="text-left flex-1">
+  1379→                      <p className="font-bold text-sm bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+  1380→                        ⚡ Upgrade to CONSILIUM PROFESSORUM
+  1381→                      </p>
+  1382→                      <p className="text-xs text-muted-foreground mt-0.5">
+  1383→                        Rewrite your article using a consortium of 20 top-world professors for Scopus Q1 quality
+  1384→                      </p>
+  1385→                    </div>
+  1386→                    <Sparkles className="size-5 text-emerald-500 shrink-0" />
+  1387→                  </div>
+  1388→                </button>
+  1389→              </motion.div>
+  1390→            </TooltipTrigger>
+  1391→            <TooltipContent side="bottom" className="max-w-xs">
+  1392→              <p>Rewrite your entire article using a consortium of 20 top-world professors for Scopus Q1 quality</p>
+  1393→            </TooltipContent>
+  1394→          </Tooltip>
+  1395→        </TooltipProvider>
+  1396→
+  1397→        {/* ── Upgrade Confirmation Dialog ── */}
+  1398→        <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
+  1399→          <DialogContent>
+  1400→            <DialogHeader>
+  1401→              <DialogTitle className="flex items-center gap-2">
+  1402→                <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white">
+  1403→                  <Crown className="size-4" />
+  1404→                </div>
+  1405→                CONSILIUM PROFESSORUM Mode
+  1406→              </DialogTitle>
+  1407→              <DialogDescription asChild>
+  1408→                <div className="space-y-3 pt-2">
+  1409→                  <p>
+  1410→                    This will rewrite <strong>ALL sections</strong> of your article to CONSILIUM
+  1411→                    PROFESSORUM Scopus Q1 standard.
+  1412→                  </p>
+  1413→                  <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
+  1414→                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
+  1415→                      <Zap className="size-4" />
+  1416→                      The process takes 3–5 minutes. Continue?
+  1417→                    </div>
+  1418→                  </div>
+  1419→                </div>
+  1420→              </DialogDescription>
+  1421→            </DialogHeader>
+  1422→            <DialogFooter className="gap-2 sm:gap-0">
+  1423→              <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>
+  1424→                Cancel
+  1425→              </Button>
+  1426→              <Button
+  1427→                onClick={handleUpgrade}
+  1428→                className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white hover:opacity-90 shadow-lg"
+  1429→              >
+  1430→                <Crown className="size-4" />
+  1431→                Start Upgrade
+  1432→              </Button>
+  1433→            </DialogFooter>
+  1434→          </DialogContent>
+  1435→        </Dialog>
+  1436→
+  1437→        {/* ── Upgrade Full-Page Overlay ── */}
+  1438→        <AnimatePresence>
+  1439→          {isUpgrading && (
+  1440→            <motion.div
+  1441→              initial={{ opacity: 0 }}
+  1442→              animate={{ opacity: 1 }}
+  1443→              exit={{ opacity: 0 }}
+  1444→              className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-xl flex items-center justify-center"
+  1445→            >
+  1446→              <div className="w-full max-w-lg mx-auto px-6 space-y-8 text-center">
+  1447→                {/* Animated icon */}
+  1448→                <motion.div
+  1449→                  animate={{ rotate: 360 }}
+  1450→                  transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+  1451→                  className="mx-auto"
+  1452→                >
+  1453→                  <div className="size-24 rounded-full bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+  1454→                    <Crown className="size-10 text-white" />
+  1455→                  </div>
+  1456→                </motion.div>
+  1457→
+  1458→                <div className="space-y-2">
+  1459→                  <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+  1460→                    CONSILIUM PROFESSORUM
+  1461→                  </h2>
+  1462→                  <p className="text-sm text-muted-foreground">
+  1463→                    20 top-world professors are upgrading your article to Scopus Q1 quality
+  1464→                  </p>
+  1465→                </div>
+  1466→
+  1467→                {/* Progress steps */}
+  1468→                <div className="space-y-3 text-left bg-card rounded-xl border p-5 shadow-lg">
+  1469→                  <div className="flex items-center justify-between mb-2">
+  1470→                    <span className="text-xs font-medium text-muted-foreground">Section Progress</span>
+  1471→                    <span className="text-xs tabular-nums text-muted-foreground">
+  1472→                      {Math.min(upgradeStepIndex + 1, UPGRADE_SECTION_STEPS.length)} / {UPGRADE_SECTION_STEPS.length}
+  1473→                    </span>
+  1474→                  </div>
+  1475→                  <Progress
+  1476→                    value={(upgradeStepIndex / UPGRADE_SECTION_STEPS.length) * 100}
+  1477→                    className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:via-teal-500 [&>div]:to-cyan-500"
+  1478→                  />
+  1479→                  <div className="space-y-2 mt-4">
+  1480→                    {UPGRADE_SECTION_STEPS.map((step, idx) => (
+  1481→                      <div
+  1482→                        key={step}
+  1483→                        className={`flex items-center gap-2.5 text-sm transition-all duration-300 ${
+  1484→                          idx < upgradeStepIndex
+  1485→                            ? 'text-emerald-600'
+  1486→                            : idx === upgradeStepIndex
+  1487→                              ? 'text-foreground font-medium'
+  1488→                              : 'text-muted-foreground/40'
+  1489→                        }`}
+  1490→                      >
+  1491→                        {idx < upgradeStepIndex ? (
+  1492→                          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+  1493→                        ) : idx === upgradeStepIndex ? (
+  1494→                          <Loader2 className="size-4 text-emerald-500 shrink-0 animate-spin" />
+  1495→                        ) : (
+  1496→                          <div className="size-4 rounded-full border border-muted-foreground/20 shrink-0" />
+  1497→                        )}
+  1498→                        <span className="truncate">{step}</span>
+  1499→                        {idx < upgradeStepIndex && (
+  1500→                          <span className="ml-auto text-[10px] text-emerald-500">Done</span>
+  1501→                        )}
+  1502→                      </div>
+  1503→                    ))}
+  1504→                  </div>
+  1505→                </div>
+  1506→
+  1507→                <p className="text-xs text-muted-foreground">
+  1508→                  Please do not close this tab while the upgrade is in progress
+  1509→                </p>
+  1510→              </div>
+  1511→            </motion.div>
+  1512→          )}
+  1513→        </AnimatePresence>
+  1514→
+  1515→        {/* ── Tabs ── */}
+  1516→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+  1517→          <TabsList className="w-full sm:w-auto">
+  1518→            <TabsTrigger value="options" className="gap-1.5">
+  1519→              <Sparkles className="size-3.5" />
+  1520→              Polish Options
+  1521→            </TabsTrigger>
+  1522→            <TabsTrigger value="preview" className="gap-1.5">
+  1523→              <GitCompare className="size-3.5" />
+  1524→              Preview
+  1525→            </TabsTrigger>
+  1526→            {changeSummary && (
+  1527→              <TabsTrigger value="summary" className="gap-1.5">
+  1528→                <Award className="size-3.5" />
+  1529→                Summary
+  1530→              </TabsTrigger>
+  1531→            )}
+  1532→          </TabsList>
+  1533→
+  1534→          {/* ── Options Tab ── */}
+  1535→          <TabsContent value="options">
+  1536→            <div className="space-y-4">
+  1537→              <div className="flex items-center justify-between">
+  1538→                <p className="text-sm text-muted-foreground">
+  1539→                  Select which aspects to polish ({polishOptions.filter((o) => o.enabled).length} of{' '}
+  1540→                  {polishOptions.length} enabled)
+  1541→                </p>
+  1542→                <div className="flex items-center gap-2">
+  1543→                  <Button
+  1544→                    variant="ghost"
+  1545→                    size="sm"
+  1546→                    onClick={() => toggleAllOptions(true)}
+  1547→                    className="text-xs h-7"
+  1548→                  >
+  1549→                    Enable all
+  1550→                  </Button>
+  1551→                  <Button
+  1552→                    variant="ghost"
+  1553→                    size="sm"
+  1554→                    onClick={() => toggleAllOptions(false)}
+  1555→                    className="text-xs h-7"
+  1556→                  >
+  1557→                    Disable all
+  1558→                  </Button>
+  1559→                </div>
+  1560→              </div>
+  1561→
+  1562→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+  1563→                {polishOptions.map((option) => (
+  1564→                  <PolishOptionCard
+  1565→                    key={option.id}
+  1566→                    option={option}
+  1567→                    isPolishing={isPolishing}
+  1568→                    onToggle={toggleOption}
+  1569→                  />
+  1570→                ))}
+  1571→              </div>
+  1572→
+  1573→              <Separator />
+  1574→
+  1575→              <div className="flex items-center justify-between">
+  1576→                <div>
+  1577→                  <p className="text-sm font-medium">
+  1578→                    Ready to polish your article
+  1579→                  </p>
+  1580→                  <p className="text-xs text-muted-foreground">
+  1581→                    {polishOptions.filter((o) => o.enabled).length} aspects selected for improvement
+  1582→                  </p>
+  1583→                </div>
+  1584→                <div className="flex items-center gap-2">
+  1585→                  {/* ── Auto-Polish Quick Button ── */}
+  1586→                  <Button
+  1587→                    onClick={handleAutoPolish}
+  1588→                    disabled={isPolishing}
+  1589→                    variant="outline"
+  1590→                    className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/20"
+  1591→                    size="lg"
+  1592→                  >
+  1593→                    <Zap className="size-4" />
+  1594→                    Auto-Polish
+  1595→                  </Button>
+  1596→                  <Button
+  1597→                    onClick={startPolish}
+  1598→                    disabled={isPolishing || !isAnyOptionEnabled}
+  1599→                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+  1600→                    size="lg"
+  1601→                  >
+  1602→                    {isPolishing ? (
+  1603→                      <>
+  1604→                        <Loader2 className="size-4 animate-spin" />
+  1605→                        Polishing...
+  1606→                      </>
+  1607→                    ) : (
+  1608→                      <>
+  1609→                        <Wand2 className="size-4" />
+  1610→                        Start Polish
+  1611→                      </>
+  1612→                    )}
+  1613→                  </Button>
+  1614→                </div>
+  1615→              </div>
+  1616→            </div>
+  1617→          </TabsContent>
+  1618→
+  1619→          {/* ── Preview Tab ── */}
+  1620→          <TabsContent value="preview">
+  1621→            <div className="space-y-4">
+  1622→              {isPolishing && polishSteps.length > 0 && (
+  1623→                <Card>
+  1624→                  <CardContent className="p-6">
+  1625→                    <PolishProgressOverlay
+  1626→                      steps={polishSteps}
+  1627→                      currentStepIndex={currentStepIndex}
+  1628→                      estimatedSeconds={estimatedTime}
+  1629→                    />
+  1630→                  </CardContent>
+  1631→                </Card>
+  1632→              )}
+  1633→
+  1634→              {hasPolished && !isPolishing && (
+  1635→                <Card>
+  1636→                  <CardHeader className="pb-3">
+  1637→                    <div className="flex items-center justify-between">
+  1638→                      <div className="space-y-1">
+  1639→                        <CardTitle className="text-base flex items-center gap-2">
+  1640→                          <GitCompare className="size-4.5 text-emerald-500" />
+  1641→                          Before &amp; After Comparison
+  1642→                        </CardTitle>
+  1643→                        <CardDescription>
+  1644→                          Review changes section by section
+  1645→                        </CardDescription>
+  1646→                      </div>
+  1647→                      {/* View mode toggle buttons */}
+  1648→                      <div className="flex items-center gap-1.5 shrink-0">
+  1649→                        <Button
+  1650→                          variant={comparisonViewMode === 'split' ? 'default' : 'outline'}
+  1651→                          size="sm"
+  1652→                          className={`text-xs h-7 gap-1 ${comparisonViewMode === 'split' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+  1653→                          onClick={() => setComparisonViewMode('split')}
+  1654→                        >
+  1655→                          <Columns className="size-3" />
+  1656→                          Split View
+  1657→                        </Button>
+  1658→                        <Button
+  1659→                          variant={comparisonViewMode === 'original' ? 'default' : 'outline'}
+  1660→                          size="sm"
+  1661→                          className={`text-xs h-7 gap-1 ${comparisonViewMode === 'original' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+  1662→                          onClick={() => setComparisonViewMode('original')}
+  1663→                        >
+  1664→                          Original
+  1665→                        </Button>
+  1666→                        <Button
+  1667→                          variant={comparisonViewMode === 'polished' ? 'default' : 'outline'}
+  1668→                          size="sm"
+  1669→                          className={`text-xs h-7 gap-1 ${comparisonViewMode === 'polished' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+  1670→                          onClick={() => setComparisonViewMode('polished')}
+  1671→                        >
+  1672→                          Polished
+  1673→                        </Button>
+  1674→                      </div>
+  1675→                    </div>
+  1676→                  </CardHeader>
+  1677→                  <CardContent>
+  1678→                    <ScrollArea className="max-h-[600px]">
+  1679→                      <div className="space-y-2 pr-4">
+  1680→                        {generatedArticle.sections.map((section) => {
+  1681→                          const polishedSection = polishedArticle?.sections.find(
+  1682→                            (s) => s.type === section.type
+  1683→                          );
+  1684→                          const sectionChangeCount = getSectionChangeCount(section.type, changeSummary);
+  1685→
+  1686→                          return (
+  1687→                            <SectionComparison
+  1688→                              key={section.type}
+  1689→                              sectionType={section.type}
+  1690→                              originalSection={section}
+  1691→                              polishedSection={polishedSection}
+  1692→                              changeCount={sectionChangeCount}
+  1693→                              searchQuery={searchQuery}
+  1694→                              viewMode={comparisonViewMode}
+  1695→                            />
+  1696→                          );
+  1697→                        })}
+  1698→                      </div>
+  1699→                    </ScrollArea>
+  1700→                  </CardContent>
+  1701→                </Card>
+  1702→              )}
+  1703→
+  1704→              {!hasPolished && !isPolishing && (
+  1705→                <Card>
+  1706→                  <CardContent className="p-12 flex flex-col items-center justify-center gap-4 text-center">
+  1707→                    <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+  1708→                      <Sparkles className="size-7 text-muted-foreground" />
+  1709→                    </div>
+  1710→                    <div className="space-y-1.5">
+  1711→                      <h3 className="text-lg font-semibold">Ready to Polish</h3>
+  1712→                      <p className="text-sm text-muted-foreground max-w-md">
+  1713→                        Switch to the Polish Options tab to configure your preferences, then start the
+  1714→                        polish process to see a side-by-side comparison here.
+  1715→                      </p>
+  1716→                    </div>
+  1717→                    <Button
+  1718→                      variant="outline"
+  1719→                      onClick={() => setActiveTab('options')}
+  1720→                      className="mt-2"
+  1721→                    >
+  1722→                      Configure Options
+  1723→                      <ChevronRight className="size-4" />
+  1724→                    </Button>
+  1725→                  </CardContent>
+  1726→                </Card>
+  1727→              )}
+  1728→
+  1729→              {/* ── Change summary (compact) ── */}
+  1730→              {changeSummary && hasPolished && !isPolishing && (
+  1731→                <ChangeSummaryPanel summary={changeSummary} animateScores={scoresHaveAnimated} />
+  1732→              )}
+  1733→            </div>
+  1734→          </TabsContent>
+  1735→
+  1736→          {/* ── Summary Tab ── */}
+  1737→          {changeSummary && (
+  1738→            <TabsContent value="summary">
+  1739→              <div className="space-y-4">
+  1740→                <ChangeSummaryPanel summary={changeSummary} animateScores={scoresHaveAnimated} />
+  1741→
+  1742→                <Card>
+  1743→                  <CardHeader className="pb-3">
+  1744→                    <CardTitle className="text-base flex items-center gap-2">
+  1745→                      <Star className="size-4.5 text-amber-500" />
+  1746→                      Quality Achievement
+  1747→                    </CardTitle>
+  1748→                  </CardHeader>
+  1749→                  <CardContent>
+  1750→                    <div className="flex items-center justify-center">
+  1751→                      <QualityScoreRing score={changeSummary.qualityAfter} label="Final Score" size={120} animate={scoresHaveAnimated} />
+  1752→                    </div>
+  1753→                    <p className="text-center text-sm text-muted-foreground mt-4">
+  1754→                      {changeSummary.qualityAfter >= 90
+  1755→                        ? 'Your article meets high publication standards.'
+  1756→                        : changeSummary.qualityAfter >= 75
+  1757→                          ? 'Your article is in good shape with minor improvements possible.'
+  1758→                          : 'Consider additional editing to reach publication standards.'}
+  1759→                    </p>
+  1760→                  </CardContent>
+  1761→                </Card>
+  1762→              </div>
+  1763→            </TabsContent>
+  1764→          )}
+  1765→        </Tabs>
+  1766→
+  1767→        {/* ── Final Actions (Sticky with Frosted Glass) ── */}
+  1768→        <div className="relative -mx-6 px-6 mt-8">
+  1769→          <Separator />
+  1770→        </div>
+  1771→
+  1772→        {/* Spacer to account for sticky bar height — handled by pb-24 on parent */}
+  1773→
+  1774→        <motion.div
+  1775→          initial={{ y: 40, opacity: 0 }}
+  1776→          animate={{ y: 0, opacity: 1 }}
+  1777→          transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
+  1778→          className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
+  1779→        >
+  1780→          <div className="max-w-7xl mx-auto px-6 py-3">
+  1781→            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+  1782→              <div className="flex items-center gap-2">
+  1783→                <Button variant="outline" onClick={prevStep} size="sm">
+  1784→                  <ArrowLeft className="size-4" />
+  1785→                  Back
+  1786→                </Button>
+  1787→                {polishCount > 0 && (
+  1788→                  <Badge variant="secondary" className="text-xs bg-muted/50">
+  1789→                    <Wand2 className="size-3 mr-1" />
+  1790→                    Polish #{polishCount}
+  1791→                  </Badge>
+  1792→                )}
+  1793→              </div>
+  1794→
+  1795→              <div className="flex flex-wrap items-center gap-2">
+  1796→                <Button
+  1797→                  variant="outline"
+  1798→                  onClick={copyArticle}
+  1799→                  disabled={!article}
+  1800→                  className="gap-1.5"
+  1801→                  size="sm"
+  1802→                >
+  1803→                  <Copy className="size-3.5" />
+  1804→                  <span className="hidden sm:inline">Copy Full Article</span>
+  1805→                  <span className="sm:hidden">Copy</span>
+  1806→                </Button>
+  1807→
+  1808→                <Button
+  1809→                  variant="outline"
+  1810→                  onClick={downloadArticle}
+  1811→                  disabled={!article}
+  1812→                  className="gap-1.5"
+  1813→                  size="sm"
+  1814→                >
+  1815→                  <Download className="size-3.5" />
+  1816→                  <span className="hidden sm:inline">Download as Text</span>
+  1817→                  <span className="sm:hidden">Download</span>
+  1818→                </Button>
+  1819→
+  1820→                <Button
+  1821→                  variant="outline"
+  1822→                  onClick={() => {
+  1823→                    if (article) {
+  1824→                      exportToMarkdown(article);
+  1825→                      toast.success('Article downloaded as Markdown');
+  1826→                    }
+  1827→                  }}
+  1828→                  disabled={!article}
+  1829→                  className="gap-1.5"
+  1830→                  size="sm"
+  1831→                >
+  1832→                  <FileText className="size-3.5" />
+  1833→                  <span className="hidden sm:inline">MD</span>
+  1834→                  <span className="sm:hidden">MD</span>
+  1835→                </Button>
+  1836→
+  1837→                <Button
+  1838→                  variant="outline"
+  1839→                  onClick={handleExportPdf}
+  1840→                  disabled={!article || isExportingPdf}
+  1841→                  className="gap-1.5"
+  1842→                  size="sm"
+  1843→                >
+  1844→                  {isExportingPdf ? (
+  1845→                    <Loader2 className="size-3.5 animate-spin" />
+  1846→                  ) : (
+  1847→                    <FileText className="size-3.5" />
+  1848→                  )}
+  1849→                  <span className="hidden sm:inline">{isExportingPdf ? 'Generating PDF...' : 'PDF'}</span>
+  1850→                  <span className="sm:hidden">{isExportingPdf ? '...' : 'PDF'}</span>
+  1851→                </Button>
+  1852→
+  1853→                {hasPolished && (
+  1854→                  <Button
+  1855→                    variant="outline"
+  1856→                    onClick={regeneratePolish}
+  1857→                    className="gap-1.5"
+  1858→                    size="sm"
+  1859→                  >
+  1860→                    <RefreshCw className="size-3.5" />
+  1861→                    <span className="hidden sm:inline">Regenerate</span>
+  1862→                    <span className="sm:hidden">Redo</span>
+  1863→                  </Button>
+  1864→                )}
+  1865→
+  1866→                {hasPolished && (
+  1867→                  <Button
+  1868→                    onClick={acceptAndExport}
+  1869→                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-lg shadow-emerald-600/20"
+  1870→                    size="sm"
+  1871→                  >
+  1872→                    <CheckCircle2 className="size-3.5" />
+  1873→                    Accept &amp; Export
+  1874→                  </Button>
+  1875→                )}
+  1876→              </div>
+  1877→            </div>
+  1878→          </div>
+  1879→        </motion.div>
+  1880→      </div>
+  1881→    </>
+  1882→  );
+  1883→}
+  1884→

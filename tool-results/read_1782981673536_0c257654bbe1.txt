@@ -1,0 +1,958 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  ArrowLeft,
+     7→  ArrowRight,
+     8→  ChevronRight,
+     9→  Copy,
+    10→  Download,
+    11→  FileText,
+    12→  BookOpen,
+    13→  Target,
+    14→  GraduationCap,
+    15→  Award,
+    16→  ScrollText,
+    17→  Sparkles,
+    18→  Loader2,
+    19→  Check,
+    20→  PenLine,
+    21→  Settings2,
+    22→  FileOutput,
+    23→} from 'lucide-react';
+    24→import { Button } from '@/components/ui/button';
+    25→import { Card, CardContent } from '@/components/ui/card';
+    26→import { Input } from '@/components/ui/input';
+    27→import { Textarea } from '@/components/ui/textarea';
+    28→import { Label } from '@/components/ui/label';
+    29→import { Badge } from '@/components/ui/badge';
+    30→import { Separator } from '@/components/ui/separator';
+    31→import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+    32→import { Slider } from '@/components/ui/slider';
+    33→import { Progress } from '@/components/ui/progress';
+    34→import { toast } from 'sonner';
+    35→
+    36→// ─── Types ─────────────────────────────────────────────────────────
+    37→
+    38→interface WritingGeneratorProps {
+    39→  mode: string;
+    40→  onBack: () => void;
+    41→}
+    42→
+    43→type WritingMode = 'book' | 'proposal' | 'thesis' | 'scholarship' | 'paper';
+    44→type Step = 1 | 2 | 3;
+    45→
+    46→// ─── Mode Config ───────────────────────────────────────────────────
+    47→
+    48→const MODE_CONFIG: Record<
+    49→  WritingMode,
+    50→  {
+    51→    title: string;
+    52→    description: string;
+    53→    placeholder: string;
+    54→    descPlaceholder: string;
+    55→    icon: React.ElementType;
+    56→  }
+    57→> = {
+    58→  book: {
+    59→    title: 'Buku / Bab Buku',
+    60→    description: 'Tulis buku atau bab buku akademik',
+    61→    placeholder: 'Contoh: Pembangunan Berkelanjutan di Indonesia',
+    62→    descPlaceholder:
+    63→      'Jelaskan tema buku/bab, target pembaca, dan poin-poin utama yang ingin dibahas...',
+    64→    icon: BookOpen,
+    65→  },
+    66→  proposal: {
+    67→    title: 'Proposal Penelitian',
+    68→    description: 'Buat proposal riset yang komprehensif',
+    69→    placeholder: 'Contoh: Efektivitas Pembelajaran Berbasis AI',
+    70→    descPlaceholder:
+    71→      'Jelaskan latar belakang masalah, tujuan penelitian, dan variabel yang diteliti...',
+    72→    icon: Target,
+    73→  },
+    74→  thesis: {
+    75→    title: 'Skripsi / Tesis',
+    76→    description: 'Tulis skripsi atau tesis akademik',
+    77→    placeholder: 'Contoh: Analisis Sentimen Media Sosial Terhadap Kebijakan Pendidikan',
+    78→    descPlaceholder:
+    79→      'Jelaskan topik penelitian, metodologi yang diinginkan, dan batasan penelitian...',
+    80→    icon: GraduationCap,
+    81→  },
+    82→  scholarship: {
+    83→    title: 'Esai Beasiswa',
+    84→    description: 'Buat esai motivasi dan personal statement',
+    85→    placeholder: 'Contoh: Beasiswa Pendidikan Pascasarjana',
+    86→    descPlaceholder:
+    87→      'Ceritakan latar belakang, prestasi, motivasi, dan rencana studi Anda...',
+    88→    icon: Award,
+    89→  },
+    90→  paper: {
+    91→    title: 'Makalah',
+    92→    description: 'Tulis makalah kuliah yang terstruktur',
+    93→    placeholder: 'Contoh: Dampak Transformasi Digital Pada UMKM',
+    94→    descPlaceholder:
+    95→      'Jelaskan tema makalah, perspektif yang ingin dibahas, dan referensi yang tersedia...',
+    96→    icon: ScrollText,
+    97→  },
+    98→};
+    99→
+   100→// ─── Step Definitions ──────────────────────────────────────────────
+   101→
+   102→const STEPS = [
+   103→  { id: 1, label: 'Input', icon: PenLine },
+   104→  { id: 2, label: 'Generate', icon: Settings2 },
+   105→  { id: 3, label: 'Output', icon: FileOutput },
+   106→] as const;
+   107→
+   108→// ─── Engine Definitions ────────────────────────────────────────────
+   109→
+   110→const ENGINES = [
+   111→  {
+   112→    id: 'alfa',
+   113→    label: 'Alfa',
+   114→    description: 'Kualitas tertinggi, kecepatan standar. Cocok untuk publikasi.',
+   115→  },
+   116→  {
+   117→    id: 'beta',
+   118→    label: 'Beta',
+   119→    description: 'Keseimbangan kualitas dan kecepatan. Untuk penggunaan umum.',
+   120→  },
+   121→  {
+   122→    id: 'caca',
+   123→    label: 'Caca',
+   124→    description: 'Kecepatan prioritas. Hasil cepat untuk draft awal.',
+   125→  },
+   126→];
+   127→
+   128→// ─── Step Navigation ───────────────────────────────────────────────
+   129→
+   130→function StepNav({
+   131→  currentStep,
+   132→  modeConfig,
+   133→}: {
+   134→  currentStep: Step;
+   135→  modeConfig: (typeof MODE_CONFIG)[WritingMode];
+   136→}) {
+   137→  return (
+   138→    <nav className="w-full" aria-label="Writing generation steps">
+   139→      <div className="flex items-center justify-between w-full">
+   140→        {STEPS.map((step, index) => {
+   141→          const isCompleted = currentStep > step.id;
+   142→          const isActive = currentStep === step.id;
+   143→          const Icon = step.icon;
+   144→
+   145→          return (
+   146→            <React.Fragment key={step.id}>
+   147→              <div className="flex flex-col items-center gap-1.5">
+   148→                <div
+   149→                  className={`relative flex items-center justify-center size-10 rounded-xl transition-all duration-300 ${
+   150→                    isCompleted
+   151→                      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+   152→                      : isActive
+   153→                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30'
+   154→                        : 'bg-muted/60 text-muted-foreground/50'
+   155→                  }`}
+   156→                >
+   157→                  <Icon className="size-4" />
+   158→                  {isCompleted && (
+   159→                    <motion.div
+   160→                      initial={{ scale: 0 }}
+   161→                      animate={{ scale: 1 }}
+   162→                      className="absolute -top-1 -right-1 size-4 rounded-full bg-emerald-500 text-white flex items-center justify-center"
+   163→                    >
+   164→                      <Check className="size-2.5" />
+   165→                    </motion.div>
+   166→                  )}
+   167→                </div>
+   168→                <span
+   169→                  className={`text-[11px] font-medium transition-colors duration-200 ${
+   170→                    isActive
+   171→                      ? 'text-emerald-600 dark:text-emerald-400'
+   172→                      : isCompleted
+   173→                        ? 'text-foreground'
+   174→                        : 'text-muted-foreground/50'
+   175→                  }`}
+   176→                >
+   177→                  {step.label}
+   178→                </span>
+   179→              </div>
+   180→              {index < STEPS.length - 1 && (
+   181→                <div className="flex-1 mx-2 sm:mx-4">
+   182→                  <div className="h-[2px] bg-border/50 rounded-full overflow-hidden">
+   183→                    <motion.div
+   184→                      className="h-full bg-emerald-500 rounded-full"
+   185→                      initial={false}
+   186→                      animate={{
+   187→                        width: isCompleted ? '100%' : isActive ? '50%' : '0%',
+   188→                      }}
+   189→                      transition={{ duration: 0.3 }}
+   190→                    />
+   191→                  </div>
+   192→                </div>
+   193→              )}
+   194→            </React.Fragment>
+   195→          );
+   196→        })}
+   197→      </div>
+   198→    </nav>
+   199→  );
+   200→}
+   201→
+   202→// ─── Step 1: Input ─────────────────────────────────────────────────
+   203→
+   204→function StepInput({
+   205→  config,
+   206→  title,
+   207→  description,
+   208→  keyPoints,
+   209→  onTitleChange,
+   210→  onDescriptionChange,
+   211→  onKeyPointsChange,
+   212→  onNext,
+   213→}: {
+   214→  config: (typeof MODE_CONFIG)[WritingMode];
+   215→  title: string;
+   216→  description: string;
+   217→  keyPoints: string;
+   218→  onTitleChange: (v: string) => void;
+   219→  onDescriptionChange: (v: string) => void;
+   220→  onKeyPointsChange: (v: string) => void;
+   221→  onNext: () => void;
+   222→}) {
+   223→  const Icon = config.icon;
+   224→
+   225→  return (
+   226→    <motion.div
+   227→      initial={{ opacity: 0, y: 16 }}
+   228→      animate={{ opacity: 1, y: 0 }}
+   229→      transition={{ duration: 0.35 }}
+   230→      className="space-y-5"
+   231→    >
+   232→      <div className="flex items-center gap-2">
+   233→        <div className="flex items-center justify-center size-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+   234→          <Icon className="size-4" />
+   235→        </div>
+   236→        <div>
+   237→          <h3 className="text-lg font-semibold text-foreground">
+   238→            {config.title}
+   239→          </h3>
+   240→          <p className="text-xs text-muted-foreground">{config.description}</p>
+   241→        </div>
+   242→      </div>
+   243→
+   244→      <Separator className="opacity-40" />
+   245→
+   246→      {/* Title */}
+   247→      <div className="space-y-2">
+   248→        <Label htmlFor="writing-title" className="text-sm font-medium">
+   249→          Judul / Topik <span className="text-destructive">*</span>
+   250→        </Label>
+   251→        <Input
+   252→          id="writing-title"
+   253→          placeholder={config.placeholder}
+   254→          value={title}
+   255→          onChange={(e) => onTitleChange(e.target.value)}
+   256→          className="bg-background/80"
+   257→        />
+   258→      </div>
+   259→
+   260→      {/* Description */}
+   261→      <div className="space-y-2">
+   262→        <Label htmlFor="writing-desc" className="text-sm font-medium">
+   263→          Deskripsi / Ide Utama
+   264→        </Label>
+   265→        <Textarea
+   266→          id="writing-desc"
+   267→          placeholder={config.descPlaceholder}
+   268→          value={description}
+   269→          onChange={(e) => onDescriptionChange(e.target.value)}
+   270→          rows={4}
+   271→          className="bg-background/80 resize-none"
+   272→        />
+   273→      </div>
+   274→
+   275→      {/* Key Points */}
+   276→      <div className="space-y-2">
+   277→        <Label htmlFor="writing-keypoints" className="text-sm font-medium">
+   278→          Poin Utama
+   279→          <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+   280→            (pisahkan dengan koma)
+   281→          </span>
+   282→        </Label>
+   283→        <Input
+   284→          id="writing-keypoints"
+   285→          placeholder="Contoh: analisis data, literatur review, metodologi kualitatif"
+   286→          value={keyPoints}
+   287→          onChange={(e) => onKeyPointsChange(e.target.value)}
+   288→          className="bg-background/80"
+   289→        />
+   290→      </div>
+   291→
+   292→      {/* Next Button */}
+   293→      <div className="flex justify-end pt-2">
+   294→        <Button
+   295→          onClick={onNext}
+   296→          disabled={!title.trim()}
+   297→          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shadow-emerald-500/20"
+   298→        >
+   299→          Lanjut
+   300→          <ArrowRight className="size-4" />
+   301→        </Button>
+   302→      </div>
+   303→    </motion.div>
+   304→  );
+   305→}
+   306→
+   307→// ─── Step 2: Generate ──────────────────────────────────────────────
+   308→
+   309→function StepGenerate({
+   310→  engine,
+   311→  targetWords,
+   312→  onEngineChange,
+   313→  onTargetWordsChange,
+   314→  onGenerate,
+   315→  onBack,
+   316→  isGenerating,
+   317→  progress,
+   318→  title,
+   319→}: {
+   320→  engine: string;
+   321→  targetWords: number;
+   322→  onEngineChange: (v: string) => void;
+   323→  onTargetWordsChange: (v: number) => void;
+   324→  onGenerate: () => void;
+   325→  onBack: () => void;
+   326→  isGenerating: boolean;
+   327→  progress: number;
+   328→  title: string;
+   329→}) {
+   330→  return (
+   331→    <motion.div
+   332→      initial={{ opacity: 0, y: 16 }}
+   333→      animate={{ opacity: 1, y: 0 }}
+   334→      transition={{ duration: 0.35 }}
+   335→      className="space-y-6"
+   336→    >
+   337→      <div className="flex items-center gap-2">
+   338→        <div className="flex items-center justify-center size-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+   339→          <Settings2 className="size-4" />
+   340→        </div>
+   341→        <div>
+   342→          <h3 className="text-lg font-semibold text-foreground">
+   343→            Pengaturan Generate
+   344→          </h3>
+   345→          <p className="text-xs text-muted-foreground">
+   346→            Siap menghasilkan: &quot;{title}&quot;
+   347→          </p>
+   348→        </div>
+   349→      </div>
+   350→
+   351→      <Separator className="opacity-40" />
+   352→
+   353→      {/* AI Engine Selector */}
+   354→      <div className="space-y-3">
+   355→        <Label className="text-sm font-medium">Pilih AI Engine</Label>
+   356→        <RadioGroup
+   357→          value={engine}
+   358→          onValueChange={onEngineChange}
+   359→          className="grid gap-3 sm:grid-cols-3"
+   360→        >
+   361→          {ENGINES.map((eng) => (
+   362→            <label
+   363→              key={eng.id}
+   364→              className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-all duration-200 ${
+   365→                engine === eng.id
+   366→                  ? 'border-emerald-400 bg-emerald-50/50 dark:border-emerald-600 dark:bg-emerald-950/20 shadow-sm'
+   367→                  : 'border-border/60 hover:border-border bg-background/50'
+   368→              }`}
+   369→            >
+   370→              <RadioGroupItem
+   371→                value={eng.id}
+   372→                className="mt-0.5"
+   373→                disabled={isGenerating}
+   374→              />
+   375→              <div className="space-y-1">
+   376→                <p className="text-sm font-semibold text-foreground">
+   377→                  {eng.label}
+   378→                </p>
+   379→                <p className="text-xs text-muted-foreground leading-relaxed">
+   380→                  {eng.description}
+   381→                </p>
+   382→              </div>
+   383→            </label>
+   384→          ))}
+   385→        </RadioGroup>
+   386→      </div>
+   387→
+   388→      {/* Word Count Slider */}
+   389→      <div className="space-y-3">
+   390→        <div className="flex items-center justify-between">
+   391→          <Label className="text-sm font-medium">Target Jumlah Kata</Label>
+   392→          <Badge
+   393→            variant="outline"
+   394→            className="font-mono text-xs bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800"
+   395→          >
+   396→            {targetWords.toLocaleString('id-ID')} kata
+   397→          </Badge>
+   398→        </div>
+   399→        <Slider
+   400→          value={[targetWords]}
+   401→          onValueChange={(v) => onTargetWordsChange(v[0])}
+   402→          min={1000}
+   403→          max={15000}
+   404→          step={500}
+   405→          className="py-2"
+   406→          disabled={isGenerating}
+   407→        />
+   408→        <div className="flex justify-between text-[10px] text-muted-foreground/60 font-mono">
+   409→          <span>1.000</span>
+   410→          <span>5.000</span>
+   411→          <span>10.000</span>
+   412→          <span>15.000</span>
+   413→        </div>
+   414→      </div>
+   415→
+   416→      {/* Generating Progress */}
+   417→      <AnimatePresence>
+   418→        {isGenerating && (
+   419→          <motion.div
+   420→            initial={{ opacity: 0, height: 0 }}
+   421→            animate={{ opacity: 1, height: 'auto' }}
+   422→            exit={{ opacity: 0, height: 0 }}
+   423→            className="space-y-3"
+   424→          >
+   425→            <div className="flex items-center gap-3 rounded-xl border border-emerald-200/60 bg-emerald-50/50 dark:border-emerald-800/40 dark:bg-emerald-950/20 p-4">
+   426→              <motion.div
+   427→                animate={{ rotate: 360 }}
+   428→                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+   429→                className="text-emerald-600 dark:text-emerald-400"
+   430→              >
+   431→                <Loader2 className="size-5" />
+   432→              </motion.div>
+   433→              <div className="flex-1 min-w-0">
+   434→                <p className="text-sm font-medium text-foreground">
+   435→                  Sedang menghasilkan tulisan...
+   436→                </p>
+   437→                <p className="text-xs text-muted-foreground mt-0.5">
+   438→                  AI Engine {engine.charAt(0).toUpperCase() + engine.slice(1)}{' '}
+   439→                  sedang memproses permintaan Anda
+   440→                </p>
+   441→                <Progress value={progress} className="mt-2 h-1.5" />
+   442→                <p className="text-[10px] text-muted-foreground mt-1 font-mono">
+   443→                  {Math.round(progress)}%
+   444→                </p>
+   445→              </div>
+   446→            </div>
+   447→          </motion.div>
+   448→        )}
+   449→      </AnimatePresence>
+   450→
+   451→      {/* Buttons */}
+   452→      <div className="flex items-center justify-between pt-2">
+   453→        <Button
+   454→          variant="outline"
+   455→          onClick={onBack}
+   456→          disabled={isGenerating}
+   457→          className="gap-2"
+   458→        >
+   459→          <ArrowLeft className="size-4" />
+   460→          Kembali
+   461→        </Button>
+   462→        <Button
+   463→          onClick={onGenerate}
+   464→          disabled={isGenerating}
+   465→          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm shadow-emerald-500/20"
+   466→        >
+   467→          {isGenerating ? (
+   468→            <>
+   469→              <Loader2 className="size-4 animate-spin" />
+   470→              Generating...
+   471→            </>
+   472→          ) : (
+   473→            <>
+   474→              <Sparkles className="size-4" />
+   475→              Generate
+   476→            </>
+   477→          )}
+   478→        </Button>
+   479→      </div>
+   480→    </motion.div>
+   481→  );
+   482→}
+   483→
+   484→// ─── Step 3: Output ────────────────────────────────────────────────
+   485→
+   486→function StepOutput({
+   487→  content,
+   488→  title,
+   489→  onCopy,
+   490→  onDownload,
+   491→  onBack,
+   492→}: {
+   493→  content: string;
+   494→  title: string;
+   495→  onCopy: () => void;
+   496→  onDownload: () => void;
+   497→  onBack: () => void;
+   498→}) {
+   499→  const [copied, setCopied] = useState(false);
+   500→
+   501→  const handleCopy = () => {
+   502→    onCopy();
+   503→    setCopied(true);
+   504→    setTimeout(() => setCopied(false), 2000);
+   505→  };
+   506→
+   507→  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+   508→
+   509→  return (
+   510→    <motion.div
+   511→      initial={{ opacity: 0, y: 16 }}
+   512→      animate={{ opacity: 1, y: 0 }}
+   513→      transition={{ duration: 0.35 }}
+   514→      className="space-y-5"
+   515→    >
+   516→      <div className="flex items-center justify-between gap-4 flex-wrap">
+   517→        <div className="flex items-center gap-2">
+   518→          <div className="flex items-center justify-center size-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+   519→            <FileOutput className="size-4" />
+   520→          </div>
+   521→          <div>
+   522→            <h3 className="text-lg font-semibold text-foreground">Hasil Tulisan</h3>
+   523→            <p className="text-xs text-muted-foreground">
+   524→              {wordCount.toLocaleString('id-ID')} kata — {title}
+   525→            </p>
+   526→          </div>
+   527→        </div>
+   528→        <div className="flex items-center gap-2">
+   529→          <Button
+   530→            variant="outline"
+   531→            size="sm"
+   532→            onClick={handleCopy}
+   533→            className="gap-1.5"
+   534→          >
+   535→            {copied ? (
+   536→              <Check className="size-3.5 text-emerald-500" />
+   537→            ) : (
+   538→              <Copy className="size-3.5" />
+   539→            )}
+   540→            {copied ? 'Tersalin!' : 'Salin'}
+   541→          </Button>
+   542→          <Button
+   543→            variant="outline"
+   544→            size="sm"
+   545→            onClick={onDownload}
+   546→            className="gap-1.5"
+   547→          >
+   548→            <Download className="size-3.5" />
+   549→            Unduh
+   550→          </Button>
+   551→        </div>
+   552→      </div>
+   553→
+   554→      <Separator className="opacity-40" />
+   555→
+   556→      {/* Content Display */}
+   557→      <div className="rounded-xl border border-border/60 bg-background/80 p-5 sm:p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+   558→        <div className="prose prose-sm dark:prose-invert max-w-none">
+   559→          {content.split('\n').map((paragraph, i) => {
+   560→            if (!paragraph.trim()) return <br key={i} />;
+   561→            // Detect headings (lines starting with #)
+   562→            if (paragraph.startsWith('# ')) {
+   563→              return (
+   564→                <h1
+   565→                  key={i}
+   566→                  className="text-xl font-bold text-foreground mt-6 mb-3 first:mt-0"
+   567→                >
+   568→                  {paragraph.replace('# ', '')}
+   569→                </h1>
+   570→              );
+   571→            }
+   572→            if (paragraph.startsWith('## ')) {
+   573→              return (
+   574→                <h2
+   575→                  key={i}
+   576→                  className="text-lg font-semibold text-foreground mt-5 mb-2"
+   577→                >
+   578→                  {paragraph.replace('## ', '')}
+   579→                </h2>
+   580→              );
+   581→            }
+   582→            if (paragraph.startsWith('### ')) {
+   583→              return (
+   584→                <h3
+   585→                  key={i}
+   586→                  className="text-base font-semibold text-foreground mt-4 mb-1.5"
+   587→                >
+   588→                  {paragraph.replace('### ', '')}
+   589→                </h3>
+   590→              );
+   591→            }
+   592→            return (
+   593→              <p
+   594→                key={i}
+   595→                className="text-sm text-foreground/85 leading-relaxed mb-3"
+   596→              >
+   597→                {paragraph}
+   598→              </p>
+   599→            );
+   600→          })}
+   601→        </div>
+   602→      </div>
+   603→
+   604→      {/* Back Button */}
+   605→      <div className="flex justify-start pt-2">
+   606→        <Button
+   607→          variant="outline"
+   608→          onClick={onBack}
+   609→          className="gap-2"
+   610→        >
+   611→          <ArrowLeft className="size-4" />
+   612→          Kembali ke Pengaturan
+   613→        </Button>
+   614→      </div>
+   615→    </motion.div>
+   616→  );
+   617→}
+   618→
+   619→// ─── Main Component ────────────────────────────────────────────────
+   620→
+   621→export default function WritingGenerator({
+   622→  mode,
+   623→  onBack,
+   624→}: WritingGeneratorProps) {
+   625→  const writingMode = mode as WritingMode;
+   626→  const config = MODE_CONFIG[writingMode];
+   627→
+   628→  const [currentStep, setCurrentStep] = useState<Step>(1);
+   629→  const [title, setTitle] = useState('');
+   630→  const [description, setDescription] = useState('');
+   631→  const [keyPoints, setKeyPoints] = useState('');
+   632→  const [engine, setEngine] = useState('alfa');
+   633→  const [targetWords, setTargetWords] = useState(5000);
+   634→  const [isGenerating, setIsGenerating] = useState(false);
+   635→  const [progress, setProgress] = useState(0);
+   636→  const [generatedContent, setGeneratedContent] = useState('');
+   637→
+   638→  // ── Generate handler ────────────────────────────────────────
+   639→  const handleGenerate = useCallback(async () => {
+   640→    setIsGenerating(true);
+   641→    setProgress(0);
+   642→
+   643→    // Simulate progress while waiting
+   644→    const progressInterval = setInterval(() => {
+   645→      setProgress((prev) => {
+   646→        if (prev >= 90) return prev;
+   647→        return prev + Math.random() * 15 + 5;
+   648→      });
+   649→    }, 800);
+   650→
+   651→    try {
+   652→      const res = await fetch('/api/writing/generate', {
+   653→        method: 'POST',
+   654→        headers: { 'Content-Type': 'application/json' },
+   655→        body: JSON.stringify({
+   656→          mode: writingMode,
+   657→          title,
+   658→          description,
+   659→          keyPoints,
+   660→          engine,
+   661→          targetWords,
+   662→        }),
+   663→      });
+   664→
+   665→      clearInterval(progressInterval);
+   666→
+   667→      if (!res.ok) {
+   668→        throw new Error('API request failed');
+   669→      }
+   670→
+   671→      const data = await res.json();
+   672→      setProgress(100);
+   673→
+   674→      setTimeout(() => {
+   675→        setGeneratedContent(data.content || data.text || '');
+   676→        setCurrentStep(3);
+   677→        setIsGenerating(false);
+   678→        toast.success('Tulisan berhasil dihasilkan!');
+   679→      }, 500);
+   680→    } catch {
+   681→      clearInterval(progressInterval);
+   682→      setProgress(0);
+   683→      setIsGenerating(false);
+   684→      toast.error(
+   685→        'Gagal menghasilkan tulisan. Silakan coba lagi atau hubungi support.'
+   686→      );
+   687→      // Fallback demo content
+   688→      setGeneratedContent(
+   689→        generateFallbackContent(writingMode, title, description, keyPoints)
+   690→      );
+   691→      setCurrentStep(3);
+   692→      toast.info('Menampilkan contoh hasil sebagai demo.');
+   693→    }
+   694→  }, [writingMode, title, description, keyPoints, engine, targetWords]);
+   695→
+   696→  // ── Copy handler ────────────────────────────────────────────
+   697→  const handleCopy = useCallback(() => {
+   698→    navigator.clipboard.writeText(generatedContent);
+   699→    toast.success('Berhasil disalin ke clipboard!');
+   700→  }, [generatedContent]);
+   701→
+   702→  // ── Download handler ────────────────────────────────────────
+   703→  const handleDownload = useCallback(() => {
+   704→    const blob = new Blob([generatedContent], { type: 'text/plain;charset=utf-8' });
+   705→    const url = URL.createObjectURL(blob);
+   706→    const a = document.createElement('a');
+   707→    a.href = url;
+   708→    a.download = `${title || config.title}.txt`;
+   709→    document.body.appendChild(a);
+   710→    a.click();
+   711→    document.body.removeChild(a);
+   712→    URL.revokeObjectURL(url);
+   713→    toast.success('File berhasil diunduh!');
+   714→  }, [generatedContent, title, config.title]);
+   715→
+   716→  // ── Direction for animation ─────────────────────────────────
+   717→  const [prevStep, setPrevStep] = useState<Step>(1);
+   718→  const direction = currentStep > prevStep ? 1 : -1;
+   719→  const goToStep = (step: Step) => {
+   720→    setPrevStep(currentStep);
+   721→    setCurrentStep(step);
+   722→  };
+   723→
+   724→  return (
+   725→    <div className="space-y-6">
+   726→      {/* Step Navigation */}
+   727→      <StepNav currentStep={currentStep} modeConfig={config} />
+   728→
+   729→      {/* Content Area */}
+   730→      <Card className="border-border/40 shadow-sm bg-white/60 dark:bg-slate-900/40 backdrop-blur-sm overflow-hidden">
+   731→        <CardContent className="p-4 sm:p-6 lg:p-8">
+   732→          <AnimatePresence mode="wait">
+   733→            <motion.div
+   734→              key={currentStep}
+   735→              initial={{ opacity: 0, x: direction * 30 }}
+   736→              animate={{ opacity: 1, x: 0 }}
+   737→              exit={{ opacity: 0, x: -direction * 30 }}
+   738→              transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+   739→            >
+   740→              {currentStep === 1 && (
+   741→                <StepInput
+   742→                  config={config}
+   743→                  title={title}
+   744→                  description={description}
+   745→                  keyPoints={keyPoints}
+   746→                  onTitleChange={setTitle}
+   747→                  onDescriptionChange={setDescription}
+   748→                  onKeyPointsChange={setKeyPoints}
+   749→                  onNext={() => goToStep(2)}
+   750→                />
+   751→              )}
+   752→              {currentStep === 2 && (
+   753→                <StepGenerate
+   754→                  engine={engine}
+   755→                  targetWords={targetWords}
+   756→                  onEngineChange={setEngine}
+   757→                  onTargetWordsChange={setTargetWords}
+   758→                  onGenerate={handleGenerate}
+   759→                  onBack={() => goToStep(1)}
+   760→                  isGenerating={isGenerating}
+   761→                  progress={progress}
+   762→                  title={title}
+   763→                />
+   764→              )}
+   765→              {currentStep === 3 && (
+   766→                <StepOutput
+   767→                  content={generatedContent}
+   768→                  title={title}
+   769→                  onCopy={handleCopy}
+   770→                  onDownload={handleDownload}
+   771→                  onBack={() => goToStep(2)}
+   772→                />
+   773→              )}
+   774→            </motion.div>
+   775→          </AnimatePresence>
+   776→        </CardContent>
+   777→      </Card>
+   778→    </div>
+   779→  );
+   780→}
+   781→
+   782→// ─── Fallback Content Generator ────────────────────────────────────
+   783→
+   784→function generateFallbackContent(
+   785→  mode: WritingMode,
+   786→  title: string,
+   787→  description: string,
+   788→  keyPoints: string
+   789→): string {
+   790→  const points = keyPoints
+   791→    ? keyPoints.split(',').map((p) => p.trim()).filter(Boolean)
+   792→    : [];
+   793→
+   794→  switch (mode) {
+   795→    case 'book':
+   796→      return `# ${title || 'Buku Akademik'}
+   797→
+   798→## Pendahuluan
+   799→
+   800→${description || 'Buku ini membahas topik penting dalam bidang akademik.'} Buku ini disusun untuk memberikan pemahaman yang komprehensif dan mendalam tentang topik yang diangkat, dengan pendekatan yang sistematis dan berbasis bukti ilmiah.
+   801→
+   802→## Latar Belakang
+   803→
+   804→Dalam perkembangan ilmu pengetahuan dan teknologi yang semakin pesat, kebutuhan akan literatur yang berkualitas tinggi menjadi semakin penting. Buku ini hadir untuk menjawab kebutuhan tersebut dengan menyajikan analisis yang mendalam dan pembahasan yang komprehensif.
+   805→
+   806→${points.length > 0 ? `## Poin-Poin Pembahasan\n\n${points.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n` : ''}## Metode Penulisan
+   807→
+   808→Buku ini disusun menggunakan metode penulisan akademik yang ketat, dengan mempertimbangkan berbagai sumber referensi yang relevan dan terpercaya.
+   809→
+   810→## Kesimpulan
+   811→
+   812→Buku ini diharapkan dapat memberikan kontribusi yang signifikan bagi pengembangan ilmu pengetahuan dan menjadi referensi yang berharga bagi para akademisi dan praktisi.`;
+   813→
+   814→    case 'proposal':
+   815→      return `# ${title || 'Proposal Penelitian'}
+   816→
+   817→## I. Pendahuluan
+   818→
+   819→### 1.1 Latar Belakang
+   820→
+   821→${description || 'Penelitian ini dilatarbelakangi oleh kebutuhan akan pemahaman yang lebih mendalam terhadap fenomena yang terjadi.'} Permasalahan ini menjadi semakin relevan seiring dengan perkembangan zaman dan kebutuhan akan solusi yang berbasis bukti ilmiah.
+   822→
+   823→### 1.2 Rumusan Masalah
+   824→
+   825→Berdasarkan latar belakang di atas, rumusan masalah dalam penelitian ini adalah:
+   826→1. Bagaimana kondisi terkini terkait topik yang diteliti?
+   827→2. Faktor-faktor apa yang mempengaruhi permasalahan tersebut?
+   828→3. Solusi apa yang dapat direkomendasikan?
+   829→
+   830→${points.length > 0 ? `### 1.3 Poin Utama Penelitian\n\n${points.map((p) => `- ${p}`).join('\n')}\n\n` : ''}## II. Tinjauan Pustaka
+   831→
+   832→Bagian ini membahas teori-teori dan penelitian terdahulu yang menjadi dasar penyusunan proposal penelitian ini.
+   833→
+   834→## III. Metodologi Penelitian
+   835→
+   836→Penelitian ini menggunakan pendekatan campuran (mixed methods) untuk memperoleh data yang komprehensif dan valid.
+   837→
+   838→## IV. Timeline Penelitian
+   839→
+   840→- Bulan 1-2: Persiapan dan pengumpulan literatur
+   841→- Bulan 3-4: Pengumpulan data lapangan
+   842→- Bulan 5-6: Analisis data
+   843→- Bulan 7: Penyusunan laporan`;
+   844→
+   845→    case 'thesis':
+   846→      return `# ${title || 'Skripsi / Tesis'}
+   847→
+   848→## BAB I: PENDAHULUAN
+   849→
+   850→### 1.1 Latar Belakang Masalah
+   851→
+   852→${description || 'Penelitian ini dilakukan untuk menjawab kebutuhan akademik dalam bidang yang dipilih.'} Permasalahan yang diangkat dalam penelitian ini memiliki signifikansi yang penting bagi perkembangan ilmu pengetahuan.
+   853→
+   854→### 1.2 Rumusan Masalah
+   855→
+   856→1. Apa saja faktor yang mempengaruhi fenomena yang diteliti?
+   857→2. Bagaimana hubungan antar variabel dalam penelitian ini?
+   858→3. Apa implikasi dari temuan penelitian ini?
+   859→
+   860→### 1.3 Tujuan Penelitian
+   861→
+   862→Penelitian ini bertujuan untuk:
+   863→- Menganalisis fenomena yang terkait dengan topik penelitian
+   864→- Mengidentifikasi faktor-faktor yang berpengaruh signifikan
+   865→- Memberikan rekomendasi berdasarkan temuan penelitian
+   866→
+   867→${points.length > 0 ? `### 1.4 Poin Kunci\n\n${points.map((p, i) => `${i + 1}. ${p}`).join('\n')}\n\n` : ''}## BAB II: TINJAUAN PUSTAKA
+   868→
+   869→### 2.1 Landasan Teori
+   870→
+   871→Bagian ini menyajikan teori-teori yang menjadi dasar penelitian.
+   872→
+   873→### 2.2 Penelitian Terdahulu
+   874→
+   875→Review terhadap penelitian-penelitian sebelumnya yang relevan dengan topik penelitian ini.
+   876→
+   877→## BAB III: METODOLOGI PENELITIAN
+   878→
+   879→### 3.1 Desain Penelitian
+   880→
+   881→Penelitian ini menggunakan desain kuantitatif dengan pendekatan survei.
+   882→
+   883→### 3.2 Populasi dan Sampel
+   884→
+   885→### 3.3 Teknik Pengumpulan Data
+   886→
+   887→### 3.4 Teknik Analisis Data`;
+   888→
+   889→    case 'scholarship':
+   890→      return `# ${title || 'Esai Beasiswa'}
+   891→
+   892→## Personal Statement
+   893→
+   894→${description || 'Saya percaya bahwa pendidikan adalah kunci untuk membuka potensi terbaik dalam diri setiap individu.'} Perjalanan akademik saya telah membentuk fondasi yang kuat dan motivasi yang mendalam untuk terus berkembang.
+   895→
+   896→## Latar Belakang Akademik
+   897→
+   898→Saya telah menempuh pendidikan dengan penuh dedikasi dan komitmen tinggi. Prestasi-prestasi yang telah diraih menjadi bukti nyata dari kemampuan dan ketekunan saya dalam mengejar keunggulan akademik.
+   899→
+   900→${points.length > 0 ? `## Poin-Poin Keunggulan\n\n${points.map((p) => `- ${p}`).join('\n')}\n\n` : ''}## Motivasi dan Visi
+   901→
+   902→Saya memiliki visi yang jelas untuk berkontribusi secara nyata bagi masyarakat dan bidang ilmu yang saya tekuni. Beasiswa ini akan menjadi jembatan yang menghubungkan aspirasi saya dengan kesempatan untuk mewujudkannya.
+   903→
+   904→## Rencana Studi dan Kontribusi
+   905→
+   906→Setelah menyelesaikan pendidikan, saya berencana untuk mengaplikasikan ilmu yang diperoleh guna memberikan dampak positif bagi lingkungan sekitar dan masyarakat luas.
+   907→
+   908→## Penutup
+   909→
+   910→Saya berharap esai ini dapat merepresentasikan semangat dan dedikasi saya. Terima kasih atas kesempatan yang diberikan.`;
+   911→
+   912→    case 'paper':
+   913→      return `# ${title || 'Makalah Akademik'}
+   914→
+   915→## I. Pendahuluan
+   916→
+   917→### A. Latar Belakang
+   918→
+   919→${description || 'Makalah ini disusun untuk membahas topik yang relevan dengan perkembangan terkini.'} Dalam konteks akademik, pemahaman yang mendalam terhadap topik ini menjadi sangat penting.
+   920→
+   921→### B. Rumusan Masalah
+   922→
+   923→1. Apa yang dimaksud dengan topik yang dibahas?
+   924→2. Bagaimana perkembangan dan tantangan yang dihadapi?
+   925→3. Apa solusi yang dapat direkomendasikan?
+   926→
+   927→${points.length > 0 ? `### C. Poin Pembahasan\n\n${points.map((p) => `- ${p}`).join('\n')}\n\n` : ''}## II. Pembahasan
+   928→
+   929→### A. Tinjauan Umum
+   930→
+   931→Bagian ini membahas teori dan konsep dasar yang terkait dengan topik makalah.
+   932→
+   933→### B. Analisis
+   934→
+   935→Analisis mendalam terhadap permasalahan yang diangkat, didukung oleh data dan argumen yang logis.
+   936→
+   937→### C. Temuan
+   938→
+   939→Hasil dari analisis yang telah dilakukan, beserta implikasinya.
+   940→
+   941→## III. Kesimpulan dan Saran
+   942→
+   943→### A. Kesimpulan
+   944→
+   945→Berdasarkan pembahasan yang telah dipaparkan, dapat disimpulkan beberapa hal penting terkait topik makalah ini.
+   946→
+   947→### B. Saran
+   948→
+   949→Rekomendasi untuk penelitian selanjutnya dan pihak-pihak terkait.
+   950→
+   951→## Daftar Pustaka
+   952→
+   953→- Referensi akademik yang relevan dengan topik pembahasan`;
+   954→
+   955→    default:
+   956→      return `# ${title || 'Hasil Generate'}\n\n${description || 'Konten akan dihasilkan oleh AI Engine.'}`;
+   957→  }
+   958→}

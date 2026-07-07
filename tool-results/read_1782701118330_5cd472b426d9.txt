@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { toast } from 'sonner';
+     6→import { useArticleStore, type Reference } from '@/store/article-store';
+     7→import { Card, CardContent } from '@/components/ui/card';
+     8→import { Checkbox } from '@/components/ui/checkbox';
+     9→import { Badge } from '@/components/ui/badge';
+    10→import { Button } from '@/components/ui/button';
+    11→import { Input } from '@/components/ui/input';
+    12→import { Slider } from '@/components/ui/slider';
+    13→import { Progress } from '@/components/ui/progress';
+    14→import { ScrollArea } from '@/components/ui/scroll-area';
+    15→import { Separator } from '@/components/ui/separator';
+    16→import { Skeleton } from '@/components/ui/skeleton';
+    17→import {
+    18→  Tooltip,
+    19→  TooltipContent,
+    20→  TooltipTrigger,
+    21→} from '@/components/ui/tooltip';
+    22→import {
+    23→  Select,
+    24→  SelectContent,
+    25→  SelectItem,
+    26→  SelectTrigger,
+    27→  SelectValue,
+    28→} from '@/components/ui/select';
+    29→import {
+    30→  Search,
+    31→  Filter,
+    32→  BookOpen,
+    33→  ChevronDown,
+    34→  ChevronUp,
+    35→  CheckSquare,
+    36→  Square,
+    37→  ArrowRight,
+    38→  ArrowLeft,
+    39→  Loader2,
+    40→  Library,
+    41→  Lightbulb,
+    42→  Sparkles,
+    43→  MousePointerClick,
+    44→  ExternalLink,
+    45→  Layers,
+    46→  Info,
+    47→  Database,
+    48→  Copy,
+    49→  FileDown,
+    50→  X,
+    51→  Calendar,
+    52→  Hash,
+    53→  Tag,
+    54→  Globe,
+    55→  ShieldCheck,
+    56→  ShieldAlert,
+    57→  Brain,
+    58→  BookMarked,
+    59→  AlertTriangle,
+    60→  Languages,
+    61→  FlaskConical,
+    62→  Eye,
+    63→} from 'lucide-react';
+    64→import {
+    65→  Dialog,
+    66→  DialogContent,
+    67→  DialogHeader,
+    68→  DialogTitle,
+    69→  DialogDescription,
+    70→} from '@/components/ui/dialog';
+    71→import {
+    72→  Tabs,
+    73→  TabsContent,
+    74→  TabsList,
+    75→  TabsTrigger,
+    76→} from '@/components/ui/tabs';
+    77→import {
+    78→  Collapsible,
+    79→  CollapsibleContent,
+    80→  CollapsibleTrigger,
+    81→} from '@/components/ui/collapsible';
+    82→import { cn } from '@/lib/utils';
+    83→
+    84→/* ─── Constants ─── */
+    85→
+    86→const SEARCH_DATABASES = [
+    87→  'Scopus',
+    88→  'Semantic Scholar',
+    89→  'OpenAlex',
+    90→  'Crossref',
+    91→  'PubMed',
+    92→  'arXiv',
+    93→  'BASE',
+    94→  'PLOS',
+    95→  'ERIC',
+    96→  'CORE',
+    97→  'Tavily',
+    98→];
+    99→
+   100→/* ─── Type badge helpers ─── */
+   101→
+   102→const TYPE_CONFIG: Record<
+   103→  string,
+   104→  { label: string; color: string; bgColor: string; borderColor: string; barColor: string }
+   105→> = {
+   106→  'Journal Article': {
+   107→    label: 'Journal Article',
+   108→    color: 'text-emerald-800 dark:text-emerald-300',
+   109→    bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
+   110→    borderColor: 'border-emerald-200 dark:border-emerald-800',
+   111→    barColor: '#10b981',
+   112→  },
+   113→  'Conference Paper': {
+   114→    label: 'Conference Paper',
+   115→    color: 'text-blue-800 dark:text-blue-300',
+   116→    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+   117→    borderColor: 'border-blue-200 dark:border-blue-800',
+   118→    barColor: '#3b82f6',
+   119→  },
+   120→  'Book': {
+   121→    label: 'Book',
+   122→    color: 'text-amber-800 dark:text-amber-300',
+   123→    bgColor: 'bg-amber-100 dark:bg-amber-900/30',
+   124→    borderColor: 'border-amber-200 dark:border-amber-800',
+   125→    barColor: '#f59e0b',
+   126→  },
+   127→  'Preprint': {
+   128→    label: 'Preprint',
+   129→    color: 'text-violet-800 dark:text-violet-300',
+   130→    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
+   131→    borderColor: 'border-violet-200 dark:border-violet-800',
+   132→    barColor: '#8b5cf6',
+   133→  },
+   134→  'Thesis': {
+   135→    label: 'Thesis (Skripsi/Disertasi)',
+   136→    color: 'text-rose-800 dark:text-rose-300',
+   137→    bgColor: 'bg-rose-100 dark:bg-rose-900/30',
+   138→    borderColor: 'border-rose-200 dark:border-rose-800',
+   139→    barColor: '#f43f5e',
+   140→  },
+   141→  'Skripsi': {
+   142→    label: 'Skripsi',
+   143→    color: 'text-pink-800 dark:text-pink-300',
+   144→    bgColor: 'bg-pink-100 dark:bg-pink-900/30',
+   145→    borderColor: 'border-pink-200 dark:border-pink-800',
+   146→    barColor: '#ec4899',
+   147→  },
+   148→  'Disertasi': {
+   149→    label: 'Disertasi',
+   150→    color: 'text-fuchsia-800 dark:text-fuchsia-300',
+   151→    bgColor: 'bg-fuchsia-100 dark:bg-fuchsia-900/30',
+   152→    borderColor: 'border-fuchsia-200 dark:border-fuchsia-800',
+   153→    barColor: '#d946ef',
+   154→  },
+   155→  'Report': {
+   156→    label: 'Report',
+   157→    color: 'text-cyan-800 dark:text-cyan-300',
+   158→    bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
+   159→    borderColor: 'border-cyan-200 dark:border-cyan-800',
+   160→    barColor: '#06b6d4',
+   161→  },
+   162→};
+   163→
+   164→const FALLBACK_TYPE_CONFIG = {
+   165→  label: 'Other',
+   166→  color: 'text-gray-800 dark:text-gray-300',
+   167→  bgColor: 'bg-gray-100 dark:bg-gray-900/30',
+   168→  borderColor: 'border-gray-200 dark:border-gray-800',
+   169→  barColor: '#6b7280',
+   170→};
+   171→
+   172→function getTypeConfig(type: string) {
+   173→  return TYPE_CONFIG[type] || FALLBACK_TYPE_CONFIG;
+   174→}
+   175→
+   176→function TypeBadge({ type }: { type: string }) {
+   177→  const config = getTypeConfig(type);
+   178→  return (
+   179→    <span
+   180→      className={cn(
+   181→        'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium',
+   182→        config.color,
+   183→        config.bgColor,
+   184→        config.borderColor
+   185→      )}
+   186→    >
+   187→      {config.label}
+   188→    </span>
+   189→  );
+   190→}
+   191→
+   192→/* ─── Relevance score bar ─── */
+   193→
+   194→function RelevanceIndicator({ score }: { score?: number }) {
+   195→  if (score == null) return null;
+   196→  const pct = Math.round(score * 100);
+   197→  const color =
+   198→    pct >= 80
+   199→      ? 'bg-emerald-500'
+   200→      : pct >= 60
+   201→        ? 'bg-teal-500'
+   202→        : pct >= 40
+   203→          ? 'bg-amber-500'
+   204→          : 'bg-orange-500';
+   205→
+   206→  return (
+   207→    <div className="flex items-center gap-2">
+   208→      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+   209→        <div
+   210→          className={cn('h-full rounded-full transition-all', color)}
+   211→          style={{ width: `${pct}%` }}
+   212→        />
+   213→      </div>
+   214→      <span className="text-[11px] text-muted-foreground tabular-nums">{pct}%</span>
+   215→    </div>
+   216→  );
+   217→}
+   218→
+   219→/* ─── Skeleton cards for loading state ─── */
+   220→
+   221→function ReferenceSkeleton() {
+   222→  return (
+   223→    <Card className="border-border/50">
+   224→      <CardContent className="p-4">
+   225→        <div className="flex gap-3">
+   226→          <Skeleton className="size-5 shrink-0 rounded" />
+   227→          <div className="flex-1 space-y-2">
+   228→            <div className="flex items-center gap-2">
+   229→              <Skeleton className="h-5 w-24 rounded-full" />
+   230→              <Skeleton className="h-5 w-16 rounded-full" />
+   231→            </div>
+   232→            <Skeleton className="h-4 w-full" />
+   233→            <Skeleton className="h-4 w-3/4" />
+   234→            <Skeleton className="h-3 w-1/2" />
+   235→          </div>
+   236→        </div>
+   237→      </CardContent>
+   238→    </Card>
+   239→  );
+   240→}
+   241→
+   242→/* ─── Animated counter hook ─── */
+   243→
+   244→function useAnimatedCounter(target: number, _duration: number = 600) {
+   245→  // Simple approach: just use the target directly with a CSS transition for visual smoothness
+   246→  return target;
+   247→}
+   248→
+   249→/* ─── Reference Type Distribution Bar ─── */
+   250→
+   251→function TypeDistributionBar({ references }: { references: Reference[] }) {
+   252→  const distribution = useMemo(() => {
+   253→    const counts: Record<string, number> = {};
+   254→    references.forEach((r) => {
+   255→      counts[r.refType] = (counts[r.refType] || 0) + 1;
+   256→    });
+   257→    return Object.entries(counts)
+   258→      .map(([type, count]) => ({
+   259→        type,
+   260→        count,
+   261→        pct: (count / references.length) * 100,
+   262→      }))
+   263→      .sort((a, b) => b.count - a.count);
+   264→  }, [references]);
+   265→
+   266→  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+   267→
+   268→  if (distribution.length === 0) return null;
+   269→
+   270→  return (
+   271→    <motion.div
+   272→      initial={{ opacity: 0, y: -8 }}
+   273→      animate={{ opacity: 1, y: 0 }}
+   274→      transition={{ duration: 0.4, delay: 0.1 }}
+   275→      className="space-y-2"
+   276→    >
+   277→      <div className="flex items-center justify-between">
+   278→        <span className="text-xs font-medium text-muted-foreground">Reference Types</span>
+   279→        <div className="flex flex-wrap gap-x-3 gap-y-1">
+   280→          {distribution.map((d, i) => {
+   281→            const config = getTypeConfig(d.type);
+   282→            return (
+   283→              <span
+   284→                key={d.type}
+   285→                className={cn(
+   286→                  'flex items-center gap-1 text-[11px] transition-opacity',
+   287→                  hoveredIdx !== null && hoveredIdx !== i ? 'opacity-40' : 'opacity-100'
+   288→                )}
+   289→              >
+   290→                <span
+   291→                  className="inline-block size-2 rounded-full"
+   292→                  style={{ backgroundColor: config.barColor }}
+   293→                />
+   294→                {config.label} ({d.count})
+   295→              </span>
+   296→            );
+   297→          })}
+   298→        </div>
+   299→      </div>
+   300→      <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted/60">
+   301→        {distribution.map((d, i) => {
+   302→          const config = getTypeConfig(d.type);
+   303→          return (
+   304→            <motion.div
+   305→              key={d.type}
+   306→              initial={{ width: 0 }}
+   307→              animate={{ width: `${d.pct}%` }}
+   308→              transition={{ duration: 0.6, delay: 0.15 + i * 0.08, ease: 'easeOut' }}
+   309→              className="h-full cursor-pointer transition-all first:rounded-l-full last:rounded-r-full hover:brightness-110"
+   310→              style={{ backgroundColor: config.barColor }}
+   311→              onMouseEnter={() => setHoveredIdx(i)}
+   312→              onMouseLeave={() => setHoveredIdx(null)}
+   313→            />
+   314→          );
+   315→        })}
+   316→      </div>
+   317→    </motion.div>
+   318→  );
+   319→}
+   320→
+   321→/* ─── Improved Empty State ─── */
+   322→
+   323→function EmptyStateIllustration() {
+   324→  return (
+   325→    <div className="relative flex items-center justify-center">
+   326→      {/* Gradient circle background */}
+   327→      <div className="absolute size-32 rounded-full bg-gradient-to-br from-emerald-200 via-teal-200 to-cyan-200 opacity-40 blur-2xl dark:from-emerald-900/30 dark:via-teal-900/30 dark:to-cyan-900/30" />
+   328→      <div className="relative flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/50 dark:to-teal-900/50 ring-4 ring-white dark:ring-gray-900">
+   329→        <div className="flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
+   330→          <Search className="size-6 text-white" />
+   331→        </div>
+   332→      </div>
+   333→      {/* Floating sparkles */}
+   334→      <motion.div
+   335→        animate={{ y: [0, -6, 0], rotate: [0, 15, 0] }}
+   336→        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+   337→        className="absolute -right-2 -top-1"
+   338→      >
+   339→        <Sparkles className="size-4 text-amber-400" />
+   340→      </motion.div>
+   341→      <motion.div
+   342→        animate={{ y: [0, 5, 0], rotate: [0, -10, 0] }}
+   343→        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+   344→        className="absolute -bottom-1 -left-3"
+   345→      >
+   346→        <BookOpen className="size-4 text-emerald-400" />
+   347→      </motion.div>
+   348→    </div>
+   349→  );
+   350→}
+   351→
+   352→/* ─── BibTeX helpers ─── */
+   353→
+   354→function generateBibtexKey(ref: Reference): string {
+   355→  // Extract first author surname
+   356→  const authorsStr = ref.authors || '';
+   357→  const firstAuthor = authorsStr.split(',')[0].split(' ').pop()?.replace(/[^a-zA-Z]/g, '').toLowerCase() || 'unknown';
+   358→  // Extract year
+   359→  const year = String(ref.year || '0000');
+   360→  // Extract first significant word from title
+   361→  const stopWords = new Set(['a', 'an', 'the', 'of', 'in', 'on', 'for', 'and', 'or', 'to', 'is', 'are', 'with', 'by', 'from', 'at', 'as', 'its', 'their', 'this', 'that', 'which', 'be', 'has', 'have', 'was', 'were', 'been', 'being', 'not', 'but', 'can', 'will', 'do', 'does', 'did', 'no', 'all', 'any', 'some', 'such', 'into', 'how', 'what', 'where', 'when', 'who', 'why']);
+   362→  const titleWords = ref.title.replace(/[^a-zA-Z\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w.toLowerCase()));
+   363→  const titleWord = (titleWords[0] || 'untitled').toLowerCase();
+   364→  return `${firstAuthor}${year}${titleWord}`;
+   365→}
+   366→
+   367→function referenceToBibtex(ref: Reference): string {
+   368→  const key = generateBibtexKey(ref);
+   369→  const lines: string[] = `@article{${key},`.split('\n');
+   370→  lines.push(`  title = {${ref.title}},`);
+   371→  lines.push(`  author = {${ref.authors}},`);
+   372→  if (ref.journal) lines.push(`  journal = {${ref.journal}},`);
+   373→  lines.push(`  year = {${ref.year}},`);
+   374→  if (ref.volume) lines.push(`  volume = {${ref.volume}},`);
+   375→  if (ref.issue) lines.push(`  number = {${ref.issue}},`);
+   376→  if (ref.pages) lines.push(`  pages = {${ref.pages}},`);
+   377→  if (ref.doi) lines.push(`  doi = {${ref.doi}},`);
+   378→  lines.push('}');
+   379→  return lines.join('\n');
+   380→}
+   381→
+   382→/* ─── Reference Detail Modal ─── */
+   383→
+   384→function ReferenceDetailModal({
+   385→  reference,
+   386→  open,
+   387→  onOpenChange,
+   388→  onToggleSelect,
+   389→}: {
+   390→  reference: Reference;
+   391→  open: boolean;
+   392→  onOpenChange: (open: boolean) => void;
+   393→  onToggleSelect: () => void;
+   394→}) {
+   395→  const [doiCopied, setDoiCopied] = useState(false);
+   396→  const relevancePct = reference.relevanceScore != null ? Math.round(reference.relevanceScore * 100) : null;
+   397→  const relevanceColor =
+   398→    relevancePct == null
+   399→      ? 'bg-muted'
+   400→      : relevancePct >= 80
+   401→        ? 'bg-emerald-500'
+   402→        : relevancePct >= 60
+   403→          ? 'bg-teal-500'
+   404→          : relevancePct >= 40
+   405→            ? 'bg-amber-500'
+   406→            : 'bg-orange-500';
+   407→
+   408→  const handleCopyDoi = useCallback(() => {
+   409→    if (!reference.doi) return;
+   410→    navigator.clipboard.writeText(reference.doi).then(() => {
+   411→      setDoiCopied(true);
+   412→      toast.success('DOI copied to clipboard');
+   413→      setTimeout(() => setDoiCopied(false), 2000);
+   414→    });
+   415→  }, [reference.doi]);
+   416→
+   417→  return (
+   418→    <Dialog open={open} onOpenChange={onOpenChange}>
+   419→      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+   420→        {/* Gradient accent bar */}
+   421→        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shrink-0" />
+   422→
+   423→        <DialogHeader className="p-6 pb-0 space-y-3">
+   424→          <div className="flex items-start justify-between gap-4">
+   425→            <div className="min-w-0 flex-1">
+   426→              <div className="mb-2 flex flex-wrap items-center gap-2">
+   427→                <TypeBadge type={reference.refType} />
+   428→                {reference.source && (
+   429→                  <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+   430→                    <Database className="size-2.5" />
+   431→                    {reference.source}
+   432→                  </span>
+   433→                )}
+   434→              </div>
+   435→              <DialogTitle className="text-lg font-bold leading-snug md:text-xl">
+   436→                {reference.title}
+   437→              </DialogTitle>
+   438→              <DialogDescription className="text-sm font-semibold text-foreground/90">
+   439→                {reference.authors}
+   440→              </DialogDescription>
+   441→            </div>
+   442→          </div>
+   443→        </DialogHeader>
+   444→
+   445→        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4 space-y-5">
+   446→          {/* Publication details */}
+   447→          <motion.div
+   448→            initial={{ opacity: 0, y: 8 }}
+   449→            animate={{ opacity: 1, y: 0 }}
+   450→            transition={{ duration: 0.3, delay: 0.05 }}
+   451→            className="space-y-3"
+   452→          >
+   453→            {/* Year badge */}
+   454→            <div className="flex flex-wrap items-center gap-2">
+   455→              <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+   456→                <Calendar className="size-3" />
+   457→                {reference.year}
+   458→              </span>
+   459→              <TypeBadge type={reference.refType} />
+   460→            </div>
+   461→
+   462→            {/* Journal info */}
+   463→            {(reference.journal || reference.volume || reference.issue || reference.pages) && (
+   464→              <div className="flex items-start gap-2 text-sm">
+   465→                <Library className="size-4 shrink-0 mt-0.5 text-muted-foreground" />
+   466→                <div>
+   467→                  <p className="font-medium text-foreground">
+   468→                    {reference.journal}
+   469→                  </p>
+   470→                  <p className="text-xs text-muted-foreground">
+   471→                    {[reference.volume && `Vol. ${reference.volume}`, reference.issue && `No. ${reference.issue}`, reference.pages && `pp. ${reference.pages}`].filter(Boolean).join(', ')}
+   472→                  </p>
+   473→                </div>
+   474→              </div>
+   475→            )}
+   476→
+   477→            {/* DOI section */}
+   478→            {reference.doi && (
+   479→              <div className="flex items-center gap-2">
+   480→                <Hash className="size-4 shrink-0 text-muted-foreground" />
+   481→                <a
+   482→                  href={`https://doi.org/${reference.doi}`}
+   483→                  target="_blank"
+   484→                  rel="noopener noreferrer"
+   485→                  className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400 break-all"
+   486→                >
+   487→                  {reference.doi}
+   488→                </a>
+   489→                <ExternalLink className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+   490→                <Button
+   491→                  variant="outline"
+   492→                  size="sm"
+   493→                  onClick={handleCopyDoi}
+   494→                  className="shrink-0 h-7 gap-1 text-xs px-2"
+   495→                >
+   496→                  {doiCopied ? <span className="text-emerald-600">Copied!</span> : <><Copy className="size-3" /> Copy DOI</>}
+   497→                </Button>
+   498→              </div>
+   499→            )}
+   500→          </motion.div>
+   501→
+   502→          <Separator />
+   503→
+   504→          {/* Relevance Score */}
+   505→          {relevancePct != null && (
+   506→            <motion.div
+   507→              initial={{ opacity: 0, y: 8 }}
+   508→              animate={{ opacity: 1, y: 0 }}
+   509→              transition={{ duration: 0.3, delay: 0.1 }}
+   510→              className="space-y-2"
+   511→            >
+   512→              <div className="flex items-center justify-between">
+   513→                <span className="text-xs font-medium text-muted-foreground">Relevance Score</span>
+   514→                <span className="text-sm font-bold tabular-nums text-foreground">{relevancePct}%</span>
+   515→              </div>
+   516→              <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+   517→                <motion.div
+   518→                  initial={{ width: 0 }}
+   519→                  animate={{ width: `${relevancePct}%` }}
+   520→                  transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
+   521→                  className={cn('h-full rounded-full', relevanceColor)}
+   522→                />
+   523→              </div>
+   524→            </motion.div>
+   525→          )}
+   526→
+   527→          {/* Abstract */}
+   528→          {reference.abstract && (
+   529→            <motion.div
+   530→              initial={{ opacity: 0, y: 8 }}
+   531→              animate={{ opacity: 1, y: 0 }}
+   532→              transition={{ duration: 0.3, delay: 0.15 }}
+   533→              className="space-y-2"
+   534→            >
+   535→              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Abstract</h4>
+   536→              <div className="max-h-60 overflow-y-auto rounded-lg border border-border/50 bg-muted/30 p-4">
+   537→                <p className="text-sm leading-relaxed text-foreground/90">{reference.abstract}</p>
+   538→              </div>
+   539→            </motion.div>
+   540→          )}
+   541→
+   542→          {/* Keywords */}
+   543→          {reference.keywords && reference.keywords.length > 0 && (
+   544→            <motion.div
+   545→              initial={{ opacity: 0, y: 8 }}
+   546→              animate={{ opacity: 1, y: 0 }}
+   547→              transition={{ duration: 0.3, delay: 0.2 }}
+   548→              className="space-y-2"
+   549→            >
+   550→              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+   551→                <Tag className="size-3" />
+   552→                Keywords
+   553→              </div>
+   554→              <div className="flex flex-wrap gap-1.5">
+   555→                {reference.keywords.map((kw, i) => (
+   556→                  <Badge key={i} variant="outline" className="text-xs px-2 py-0.5 border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300">
+   557→                    {kw}
+   558→                  </Badge>
+   559→                ))}
+   560→              </div>
+   561→            </motion.div>
+   562→          )}
+   563→        </div>
+   564→
+   565→        {/* Footer actions */}
+   566→        <div className="flex items-center justify-between border-t border-border/60 bg-muted/30 px-6 py-3 shrink-0">
+   567→          <Button
+   568→            variant={reference.isSelected ? 'outline' : 'default'}
+   569→            size="sm"
+   570→            onClick={() => {
+   571→              onToggleSelect();
+   572→            }}
+   573→            className={cn(
+   574→              'gap-1.5',
+   575→              !reference.isSelected && 'bg-emerald-600 hover:bg-emerald-700 text-white'
+   576→            )}
+   577→          >
+   578→            {reference.isSelected ? (
+   579→              <><Square className="size-3.5" /> Deselect this reference</>
+   580→            ) : (
+   581→              <><CheckSquare className="size-3.5" /> Select this reference</>
+   582→            )}
+   583→          </Button>
+   584→          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+   585→            <X className="size-4" />
+   586→            Close
+   587→          </Button>
+   588→        </div>
+   589→      </DialogContent>
+   590→    </Dialog>
+   591→  );
+   592→}
+   593→
+   594→/* ─── Reference card ─── */
+   595→
+   596→function ReferenceCard({
+   597→  reference,
+   598→  isExpanded,
+   599→  onToggleExpand,
+   600→  onToggleSelect,
+   601→  onOpenDetail,
+   602→}: {
+   603→  reference: Reference;
+   604→  isExpanded: boolean;
+   605→  onToggleExpand: () => void;
+   606→  onToggleSelect: () => void;
+   607→  onOpenDetail: () => void;
+   608→}) {
+   609→  return (
+   610→    <Card
+   611→      className={cn(
+   612→        'group transition-all duration-200 hover:shadow-md cursor-pointer',
+   613→        reference.isSelected
+   614→          ? 'border-emerald-300 bg-emerald-50/30 dark:border-emerald-700 dark:bg-emerald-950/20'
+   615→          : 'border-border/60 hover:border-border'
+   616→      )}
+   617→      onClick={onOpenDetail}
+   618→    >
+   619→      <CardContent className="p-4">
+   620→        <div className="flex gap-3">
+   621→          {/* Checkbox */}
+   622→          <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+   623→            <Checkbox
+   624→              checked={reference.isSelected}
+   625→              onCheckedChange={() => {
+   626→                onToggleSelect();
+   627→              }}
+   628→              className={cn(
+   629→                'size-5 cursor-pointer transition-colors',
+   630→                reference.isSelected && 'data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600'
+   631→              )}
+   632→            />
+   633→          </div>
+   634→
+   635→          {/* Content */}
+   636→          <div className="min-w-0 flex-1">
+   637→            {/* Top row: type badge + source badge + year + relevance */}
+   638→            <div className="mb-1.5 flex flex-wrap items-center gap-2">
+   639→              <TypeBadge type={reference.refType} />
+   640→              {reference.source && (
+   641→                <span className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+   642→                  <Database className="size-2.5" />
+   643→                  {reference.source}
+   644→                </span>
+   645→              )}
+   646→              <span className="text-xs font-medium text-muted-foreground">{reference.year}</span>
+   647→              <div className="ml-auto">
+   648→                <RelevanceIndicator score={reference.relevanceScore} />
+   649→              </div>
+   650→            </div>
+   651→
+   652→            {/* Authors */}
+   653→            <p className="mb-1 text-sm font-semibold leading-snug text-foreground">
+   654→              {reference.authors}
+   655→            </p>
+   656→
+   657→            {/* Title */}
+   658→            <p className="mb-1.5 text-sm leading-snug text-foreground/90">{reference.title}</p>
+   659→
+   660→            {/* Journal info */}
+   661→            {(reference.journal || reference.doi) && (
+   662→              <p className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+   663→                {reference.journal && (
+   664→                  <>
+   665→                    <Library className="size-3 shrink-0" />
+   666→                    <span className="italic">
+   667→                      {reference.journal}
+   668→                      {reference.volume && `, ${reference.volume}`}
+   669→                      {reference.issue && `(${reference.issue})`}
+   670→                      {reference.pages && `: ${reference.pages}`}
+   671→                    </span>
+   672→                  </>
+   673→                )}
+   674→                {reference.doi && (
+   675→                  <>
+   676→                    {reference.journal && (
+   677→                      <span className="text-muted-foreground/40">|</span>
+   678→                    )}
+   679→                    <a
+   680→                      href={`https://doi.org/${reference.doi}`}
+   681→                      target="_blank"
+   682→                      rel="noopener noreferrer"
+   683→                      className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400"
+   684→                      onClick={(e) => e.stopPropagation()}
+   685→                    >
+   686→                      <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+   687→                        ✅ DOI
+   688→                      </span>
+   689→                      <ExternalLink className="size-3 shrink-0" />
+   690→                      <span className="max-w-[140px] truncate text-[11px]">{reference.doi}</span>
+   691→                    </a>
+   692→                  </>
+   693→                )}
+   694→              </p>
+   695→            )}
+   696→
+   697→            {/* Expand button + abstract */}
+   698→            {reference.abstract && (
+   699→              <>
+   700→                <button
+   701→                  onClick={(e) => {
+   702→                    e.stopPropagation();
+   703→                    onToggleExpand();
+   704→                  }}
+   705→                  className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
+   706→                >
+   707→                  {isExpanded ? (
+   708→                    <>
+   709→                      <ChevronUp className="size-3" /> Hide Abstract
+   710→                    </>
+   711→                  ) : (
+   712→                    <>
+   713→                      <ChevronDown className="size-3" /> Show Abstract
+   714→                    </>
+   715→                  )}
+   716→                </button>
+   717→                <AnimatePresence>
+   718→                  {isExpanded && (
+   719→                    <motion.div
+   720→                      initial={{ height: 0, opacity: 0 }}
+   721→                      animate={{ height: 'auto', opacity: 1 }}
+   722→                      exit={{ height: 0, opacity: 0 }}
+   723→                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+   724→                      className="overflow-hidden"
+   725→                    >
+   726→                      <div className="mt-2 rounded-md border border-border/40 bg-muted/30 p-3">
+   727→                        <p className="text-xs leading-relaxed text-muted-foreground">
+   728→                          {reference.abstract}
+   729→                        </p>
+   730→                        {reference.keywords && reference.keywords.length > 0 && (
+   731→                          <div className="mt-2 flex flex-wrap gap-1">
+   732→                            {reference.keywords.map((kw, i) => (
+   733→                              <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0">
+   734→                                {kw}
+   735→                              </Badge>
+   736→                            ))}
+   737→                          </div>
+   738→                        )}
+   739→                      </div>
+   740→                    </motion.div>
+   741→                  )}
+   742→                </AnimatePresence>
+   743→              </>
+   744→            )}
+   745→          </div>
+   746→        </div>
+   747→      </CardContent>
+   748→    </Card>
+   749→  );
+   750→}
+   751→
+   752→/* ─── Filter types ─── */
+   753→
+   754→const SORT_OPTIONS: { value: string; label: string }[] = [
+   755→  { value: 'relevance', label: 'Relevance' },
+   756→  { value: 'year-desc', label: 'Year (Newest)' },
+   757→  { value: 'year-asc', label: 'Year (Oldest)' },
+   758→  { value: 'author', label: 'Author Name' },
+   759→];
+   760→
+   761→/* ─── Main component ─── */
+   762→
+   763→export default function Step2References() {
+   764→  const {
+   765→    selectedTitle,
+   766→    selectedKeywords,
+   767→    references,
+   768→    setReferences,
+   769→    toggleReference,
+   770→    selectAllReferences,
+   771→    deselectAllReferences,
+   772→    isSearchingReferences,
+   773→    setIsSearchingReferences,
+   774→    referenceSearchProgress,
+   775→    setReferenceSearchProgress,
+   776→    setCurrentStep,
+   777→    nextStep,
+   778→  } = useArticleStore();
+   779→
+   780→  // Local UI state
+   781→  const [selectedTypes, setSelectedTypes] = useState<string[]>(['all']);
+   782→  const [yearRange, setYearRange] = useState<number[]>([2020, 2025]);
+   783→  const [sortBy, setSortBy] = useState<string>('relevance');
+   784→  const [searchText, setSearchText] = useState('');
+   785→  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+   786→  const [showFilters, setShowFilters] = useState(false);
+   787→  const [prevRefCount, setPrevRefCount] = useState(0);
+   788→
+   789→  // Include/Exclude keywords
+   790→  const [includeKeywords, setIncludeKeywords] = useState<string[]>([]);
+   791→  const [excludeKeywords, setExcludeKeywords] = useState<string[]>([]);
+   792→
+   793→  // Boolean mode
+   794→  const [booleanMode, setBooleanMode] = useState<'OR' | 'AND'>('OR');
+   795→
+   796→  // Multi-language search — always auto-search in all 5 research languages
+   797→  const [searchLanguages, setSearchLanguages] = useState<string[]>(['English', 'Chinese', 'Spanish', 'German', 'French']);
+   798→  const [isTranslating, setIsTranslating] = useState(false);
+   799→
+   800→  // Auto-generated Boolean keywords
+   801→  const [generatedBoolean, setGeneratedBoolean] = useState<any>(null);
+   802→  const [isGeneratingBoolean, setIsGeneratingBoolean] = useState(false);
+   803→
+   804→  // Search meta (pipeline counts)
+   805→  const [searchMeta, setSearchMeta] = useState<Record<string, number>>({});
+   806→
+   807→  // Theory detection
+   808→  const [theories, setTheories] = useState<any>(null);
+   809→  const [isDetectingTheories, setIsDetectingTheories] = useState(false);
+   810→
+   811→  // Reference detail modal state
+   812→  const [detailReference, setDetailReference] = useState<Reference | null>(null);
+   813→  const [detailOpen, setDetailOpen] = useState(false);
+   814→
+   815→  // Real search data tracking
+   816→  const [isRealData, setIsRealData] = useState(false);
+   817→  const [searchedDatabaseCount, setSearchedDatabaseCount] = useState(0);
+   818→
+   819→  const selectedCount = useMemo(
+   820→    () => references.filter((r) => r.isSelected).length,
+   821→    [references]
+   822→  );
+   823→  const totalCount = references.length;
+   824→
+   825→  /* ─── Multi-type filter toggle helper ─── */
+   826→
+   827→  const TYPE_FILTER_OPTIONS: { value: string; label: string }[] = [
+   828→    { value: 'all', label: 'All Types' },
+   829→    { value: 'Journal Article', label: 'Journal Articles' },
+   830→    { value: 'Conference Paper', label: 'Conference Papers' },
+   831→    { value: 'Book', label: 'Books' },
+   832→    { value: 'Preprint', label: 'Preprints' },
+   833→    { value: 'Thesis', label: 'Theses' },
+   834→    { value: 'Skripsi', label: 'Skripsi' },
+   835→    { value: 'Disertasi', label: 'Disertasi' },
+   836→    { value: 'Report', label: 'Reports' },
+   837→  ];
+   838→
+   839→  function toggleTypeFilter(type: string) {
+   840→    if (type === 'all') {
+   841→      setSelectedTypes(['all']);
+   842→    } else {
+   843→      setSelectedTypes(prev => {
+   844→        const without = prev.filter(t => t !== 'all' && t !== type);
+   845→        if (prev.includes(type)) return without.length ? without : ['all'];
+   846→        return [...without, type];
+   847→      });
+   848→    }
+   849→  }
+   850→
+   851→  // Animated counter for total references (animates on first load)
+   852→  const animatedTotal = useAnimatedCounter(totalCount, 800);
+   853→  // Animated counter for selected count
+   854→  const animatedSelected = useAnimatedCounter(selectedCount, 400);
+   855→
+   856→  // Track when references first load to trigger counter animation
+   857→  useEffect(() => {
+   858→    if (references.length > 0 && prevRefCount === 0) {
+   859→      setPrevRefCount(references.length);
+   860→    }
+   861→  }, [references.length, prevRefCount]);
+   862→
+   863→  // Animate database list during search
+   864→  const searchAnimationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   865→
+   866→  useEffect(() => {
+   867→    if (isSearchingReferences) {
+   868→      setSearchedDatabaseCount(0);
+   869→      let count = 0;
+   870→      searchAnimationRef.current = setInterval(() => {
+   871→        count += 1;
+   872→        setSearchedDatabaseCount(count);
+   873→        if (count >= SEARCH_DATABASES.length) {
+   874→          if (searchAnimationRef.current) clearInterval(searchAnimationRef.current);
+   875→        }
+   876→      }, 350);
+   877→    } else {
+   878→      if (searchAnimationRef.current) {
+   879→        clearInterval(searchAnimationRef.current);
+   880→        searchAnimationRef.current = null;
+   881→      }
+   882→    }
+   883→    return () => {
+   884→      if (searchAnimationRef.current) {
+   885→        clearInterval(searchAnimationRef.current);
+   886→        searchAnimationRef.current = null;
+   887→      }
+   888→    };
+   889→  }, [isSearchingReferences]);
+   890→
+   891→  /* ─── Search handler — auto Boolean + auto 5-language translation ─── */
+   892→
+   893→  const handleSearch = useCallback(async () => {
+   894→    if (!selectedTitle.trim()) return;
+   895→
+   896→    setIsSearchingReferences(true);
+   897→    setReferenceSearchProgress(0);
+   898→    setIsRealData(false);
+   899→    setSearchMeta({});
+   900→    setTheories(null);
+   901→    setGeneratedBoolean(null);
+   902→
+   903→    try {
+   904→      // ── Phase 1: Auto-generate Boolean + Auto-translate in parallel ──
+   905→      setReferenceSearchProgress(5);
+   906→      setIsGeneratingBoolean(true);
+   907→      setIsTranslating(true);
+   908→
+   909→      // Helper to poll a job
+   910→      const pollJob = async (url: string, maxMs = 60_000): Promise<any> => {
+   911→        return new Promise<any>((resolve, reject) => {
+   912→          const interval = setInterval(async () => {
+   913→            try {
+   914→              const res = await fetch(url);
+   915→              if (!res.ok) { clearInterval(interval); reject(new Error('Poll failed')); return; }
+   916→              const data = await res.json();
+   917→              if (data.status === 'done' && data.result) { clearInterval(interval); resolve(data.result); }
+   918→              else if (data.status === 'error') { clearInterval(interval); reject(new Error(data.error || 'Job failed')); }
+   919→            } catch { /* continue polling */ }
+   920→          }, 1500);
+   921→          setTimeout(() => { clearInterval(interval); reject(new Error('Timed out')); }, maxMs);
+   922→        });
+   923→      };
+   924→
+   925→      // Launch both jobs in parallel
+   926→      const [booleanResult, translateResult] = await Promise.allSettled([
+   927→        // Boolean generation
+   928→        (async () => {
+   929→          const postRes = await fetch('/api/references/generate-boolean', {
+   930→            method: 'POST',
+   931→            headers: { 'Content-Type': 'application/json' },
+   932→            body: JSON.stringify({ keywords: selectedKeywords, title: selectedTitle }),
+   933→          });
+   934→          if (!postRes.ok) throw new Error('Boolean generation failed to start');
+   935→          const postData = await postRes.json();
+   936→          if (!postData.success || !postData.jobId) throw new Error('Invalid boolean response');
+   937→          return pollJob(`/api/references/generate-boolean?jobId=${postData.jobId}`);
+   938→        })(),
+   939→        // Translation
+   940→        (async () => {
+   941→          const postRes = await fetch('/api/references/translate-keywords', {
+   942→            method: 'POST',
+   943→            headers: { 'Content-Type': 'application/json' },
+   944→            body: JSON.stringify({ keywords: selectedKeywords, title: selectedTitle, languages: searchLanguages }),
+   945→          });
+   946→          if (!postRes.ok) throw new Error('Translation failed to start');
+   947→          const postData = await postRes.json();
+   948→          if (!postData.success || !postData.jobId) throw new Error('Invalid translation response');
+   949→          return pollJob(`/api/references/translate-keywords?jobId=${postData.jobId}`);
+   950→        })(),
+   951→      ]);
+   952→
+   953→      setIsGeneratingBoolean(false);
+   954→      setIsTranslating(false);
+   955→      setReferenceSearchProgress(25);
+   956→
+   957→      // Extract results
+   958→      let boolData: any = null;
+   959→      if (booleanResult.status === 'fulfilled') {
+   960→        boolData = booleanResult.value;
+   961→        setGeneratedBoolean(boolData);
+   962→      } else {
+   963→        toast.warning('Auto Boolean generation skipped — using default');
+   964→      }
+   965→
+   966→      let transData: any = null;
+   967→      if (translateResult.status === 'fulfilled') {
+   968→        transData = translateResult.value;
+   969→      } else {
+   970→        toast.warning('Translation skipped — searching in English only');
+   971→      }
+   972→
+   973→      // ── Phase 2: Build all query variants ──
+   974→      const allTranslatedQueries: string[][] = [];
+   975→      const titleInLanguages: string[] = [];
+   976→
+   977→      // 1) Original keywords (always included)
+   978→      allTranslatedQueries.push(selectedKeywords);
+   979→
+   980→      // 2) Boolean queries (AND, OR, combined)
+   981→      if (boolData?.booleanQueries) {
+   982→        const bq = boolData.booleanQueries;
+   983→        // AND queries — each is a single string, split to array
+   984→        if (Array.isArray(bq.and)) {
+   985→          for (const q of bq.and) {
+   986→            if (typeof q === 'string' && q.trim()) {
+   987→              allTranslatedQueries.push([q.trim()]);
+   988→            }
+   989→          }
+   990→        }
+   991→        // OR queries
+   992→        if (Array.isArray(bq.or)) {
+   993→          for (const q of bq.or) {
+   994→            if (typeof q === 'string' && q.trim()) {
+   995→              allTranslatedQueries.push([q.trim()]);
+   996→            }
+   997→          }
+   998→        }
+   999→        // Combined queries (most precise)
+  1000→        if (Array.isArray(bq.combined)) {
+  1001→          for (const q of bq.combined) {
+  1002→            if (typeof q === 'string' && q.trim()) {
+  1003→              allTranslatedQueries.push([q.trim()]);
+  1004→            }
+  1005→          }
+  1006→        }
+  1007→      }
+  1008→
+  1009→      // 3) Expanded keywords from Boolean generation
+  1010→      if (Array.isArray(boolData?.expandedKeywords)) {
+  1011→        const expanded = boolData.expandedKeywords.filter((k: any) => typeof k === 'string' && k.trim());
+  1012→        if (expanded.length > 0) {
+  1013→          allTranslatedQueries.push(expanded);
+  1014→        }
+  1015→      }
+  1016→
+  1017→      // 4) Title variants from Boolean generation
+  1018→      if (Array.isArray(boolData?.titleVariants)) {
+  1019→        for (const tv of boolData.titleVariants) {
+  1020→          if (typeof tv === 'string' && tv.trim()) {
+  1021→            allTranslatedQueries.push([tv.trim()]);
+  1022→            titleInLanguages.push(tv.trim());
+  1023→          }
+  1024→        }
+  1025→      }
+  1026→
+  1027→      // 5) Per-language keyword queries and title translations
+  1028→      if (transData?.languages && typeof transData.languages === 'object') {
+  1029→        const langs = transData.languages as Record<string, any>;
+  1030→        for (const [code, langData] of Object.entries(langs)) {
+  1031→          // Keyword queries per language
+  1032→          if (Array.isArray(langData.keywordQueries)) {
+  1033→            for (const q of langData.keywordQueries) {
+  1034→              if (typeof q === 'string' && q.trim()) {
+  1035→                allTranslatedQueries.push([q.trim()]);
+  1036→              }
+  1037→            }
+  1038→          }
+  1039→          // Title translation per language
+  1040→          if (typeof langData.titleTranslation === 'string' && langData.titleTranslation.trim()) {
+  1041→            const translatedTitle = langData.titleTranslation.trim();
+  1042→            allTranslatedQueries.push([translatedTitle]);
+  1043→            titleInLanguages.push(translatedTitle);
+  1044→          }
+  1045→        }
+  1046→      }
+  1047→
+  1048→      // Also add the original title as a search query
+  1049→      allTranslatedQueries.push([selectedTitle.trim()]);
+  1050→      titleInLanguages.push(selectedTitle.trim());
+  1051→
+  1052→      // ── Phase 3: Execute the main search with all variants ──
+  1053→      setReferenceSearchProgress(30);
+  1054→
+  1055→      const postRes = await fetch('/api/references/search', {
+  1056→        method: 'POST',
+  1057→        headers: { 'Content-Type': 'application/json' },
+  1058→        body: JSON.stringify({
+  1059→          title: selectedTitle,
+  1060→          keywords: selectedKeywords,
+  1061→          yearStart: yearRange[0],
+  1062→          yearEnd: yearRange[1],
+  1063→          booleanMode,
+  1064→          includeKeywords: includeKeywords.length > 0 ? includeKeywords : undefined,
+  1065→          excludeKeywords: excludeKeywords.length > 0 ? excludeKeywords : undefined,
+  1066→          refTypes: selectedTypes.includes('all') ? undefined : selectedTypes,
+  1067→          translatedQueries: allTranslatedQueries.length > 1 ? allTranslatedQueries : undefined,
+  1068→        }),
+  1069→      });
+  1070→
+  1071→      if (!postRes.ok) throw new Error('Search failed to start');
+  1072→
+  1073→      const postData = await postRes.json();
+  1074→      if (!postData.success || !postData.jobId) throw new Error('Invalid search response');
+  1075→
+  1076→      const jobId = postData.jobId;
+  1077→
+  1078→      // Poll for results
+  1079→      const pollResult = await new Promise<{
+  1080→        references: any[];
+  1081→        meta: Record<string, number>;
+  1082→      }>((resolve, reject) => {
+  1083→        const pollInterval = setInterval(async () => {
+  1084→          try {
+  1085→            const pollRes = await fetch(`/api/references/search?jobId=${jobId}`);
+  1086→            if (!pollRes.ok) {
+  1087→              clearInterval(pollInterval);
+  1088→              reject(new Error('Polling failed'));
+  1089→              return;
+  1090→            }
+  1091→
+  1092→            const pollData = await pollRes.json();
+  1093→
+  1094→            if (pollData.status === 'done' && pollData.result) {
+  1095→              clearInterval(pollInterval);
+  1096→              resolve(pollData.result);
+  1097→            } else if (pollData.status === 'error') {
+  1098→              clearInterval(pollInterval);
+  1099→              reject(new Error(pollData.error || 'Search job failed'));
+  1100→            } else {
+  1101→              const done = (pollData.progress || []).filter(
+  1102→                (p: any) => p.status === 'done' || p.status === 'error'
+  1103→              ).length;
+  1104→              setReferenceSearchProgress(Math.round(30 + (done / 11) * 65));
+  1105→            }
+  1106→          } catch {
+  1107→            // Continue polling on transient errors
+  1108→          }
+  1109→        }, 1000);
+  1110→
+  1111→        setTimeout(() => {
+  1112→          clearInterval(pollInterval);
+  1113→          reject(new Error('Search timed out'));
+  1114→        }, 180_000);
+  1115→      });
+  1116→
+  1117→      setReferenceSearchProgress(100);
+  1118→
+  1119→      if (Array.isArray(pollResult.references)) {
+  1120→        setReferences(pollResult.references);
+  1121→        toast.success(`Found ${pollResult.references.length} references across 5 languages`);
+  1122→
+  1123→        if (pollResult.meta?.isRealData) {
+  1124→          setIsRealData(true);
+  1125→        }
+  1126→      }
+  1127→
+  1128→      if (pollResult.meta) {
+  1129→        setSearchMeta(pollResult.meta);
+  1130→      }
+  1131→
+  1132→      setTimeout(() => {
+  1133→        setReferenceSearchProgress(0);
+  1134→        setIsSearchingReferences(false);
+  1135→      }, 600);
+  1136→    } catch {
+  1137→      setReferenceSearchProgress(0);
+  1138→      setIsSearchingReferences(false);
+  1139→      setIsGeneratingBoolean(false);
+  1140→      setIsTranslating(false);
+  1141→      toast.error('Search failed. Please try again.');
+  1142→    }
+  1143→  }, [selectedTitle, selectedKeywords, yearRange, booleanMode, includeKeywords, excludeKeywords, selectedTypes, searchLanguages, setReferences, setIsSearchingReferences, setReferenceSearchProgress]);
+  1144→
+  1145→  /* ─── Select all handler with toast ─── */
+  1146→  const handleSelectAll = useCallback(() => {
+  1147→    selectAllReferences();
+  1148→    toast.info('All references selected');
+  1149→  }, [selectAllReferences]);
+  1150→
+  1151→  /* ─── Open detail modal ─── */
+  1152→  const handleOpenDetail = useCallback((ref: Reference) => {
+  1153→    setDetailReference(ref);
+  1154→    setDetailOpen(true);
+  1155→  }, []);
+  1156→
+  1157→  /* ─── Export BibTeX ─── */
+  1158→  const handleExportBibTeX = useCallback(() => {
+  1159→    const selectedRefs = references.filter((r) => r.isSelected);
+  1160→    if (selectedRefs.length === 0) {
+  1161→      toast.error('No references selected to export');
+  1162→      return;
+  1163→    }
+  1164→    const bibtex = selectedRefs.map(referenceToBibtex).join('\n\n');
+  1165→    const blob = new Blob([bibtex], { type: 'text/x-bibtex;charset=utf-8' });
+  1166→    const url = URL.createObjectURL(blob);
+  1167→    const a = document.createElement('a');
+  1168→    a.href = url;
+  1169→    a.download = 'references.bib';
+  1170→    document.body.appendChild(a);
+  1171→    a.click();
+  1172→    document.body.removeChild(a);
+  1173→    URL.revokeObjectURL(url);
+  1174→    toast.success(`Exported ${selectedRefs.length} reference${selectedRefs.length !== 1 ? 's' : ''} as BibTeX`);
+  1175→  }, [references]);
+  1176→
+  1177→  /* ─── Toggle expand ─── */
+  1178→
+  1179→  const toggleExpand = useCallback((id: string) => {
+  1180→    setExpandedIds((prev) => {
+  1181→      const next = new Set(prev);
+  1182→      if (next.has(id)) {
+  1183→        next.delete(id);
+  1184→      } else {
+  1185→        next.add(id);
+  1186→      }
+  1187→      return next;
+  1188→    });
+  1189→  }, []);
+  1190→
+  1191→  /* ─── Filtering & sorting ─── */
+  1192→
+  1193→  const filteredReferences = useMemo(() => {
+  1194→    let result = [...references];
+  1195→
+  1196→    // Multi-type filter
+  1197→    if (!selectedTypes.includes('all')) {
+  1198→      result = result.filter((r) => selectedTypes.includes(r.refType));
+  1199→    }
+  1200→
+  1201→    // Year range filter
+  1202→    result = result.filter((r) => r.year >= yearRange[0] && r.year <= yearRange[1]);
+  1203→
+  1204→    // Include keywords filter
+  1205→    if (includeKeywords.length > 0) {
+  1206→      result = result.filter((r) => {
+  1207→        const text = `${r.title} ${r.abstract} ${r.authors} ${(r.keywords || []).join(' ')}`.toLowerCase();
+  1208→        return includeKeywords.some(kw => text.includes(kw.toLowerCase()));
+  1209→      });
+  1210→    }
+  1211→
+  1212→    // Exclude keywords filter
+  1213→    if (excludeKeywords.length > 0) {
+  1214→      result = result.filter((r) => {
+  1215→        const text = `${r.title} ${r.abstract} ${r.authors} ${(r.keywords || []).join(' ')}`.toLowerCase();
+  1216→        return !excludeKeywords.some(kw => text.includes(kw.toLowerCase()));
+  1217→      });
+  1218→    }
+  1219→
+  1220→    // Search text filter
+  1221→    if (searchText.trim()) {
+  1222→      const q = searchText.toLowerCase();
+  1223→      result = result.filter(
+  1224→        (r) =>
+  1225→          r.title.toLowerCase().includes(q) ||
+  1226→          r.authors.toLowerCase().includes(q) ||
+  1227→          r.journal?.toLowerCase().includes(q) ||
+  1228→          r.abstract?.toLowerCase().includes(q)
+  1229→      );
+  1230→    }
+  1231→
+  1232→    // Sort
+  1233→    switch (sortBy) {
+  1234→      case 'year-desc':
+  1235→        result.sort((a, b) => b.year - a.year);
+  1236→        break;
+  1237→      case 'year-asc':
+  1238→        result.sort((a, b) => a.year - b.year);
+  1239→        break;
+  1240→      case 'author':
+  1241→        result.sort((a, b) => a.authors.localeCompare(b.authors));
+  1242→        break;
+  1243→      case 'relevance':
+  1244→      default:
+  1245→        result.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+  1246→        break;
+  1247→    }
+  1248→
+  1249→    return result;
+  1250→  }, [references, selectedTypes, yearRange, includeKeywords, excludeKeywords, searchText, sortBy]);
+  1251→
+  1252→  // Compute source distribution for summary
+  1253→  const sourceDistribution = useMemo(() => {
+  1254→    if (references.length === 0) return { count: 0, databases: 0 };
+  1255→    const sources = new Set(references.map((r) => r.source).filter(Boolean));
+  1256→    return { count: references.length, databases: sources.size };
+  1257→  }, [references]);
+  1258→
+  1259→  /* ─── Has results loaded ─── */
+  1260→  const hasResults = references.length > 0;
+  1261→
+  1262→  return (
+  1263→    <div className="mx-auto w-full max-w-4xl space-y-6 pb-28">
+  1264→      {/* ─── Header Section ─── */}
+  1265→      <section className="space-y-4">
+  1266→        <div className="flex items-start justify-between gap-4">
+  1267→          <div className="min-w-0 space-y-2">
+  1268→            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+  1269→              <BookOpen className="size-4 text-emerald-600" />
+  1270→              Step 2 — Reference Selection
+  1271→            </div>
+  1272→            <h2 className="text-xl font-bold leading-tight tracking-tight md:text-2xl">
+  1273→              {selectedTitle || 'Select a title in Step 1'}
+  1274→            </h2>
+  1275→          </div>
+  1276→          <div className="flex items-center gap-2 shrink-0">
+  1277→            {hasResults && selectedCount > 0 && (
+  1278→              <Button
+  1279→                variant="outline"
+  1280→                size="sm"
+  1281→                onClick={handleExportBibTeX}
+  1282→                className="hidden sm:inline-flex gap-1.5"
+  1283→              >
+  1284→                <FileDown className="size-4" />
+  1285→                <span>Export BibTeX</span>
+  1286→              </Button>
+  1287→            )}
+  1288→            <Button
+  1289→              variant="outline"
+  1290→              size="sm"
+  1291→              onClick={() => setCurrentStep(1)}
+  1292→            >
+  1293→              <ArrowLeft className="size-4" />
+  1294→              <span className="hidden sm:inline">Edit Selection</span>
+  1295→            </Button>
+  1296→          </div>
+  1297→        </div>
+  1298→
+  1299→        {/* Keywords */}
+  1300→        {selectedKeywords.length > 0 && (
+  1301→          <div className="flex flex-wrap gap-1.5">
+  1302→            {selectedKeywords.map((kw, i) => (
+  1303→              <Badge
+  1304→                key={i}
+  1305→                variant="secondary"
+  1306→                className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300"
+  1307→              >
+  1308→                {kw}
+  1309→              </Badge>
+  1310→            ))}
+  1311→          </div>
+  1312→        )}
+  1313→
+  1314→        {/* Animated selection counter */}
+  1315→        {hasResults && (
+  1316→          <motion.div
+  1317→            initial={{ opacity: 0, y: -4 }}
+  1318→            animate={{ opacity: 1, y: 0 }}
+  1319→            className="flex items-center gap-2 text-sm text-muted-foreground"
+  1320→          >
+  1321→            <CheckSquare className="size-4 text-emerald-600" />
+  1322→            <span>
+  1323→              <strong className="text-foreground font-mono tabular-nums">{animatedSelected}</strong> of{' '}
+  1324→              <strong className="text-foreground font-mono tabular-nums">{animatedTotal}</strong> references selected
+  1325→            </span>
+  1326→          </motion.div>
+  1327→        )}
+  1328→      </section>
+  1329→
+  1330→      {/* ─── Quick Stats Row ─── */}
+  1331→      {hasResults && (
+  1332→        <motion.div
+  1333→          initial={{ opacity: 0, y: -6 }}
+  1334→          animate={{ opacity: 1, y: 0 }}
+  1335→          transition={{ duration: 0.4, delay: 0.15 }}
+  1336→          className="flex flex-wrap items-center gap-2"
+  1337→        >
+  1338→          {Object.keys(searchMeta).length > 0 ? (
+  1339→            <>
+  1340→              <Badge variant='secondary' className='bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 gap-1'>
+  1341→                <Database className='size-3' /> Total: {searchMeta.totalRaw ?? '—'}
+  1342→              </Badge>
+  1343→              <span className='text-muted-foreground text-xs'>→</span>
+  1344→              <Badge variant='secondary' className='bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300 gap-1'>
+  1345→                Deduped: {searchMeta.afterDedupe ?? '—'}
+  1346→              </Badge>
+  1347→              <span className='text-muted-foreground text-xs'>→</span>
+  1348→              <Badge variant='secondary' className='bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 gap-1'>
+  1349→                Final: {references.length}
+  1350→              </Badge>
+  1351→            </>
+  1352→          ) : (
+  1353→            <Badge
+  1354→              variant="secondary"
+  1355→              className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1.5 px-2.5 py-1"
+  1356→            >
+  1357→              <Library className="size-3" />
+  1358→              {totalCount} references
+  1359→            </Badge>
+  1360→          )}
+  1361→          <Badge
+  1362→            variant="secondary"
+  1363→            className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1.5 px-2.5 py-1"
+  1364→          >
+  1365→            <CheckSquare className="size-3" />
+  1366→            {selectedCount} selected
+  1367→          </Badge>
+  1368→          <Badge
+  1369→            variant="secondary"
+  1370→            className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1.5 px-2.5 py-1"
+  1371→          >
+  1372→            <Layers className="size-3" />
+  1373→            {new Set(references.map((r) => r.refType)).size} types
+  1374→          </Badge>
+  1375→          {sourceDistribution.databases > 0 && (
+  1376→            <Badge
+  1377→              variant="secondary"
+  1378→              className="bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 gap-1.5 px-2.5 py-1"
+  1379→            >
+  1380→              <Database className="size-3" />
+  1381→              {sourceDistribution.databases} databases
+  1382→            </Badge>
+  1383→          )}
+  1384→        </motion.div>
+  1385→      )}
+  1386→
+  1387→      <Separator />
+  1388→
+  1389→      {/* ─── Reference Search Tips (above empty state) ─── */}
+  1390→      {!hasResults && !isSearchingReferences && (
+  1391→        <motion.div
+  1392→          initial={{ opacity: 0, y: -4 }}
+  1393→          animate={{ opacity: 1, y: 0 }}
+  1394→          transition={{ delay: 0.1 }}
+  1395→        >
+  1396→          <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2.5 dark:border-blue-800/40 dark:bg-blue-950/20">
+  1397→            <Info className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+  1398→            <div className="min-w-0">
+  1399→              <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+  1400→                Reference Search Tips
+  1401→              </p>
+  1402→              <ul className="mt-1 space-y-0.5 text-[11px] text-blue-600 dark:text-blue-400">
+  1403→                <li>• All results come from real academic databases with verifiable DOIs</li>
+  1404→                <li>• Mix reference types for comprehensive coverage</li>
+  1405→                <li>• Select at least 5 for article generation</li>
+  1406→              </ul>
+  1407→            </div>
+  1408→          </div>
+  1409→        </motion.div>
+  1410→      )}
+  1411→
+  1412→      {/* ─── Improved Empty State (before search) ─── */}
+  1413→      {!hasResults && !isSearchingReferences && (
+  1414→        <Card className="border-dashed border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/20">
+  1415→          <CardContent className="flex flex-col items-center gap-5 p-10 text-center">
+  1416→            <EmptyStateIllustration />
+  1417→            <div className="space-y-2 max-w-sm">
+  1418→              <h3 className="text-lg font-semibold">
+  1419→                Discover Relevant Academic References
+  1420→              </h3>
+  1421→              <p className="text-sm text-muted-foreground leading-relaxed">
+  1422→                Auto-generates Boolean search queries, translates keywords into <strong className="text-foreground">5 major research languages</strong> (English, Chinese, Spanish, German, French), and searches across <strong className="text-foreground">11 academic databases</strong> including Scopus, Semantic Scholar, OpenAlex, PubMed, and more to find verified references with real DOIs.
+  1423→              </p>
+  1424→            </div>
+  1425→            <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+  1426→              <Button
+  1427→                onClick={handleSearch}
+  1428→                size="lg"
+  1429→                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base font-semibold shadow-lg shadow-emerald-500/25"
+  1430→                disabled={!selectedTitle.trim()}
+  1431→              >
+  1432→                <Search className="size-5" />
+  1433→                Search References
+  1434→                <ArrowRight className="size-4" />
+  1435→              </Button>
+  1436→              {!selectedTitle.trim() && (
+  1437→                <p className="text-xs text-amber-600 dark:text-amber-400">
+  1438→                  Complete Step 1 first to enable reference search
+  1439→                </p>
+  1440→              )}
+  1441→            </div>
+  1442→          </CardContent>
+  1443→        </Card>
+  1444→      )}
+  1445→
+  1446→      {/* ─── Search Progress with Database Animation ─── */}
+  1447→      {(isSearchingReferences || isTranslating || isGeneratingBoolean) && (
+  1448→        <Card className="border-emerald-200 dark:border-emerald-800">
+  1449→          <CardContent className="space-y-4 p-6">
+  1450→            {/* Phase 1: Boolean Generation */}
+  1451→            {isGeneratingBoolean && (
+  1452→              <div className="flex items-center gap-3">
+  1453→                <div className="flex size-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40">
+  1454→                  <Brain className="size-3.5 text-violet-600 animate-pulse" />
+  1455→                </div>
+  1456→                <div className="flex-1">
+  1457→                  <p className="font-medium text-sm">
+  1458→                    Auto-generating Boolean search queries...
+  1459→                  </p>
+  1460→                  <p className="text-xs text-muted-foreground">
+  1461→                    AI is creating optimal AND/OR/combined queries with synonym expansion
+  1462→                  </p>
+  1463→                </div>
+  1464→                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300 shrink-0">
+  1465→                  Phase 1/3
+  1466→                </Badge>
+  1467→              </div>
+  1468→            )}
+  1469→
+  1470→            {/* Phase 1: Translation */}
+  1471→            {isTranslating && (
+  1472→              <div className="flex items-center gap-3">
+  1473→                <div className="flex size-7 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/40">
+  1474→                  <Languages className="size-3.5 text-teal-600 animate-pulse" />
+  1475→                </div>
+  1476→                <div className="flex-1">
+  1477→                  <p className="font-medium text-sm">
+  1478→                    Translating keywords to 5 research languages...
+  1479→                  </p>
+  1480→                  <p className="text-xs text-muted-foreground">
+  1481→                    English, Chinese, Spanish, German, French — including title translations
+  1482→                  </p>
+  1483→                </div>
+  1484→                <div className="flex items-center gap-1 shrink-0">
+  1485→                  {searchLanguages.map((lang) => (
+  1486→                    <Badge key={lang} variant="outline" className="text-[9px] px-1 py-0 border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-300">
+  1487→                      {lang.slice(0, 2).toUpperCase()}
+  1488→                    </Badge>
+  1489→                  ))}
+  1490→                </div>
+  1491→                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-300 shrink-0">
+  1492→                  {isGeneratingBoolean ? 'Phase 1/3' : 'Phase 2/3'}
+  1493→                </Badge>
+  1494→              </div>
+  1495→            )}
+  1496→
+  1497→            {/* Phase 3: Database search */}
+  1498→            {isSearchingReferences && (
+  1499→              <>
+  1500→                <div className="flex items-center gap-3">
+  1501→                  <div className="flex size-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+  1502→                    <Database className="size-3.5 text-emerald-600 animate-pulse" />
+  1503→                  </div>
+  1504→                  <div className="flex-1">
+  1505→                    <p className="font-medium text-sm">
+  1506→                      Searching 11 academic databases with all query variants...
+  1507→                    </p>
+  1508→                    <p className="text-xs text-muted-foreground">
+  1509→                      Original keywords + Boolean queries + title in 5 languages
+  1510→                    </p>
+  1511→                  </div>
+  1512→                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300 shrink-0">
+  1513→                    Phase 3/3
+  1514→                  </Badge>
+  1515→                </div>
+  1516→                <Progress value={referenceSearchProgress} className="h-2 [&>div]:bg-emerald-500" />
+  1517→                <p className="text-right text-xs text-muted-foreground tabular-nums">
+  1518→                  {Math.round(referenceSearchProgress)}%
+  1519→                </p>
+  1520→
+  1521→                {/* Animated database list */}
+  1522→                <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+  1523→                  <p className="mb-2 text-[11px] font-medium text-muted-foreground">
+  1524→                    <Database className="mr-1 inline size-3" />
+  1525→                    Searching databases:
+  1526→                  </p>
+  1527→                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+  1528→                    {SEARCH_DATABASES.map((db, i) => (
+  1529→                      <motion.div
+  1530→                        key={db}
+  1531→                        initial={{ opacity: 0, x: -8 }}
+  1532→                        animate={
+  1533→                          i < searchedDatabaseCount
+  1534→                            ? { opacity: 1, x: 0 }
+  1535→                            : { opacity: 0.2, x: 0 }
+  1536→                        }
+  1537→                        transition={{ duration: 0.3, delay: 0.05 }}
+  1538→                        className="flex items-center gap-1.5 text-xs"
+  1539→                      >
+  1540→                        {i < searchedDatabaseCount ? (
+  1541→                          <motion.span
+  1542→                            initial={{ scale: 0 }}
+  1543→                            animate={{ scale: 1 }}
+  1544→                            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+  1545→                            className="size-1.5 rounded-full bg-emerald-500"
+  1546→                          />
+  1547→                        ) : (
+  1548→                          <Loader2 className="size-2.5 animate-spin text-muted-foreground/40" />
+  1549→                        )}
+  1550→                        <span
+  1551→                          className={cn(
+  1552→                            'text-muted-foreground',
+  1553→                            i < searchedDatabaseCount && 'text-foreground font-medium'
+  1554→                          )}
+  1555→                        >
+  1556→                          {db}
+  1557→                        </span>
+  1558→                      </motion.div>
+  1559→                    ))}
+  1560→                  </div>
+  1561→                </div>
+  1562→
+  1563→                <div className="space-y-2">
+  1564→                  <ReferenceSkeleton />
+  1565→                  <ReferenceSkeleton />
+  1566→                  <ReferenceSkeleton />
+  1567→                </div>
+  1568→              </>
+  1569→            )}
+  1570→          </CardContent>
+  1571→        </Card>
+  1572→      )}
+  1573→
+  1574→      {/* ─── Results section (only show after search) ─── */}
+  1575→      {hasResults && (
+  1576→        <>
+  1577→          {/* Real Data Success Banner */}
+  1578→          {isRealData && (
+  1579→            <motion.div
+  1580→              initial={{ opacity: 0, y: -8 }}
+  1581→              animate={{ opacity: 1, y: 0 }}
+  1582→              transition={{ duration: 0.4, delay: 0.05 }}
+  1583→              className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/40 dark:bg-emerald-950/20"
+  1584→            >
+  1585→              <span className="text-base leading-none">✅</span>
+  1586→              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+  1587→                All references are verified from real academic databases. DOIs link to actual papers.
+  1588→              </p>
+  1589→            </motion.div>
+  1590→          )}
+  1591→
+  1592→          {/* Reference Type Distribution Bar */}
+  1593→          <TypeDistributionBar references={references} />
+  1594→
+  1595→          {/* Drag Selection Hint */}
+  1596→          <motion.div
+  1597→            initial={{ opacity: 0, y: -4 }}
+  1598→            animate={{ opacity: 1, y: 0 }}
+  1599→            transition={{ delay: 0.3 }}
+  1600→          >
+  1601→            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2 dark:border-blue-800/40 dark:bg-blue-950/20">
+  1602→              <Tooltip>
+  1603→                <TooltipTrigger asChild>
+  1604→                  <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+  1605→                    <Lightbulb className="size-3.5 shrink-0" />
+  1606→                    <span>
+  1607→                      <strong>Tip:</strong> Click a card to view details, or use the checkbox to select directly
+  1608→                    </span>
+  1609→                    <MousePointerClick className="size-3 shrink-0" />
+  1610→                  </div>
+  1611→                </TooltipTrigger>
+  1612→                <TooltipContent side="bottom" className="max-w-xs text-xs">
+  1613→                  <p>Click a reference card to view full details. Use the checkbox to select/deselect.</p>
+  1614→                </TooltipContent>
+  1615→              </Tooltip>
+  1616→            </div>
+  1617→          </motion.div>
+  1618→
+  1619→          {/* Search again + filter toggle */}
+  1620→          <div className="flex flex-wrap items-center gap-2">
+  1621→            <Button
+  1622→              variant="outline"
+  1623→              size="sm"
+  1624→              onClick={handleSearch}
+  1625→              disabled={isSearchingReferences}
+  1626→            >
+  1627→              {isSearchingReferences ? (
+  1628→                <Loader2 className="size-4 animate-spin" />
+  1629→              ) : (
+  1630→                <Search className="size-4" />
+  1631→              )}
+  1632→              Search Again
+  1633→            </Button>
+  1634→            {/* On mobile: show "Refine" button, on desktop: show "Filters" with toggle */}
+  1635→            <Button
+  1636→              variant="outline"
+  1637→              size="sm"
+  1638→              onClick={() => setShowFilters((v) => !v)}
+  1639→              className={cn(
+  1640→                'sm:hidden',
+  1641→                showFilters && 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+  1642→              )}
+  1643→            >
+  1644→              <Filter className="size-4" />
+  1645→              Refine
+  1646→              <ChevronDown
+  1647→                className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
+  1648→              />
+  1649→            </Button>
+  1650→            <Button
+  1651→              variant="outline"
+  1652→              size="sm"
+  1653→              onClick={() => setShowFilters((v) => !v)}
+  1654→              className={cn(
+  1655→                'hidden sm:inline-flex',
+  1656→                showFilters && 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+  1657→              )}
+  1658→            >
+  1659→              <Filter className="size-4" />
+  1660→              Filters
+  1661→              <ChevronDown
+  1662→                className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
+  1663→              />
+  1664→            </Button>
+  1665→            <div className="ml-auto flex items-center gap-2">
+  1666→              <Button variant="ghost" size="sm" onClick={handleSelectAll} className="text-xs">
+  1667→                <CheckSquare className="size-3.5" />
+  1668→                Select All
+  1669→              </Button>
+  1670→              <Button variant="ghost" size="sm" onClick={deselectAllReferences} className="text-xs">
+  1671→                <Square className="size-3.5" />
+  1672→                Deselect All
+  1673→              </Button>
+  1674→            </div>
+  1675→          </div>
+  1676→
+  1677→          {/* Filter panel - animated slide down */}
+  1678→          <AnimatePresence>
+  1679→            {showFilters && (
+  1680→              <motion.div
+  1681→                initial={{ height: 0, opacity: 0 }}
+  1682→                animate={{ height: 'auto', opacity: 1 }}
+  1683→                exit={{ height: 0, opacity: 0 }}
+  1684→                transition={{ duration: 0.3, ease: 'easeInOut' }}
+  1685→                className="overflow-hidden"
+  1686→              >
+  1687→                <Card className="border-border/60">
+  1688→                  <CardContent className="space-y-5 p-4">
+  1689→                    {/* Include/Exclude Keywords */}
+  1690→                    <div className="space-y-3">
+  1691→                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Keyword Criteria</label>
+  1692→                      <div className="space-y-2">
+  1693→                        <div className="flex items-center gap-2">
+  1694→                          <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
+  1695→                          <span className="text-xs font-medium text-muted-foreground">Must Include</span>
+  1696→                        </div>
+  1697→                        <div className='flex items-center gap-2 flex-wrap'>
+  1698→                          {includeKeywords.map((kw, i) => (
+  1699→                            <Badge key={i} variant='outline' className='gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 cursor-pointer' onClick={() => setIncludeKeywords(prev => prev.filter((_, j) => j !== i))}>
+  1700→                              <ShieldCheck className='size-3' /> {kw} <X className='size-3' />
+  1701→                            </Badge>
+  1702→                          ))}
+  1703→                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-emerald-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setIncludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+  1704→                        </div>
+  1705→
+  1706→                        <div className="flex items-center gap-2">
+  1707→                          <ShieldAlert className="size-3.5 text-red-600 shrink-0" />
+  1708→                          <span className="text-xs font-medium text-muted-foreground">Must Exclude</span>
+  1709→                        </div>
+  1710→                        <div className='flex items-center gap-2 flex-wrap'>
+  1711→                          {excludeKeywords.map((kw, i) => (
+  1712→                            <Badge key={i} variant='outline' className='gap-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 cursor-pointer' onClick={() => setExcludeKeywords(prev => prev.filter((_, j) => j !== i))}>
+  1713→                              <ShieldAlert className='size-3' /> {kw} <X className='size-3' />
+  1714→                            </Badge>
+  1715→                          ))}
+  1716→                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-red-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setExcludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+  1717→                        </div>
+  1718→                      </div>
+  1719→                    </div>
+  1720→
+  1721→                    <Separator />
+  1722→
+  1723→                    {/* Boolean Mode + Sort */}
+  1724→                    <div className="grid gap-4 sm:grid-cols-2">
+  1725→                      <div className="space-y-2">
+  1726→                        <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+  1727→                        <Select value={sortBy} onValueChange={setSortBy}>
+  1728→                          <SelectTrigger className="w-full">
+  1729→                            <SelectValue placeholder="Relevance" />
+  1730→                          </SelectTrigger>
+  1731→                          <SelectContent>
+  1732→                            {SORT_OPTIONS.map((opt) => (
+  1733→                              <SelectItem key={opt.value} value={opt.value}>
+  1734→                                {opt.label}
+  1735→                              </SelectItem>
+  1736→                            ))}
+  1737→                          </SelectContent>
+  1738→                        </Select>
+  1739→                      </div>
+  1740→
+  1741→                      <div className="space-y-2">
+  1742→                        <label className="text-xs font-medium text-muted-foreground">Boolean Mode</label>
+  1743→                        <div className='flex items-center gap-2'>
+  1744→                          <div className='flex rounded-lg border p-0.5'>
+  1745→                            <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'OR' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('OR')}>OR</button>
+  1746→                            <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'AND' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('AND')}>AND</button>
+  1747→                          </div>
+  1748→                          <span className='text-[11px] text-muted-foreground'>{booleanMode === 'OR' ? 'Any keyword matches' : 'All keywords required'}</span>
+  1749→                        </div>
+  1750→                      </div>
+  1751→                    </div>
+  1752→
+  1753→                    {/* Multi-select Reference Type Filter */}
+  1754→                    <div className="space-y-2">
+  1755→                      <label className="text-xs font-medium text-muted-foreground">
+  1756→                        Reference Type
+  1757→                      </label>
+  1758→                      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
+  1759→                        {TYPE_FILTER_OPTIONS.map((opt) => {
+  1760→                          const config = opt.value !== 'all' ? getTypeConfig(opt.value) : null;
+  1761→                          const isChecked = selectedTypes.includes(opt.value);
+  1762→                          return (
+  1763→                            <label
+  1764→                              key={opt.value}
+  1765→                              className={cn(
+  1766→                                'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors',
+  1767→                                isChecked
+  1768→                                  ? opt.value === 'all'
+  1769→                                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+  1770→                                    : `${config?.borderColor} ${config?.bgColor}`
+  1771→                                  : 'border-border/60 hover:border-border'
+  1772→                              )}
+  1773→                              onClick={() => toggleTypeFilter(opt.value)}
+  1774→                            >
+  1775→                              <Checkbox
+  1776→                                checked={isChecked}
+  1777→                                className={cn(
+  1778→                                  'size-3.5 shrink-0',
+  1779→                                  isChecked && 'data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600'
+  1780→                                )}
+  1781→                                onCheckedChange={() => toggleTypeFilter(opt.value)}
+  1782→                              />
+  1783→                              {config ? (
+  1784→                                <span
+  1785→                                  className={cn('rounded-sm size-2 shrink-0', opt.value === 'all' ? 'bg-emerald-500' : '')}
+  1786→                                  style={config ? { backgroundColor: config.barColor } : undefined}
+  1787→                                />
+  1788→                              ) : null}
+  1789→                              <span className={cn(
+  1790→                                'font-medium truncate',
+  1791→                                isChecked
+  1792→                                  ? opt.value === 'all'
+  1793→                                    ? 'text-emerald-700 dark:text-emerald-300'
+  1794→                                    : config?.color
+  1795→                                  : 'text-muted-foreground'
+  1796→                              )}>
+  1797→                                {opt.label}
+  1798→                              </span>
+  1799→                            </label>
+  1800→                          );
+  1801→                        })}
+  1802→                      </div>
+  1803→                    </div>
+  1804→
+  1805→                    {/* Year range */}
+  1806→                    <div className="space-y-2">
+  1807→                      <label className="text-xs font-medium text-muted-foreground">
+  1808→                        Year Range: {yearRange[0]} – {yearRange[1]}
+  1809→                      </label>
+  1810→                      <Slider
+  1811→                        value={yearRange}
+  1812→                        onValueChange={setYearRange}
+  1813→                        min={2015}
+  1814→                        max={2025}
+  1815→                        step={1}
+  1816→                        className="[&_[data-slot=slider-range]]:bg-emerald-500 [&_[data-slot=slider-thumb]]:border-emerald-500"
+  1817→                      />
+  1818→                    </div>
+  1819→
+  1820→                    {/* Search within */}
+  1821→                    <div className="space-y-2">
+  1822→                      <label className="text-xs font-medium text-muted-foreground">
+  1823→                        Search Within Results
+  1824→                      </label>
+  1825→                      <div className="relative">
+  1826→                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+  1827→                        <Input
+  1828→                          placeholder="Search by title, author, journal..."
+  1829→                          value={searchText}
+  1830→                          onChange={(e) => setSearchText(e.target.value)}
+  1831→                          className="pl-9"
+  1832→                        />
+  1833→                      </div>
+  1834→                    </div>
+  1835→
+  1836→                    {/* Search with Criteria button + Filter result count */}
+  1837→                    <div className='flex items-center justify-between'>
+  1838→                      <div className="text-xs text-muted-foreground">
+  1839→                        Showing {filteredReferences.length} of {totalCount} references
+  1840→                      </div>
+  1841→                      <Button
+  1842→                        size='sm'
+  1843→                        variant='outline'
+  1844→                        onClick={handleSearch}
+  1845→                        disabled={isSearchingReferences}
+  1846→                        className='gap-1.5 text-xs h-7'
+  1847→                      >
+  1848→                        <Search className='size-3' />
+  1849→                        Search with Criteria
+  1850→                      </Button>
+  1851→                    </div>
+  1852→                  </CardContent>
+  1853→                </Card>
+  1854→              </motion.div>
+  1855→            )}
+  1856→          </AnimatePresence>
+  1857→
+  1858→          {/* Auto-Generated Boolean Keywords Panel */}
+  1859→          {generatedBoolean ? (
+  1860→            <motion.div
+  1861→              initial={{ opacity: 0, y: -8 }}
+  1862→              animate={{ opacity: 1, y: 0 }}
+  1863→              transition={{ duration: 0.4, delay: 0.05 }}
+  1864→            >
+  1865→              <Card className="border-violet-200 dark:border-violet-800">
+  1866→                <div className="flex items-center justify-between p-4">
+  1867→                  <div className="flex items-center gap-2">
+  1868→                    <div className="flex size-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40">
+  1869→                      <Brain className="size-3.5 text-violet-600" />
+  1870→                    </div>
+  1871→                    <div>
+  1872→                      <span className="text-sm font-medium">Auto-Generated Boolean Queries</span>
+  1873→                      <p className="text-[11px] text-muted-foreground">AI-optimized search queries with synonym expansion</p>
+  1874→                    </div>
+  1875→                  </div>
+  1876→                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300">
+  1877→                    Auto
+  1878→                  </Badge>
+  1879→                </div>
+  1880→                <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-3">
+  1881→                  {/* AND queries */}
+  1882→                  {generatedBoolean.booleanQueries?.and?.length > 0 && (
+  1883→                    <div className="space-y-1.5">
+  1884→                      <div className="flex items-center gap-1.5">
+  1885→                        <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">AND</span>
+  1886→                        <span className="text-[11px] text-muted-foreground">All terms required</span>
+  1887→                      </div>
+  1888→                      <div className="space-y-1">
+  1889→                        {generatedBoolean.booleanQueries.and.map((q: string, i: number) => (
+  1890→                          <div key={i} className="rounded border border-border/40 bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1891→                        ))}
+  1892→                      </div>
+  1893→                    </div>
+  1894→                  )}
+  1895→                  {/* OR queries */}
+  1896→                  {generatedBoolean.booleanQueries?.or?.length > 0 && (
+  1897→                    <div className="space-y-1.5">
+  1898→                      <div className="flex items-center gap-1.5">
+  1899→                        <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">OR</span>
+  1900→                        <span className="text-[11px] text-muted-foreground">Any term matches</span>
+  1901→                      </div>
+  1902→                      <div className="space-y-1">
+  1903→                        {generatedBoolean.booleanQueries.or.map((q: string, i: number) => (
+  1904→                          <div key={i} className="rounded border border-border/40 bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1905→                        ))}
+  1906→                      </div>
+  1907→                    </div>
+  1908→                  )}
+  1909→                  {/* Combined queries */}
+  1910→                  {generatedBoolean.booleanQueries?.combined?.length > 0 && (
+  1911→                    <div className="space-y-1.5">
+  1912→                      <div className="flex items-center gap-1.5">
+  1913→                        <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">COMBINED</span>
+  1914→                        <span className="text-[11px] text-muted-foreground">Complex Boolean - most precise</span>
+  1915→                      </div>
+  1916→                      <div className="space-y-1">
+  1917→                        {generatedBoolean.booleanQueries.combined.map((q: string, i: number) => (
+  1918→                          <div key={i} className="rounded border border-violet-200/40 bg-violet-50/40 dark:border-violet-800/40 dark:bg-violet-950/10 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1919→                        ))}
+  1920→                      </div>
+  1921→                    </div>
+  1922→                  )}
+  1923→                  {/* Expanded keywords */}
+  1924→                  {generatedBoolean.expandedKeywords?.length > 0 && (
+  1925→                    <div className="space-y-1.5">
+  1926→                      <div className="flex items-center gap-1.5">
+  1927→                        <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">EXPANDED</span>
+  1928→                        <span className="text-[11px] text-muted-foreground">AI-discovered related terms</span>
+  1929→                      </div>
+  1930→                      <div className="flex flex-wrap gap-1">
+  1931→                        {generatedBoolean.expandedKeywords.map((k: string, i: number) => (
+  1932→                          <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300">{k}</Badge>
+  1933→                        ))}
+  1934→                      </div>
+  1935→                    </div>
+  1936→                  )}
+  1937→                </div>
+  1938→              </Card>
+  1939→            </motion.div>
+  1940→          ) : null}
+  1941→
+  1942→          {/* Multi-Language Search Panel */}
+  1943→          <Card className="border-border/60">
+  1944→            <div className="flex items-center justify-between p-4">
+  1945→              <div className="flex items-center gap-2">
+  1946→                <div className="flex size-7 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/40">
+  1947→                  <Languages className="size-3.5 text-teal-600" />
+  1948→                </div>
+  1949→                <div>
+  1950→                  <span className="text-sm font-medium">5-Language Auto-Search</span>
+  1951→                  <p className="text-[11px] text-muted-foreground">Keywords and title auto-translated and searched in all 5 languages</p>
+  1952→                </div>
+  1953→              </div>
+  1954→              <Badge className="bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 gap-1 px-2.5 py-1 text-[10px]">
+  1955→                <Sparkles className="size-3" /> Auto
+  1956→              </Badge>
+  1957→            </div>
+  1958→            <div className="border-t border-border/40 px-4 pb-4 pt-3">
+  1959→              <div className="flex flex-wrap gap-2">
+  1960→                {[
+  1961→                  { name: 'English', code: 'en', flag: '🇬🇧', desc: 'International standard' },
+  1962→                  { name: 'Chinese', code: 'zh', flag: '🇨🇳', desc: '#1 Scopus output' },
+  1963→                  { name: 'Spanish', code: 'es', flag: '🇪🇸', desc: 'Growing Q1-Q4' },
+  1964→                  { name: 'German', code: 'de', flag: '🇩🇪', desc: 'Top 3 research' },
+  1965→                  { name: 'French', code: 'fr', flag: '🇫🇷', desc: 'Major output' },
+  1966→                ].map((lang) => {
+  1967→                  const isActive = searchLanguages.includes(lang.name);
+  1968→                  return (
+  1969→                    <div
+  1970→                      key={lang.code}
+  1971→                      className={cn(
+  1972→                        'flex items-center gap-1.5 rounded-lg border px-3 py-2 transition-colors',
+  1973→                        isActive
+  1974→                          ? 'border-teal-200 bg-teal-50/60 dark:border-teal-800 dark:bg-teal-950/20'
+  1975→                          : 'border-border/40 opacity-50'
+  1976→                      )}
+  1977→                    >
+  1978→                      <span className="text-base leading-none">{lang.flag}</span>
+  1979→                      <div className="flex flex-col">
+  1980→                        <span className={cn(
+  1981→                          'text-xs font-medium',
+  1982→                          isActive ? 'text-teal-700 dark:text-teal-300' : 'text-muted-foreground'
+  1983→                        )}>{lang.name}</span>
+  1984→                        <span className="text-[9px] text-muted-foreground">{lang.desc}</span>
+  1985→                      </div>
+  1986→                      {isActive && (
+  1987→                        <CheckSquare className="size-3 text-teal-600 shrink-0 ml-1" />
+  1988→                      )}
+  1989→                    </div>
+  1990→                  );
+  1991→                })}
+  1992→              </div>
+  1993→              <p className="mt-3 text-[11px] text-muted-foreground">
+  1994→                <Globe className="inline size-3 mr-1" />
+  1995→                Searching with: original keywords + Boolean queries + translated title variants across all active languages
+  1996→              </p>
+  1997→            </div>
+  1998→          </Card>
+  1999→
+  2000→          {/* ─── Reference List ─── */}
+
+[showing lines 1-2000 of 2307; use offset=2001 with limit to continue reading]

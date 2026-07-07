@@ -1,0 +1,813 @@
+  1495→            )}
+  1496→
+  1497→            {/* Phase 3: Database search */}
+  1498→            {isSearchingReferences && (
+  1499→              <>
+  1500→                <div className="flex items-center gap-3">
+  1501→                  <div className="flex size-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+  1502→                    <Database className="size-3.5 text-emerald-600 animate-pulse" />
+  1503→                  </div>
+  1504→                  <div className="flex-1">
+  1505→                    <p className="font-medium text-sm">
+  1506→                      Searching 11 academic databases with all query variants...
+  1507→                    </p>
+  1508→                    <p className="text-xs text-muted-foreground">
+  1509→                      Original keywords + Boolean queries + title in 5 languages
+  1510→                    </p>
+  1511→                  </div>
+  1512→                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300 shrink-0">
+  1513→                    Phase 3/3
+  1514→                  </Badge>
+  1515→                </div>
+  1516→                <Progress value={referenceSearchProgress} className="h-2 [&>div]:bg-emerald-500" />
+  1517→                <p className="text-right text-xs text-muted-foreground tabular-nums">
+  1518→                  {Math.round(referenceSearchProgress)}%
+  1519→                </p>
+  1520→
+  1521→                {/* Animated database list */}
+  1522→                <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+  1523→                  <p className="mb-2 text-[11px] font-medium text-muted-foreground">
+  1524→                    <Database className="mr-1 inline size-3" />
+  1525→                    Searching databases:
+  1526→                  </p>
+  1527→                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+  1528→                    {SEARCH_DATABASES.map((db, i) => (
+  1529→                      <motion.div
+  1530→                        key={db}
+  1531→                        initial={{ opacity: 0, x: -8 }}
+  1532→                        animate={
+  1533→                          i < searchedDatabaseCount
+  1534→                            ? { opacity: 1, x: 0 }
+  1535→                            : { opacity: 0.2, x: 0 }
+  1536→                        }
+  1537→                        transition={{ duration: 0.3, delay: 0.05 }}
+  1538→                        className="flex items-center gap-1.5 text-xs"
+  1539→                      >
+  1540→                        {i < searchedDatabaseCount ? (
+  1541→                          <motion.span
+  1542→                            initial={{ scale: 0 }}
+  1543→                            animate={{ scale: 1 }}
+  1544→                            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+  1545→                            className="size-1.5 rounded-full bg-emerald-500"
+  1546→                          />
+  1547→                        ) : (
+  1548→                          <Loader2 className="size-2.5 animate-spin text-muted-foreground/40" />
+  1549→                        )}
+  1550→                        <span
+  1551→                          className={cn(
+  1552→                            'text-muted-foreground',
+  1553→                            i < searchedDatabaseCount && 'text-foreground font-medium'
+  1554→                          )}
+  1555→                        >
+  1556→                          {db}
+  1557→                        </span>
+  1558→                      </motion.div>
+  1559→                    ))}
+  1560→                  </div>
+  1561→                </div>
+  1562→
+  1563→                <div className="space-y-2">
+  1564→                  <ReferenceSkeleton />
+  1565→                  <ReferenceSkeleton />
+  1566→                  <ReferenceSkeleton />
+  1567→                </div>
+  1568→              </>
+  1569→            )}
+  1570→          </CardContent>
+  1571→        </Card>
+  1572→      )}
+  1573→
+  1574→      {/* ─── Results section (only show after search) ─── */}
+  1575→      {hasResults && (
+  1576→        <>
+  1577→          {/* Real Data Success Banner */}
+  1578→          {isRealData && (
+  1579→            <motion.div
+  1580→              initial={{ opacity: 0, y: -8 }}
+  1581→              animate={{ opacity: 1, y: 0 }}
+  1582→              transition={{ duration: 0.4, delay: 0.05 }}
+  1583→              className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/40 dark:bg-emerald-950/20"
+  1584→            >
+  1585→              <span className="text-base leading-none">✅</span>
+  1586→              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+  1587→                All references are verified from real academic databases. DOIs link to actual papers.
+  1588→              </p>
+  1589→            </motion.div>
+  1590→          )}
+  1591→
+  1592→          {/* Reference Type Distribution Bar */}
+  1593→          <TypeDistributionBar references={references} />
+  1594→
+  1595→          {/* Drag Selection Hint */}
+  1596→          <motion.div
+  1597→            initial={{ opacity: 0, y: -4 }}
+  1598→            animate={{ opacity: 1, y: 0 }}
+  1599→            transition={{ delay: 0.3 }}
+  1600→          >
+  1601→            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2 dark:border-blue-800/40 dark:bg-blue-950/20">
+  1602→              <Tooltip>
+  1603→                <TooltipTrigger asChild>
+  1604→                  <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+  1605→                    <Lightbulb className="size-3.5 shrink-0" />
+  1606→                    <span>
+  1607→                      <strong>Tip:</strong> Click a card to view details, or use the checkbox to select directly
+  1608→                    </span>
+  1609→                    <MousePointerClick className="size-3 shrink-0" />
+  1610→                  </div>
+  1611→                </TooltipTrigger>
+  1612→                <TooltipContent side="bottom" className="max-w-xs text-xs">
+  1613→                  <p>Click a reference card to view full details. Use the checkbox to select/deselect.</p>
+  1614→                </TooltipContent>
+  1615→              </Tooltip>
+  1616→            </div>
+  1617→          </motion.div>
+  1618→
+  1619→          {/* Search again + filter toggle */}
+  1620→          <div className="flex flex-wrap items-center gap-2">
+  1621→            <Button
+  1622→              variant="outline"
+  1623→              size="sm"
+  1624→              onClick={handleSearch}
+  1625→              disabled={isSearchingReferences}
+  1626→            >
+  1627→              {isSearchingReferences ? (
+  1628→                <Loader2 className="size-4 animate-spin" />
+  1629→              ) : (
+  1630→                <Search className="size-4" />
+  1631→              )}
+  1632→              Search Again
+  1633→            </Button>
+  1634→            {/* On mobile: show "Refine" button, on desktop: show "Filters" with toggle */}
+  1635→            <Button
+  1636→              variant="outline"
+  1637→              size="sm"
+  1638→              onClick={() => setShowFilters((v) => !v)}
+  1639→              className={cn(
+  1640→                'sm:hidden',
+  1641→                showFilters && 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+  1642→              )}
+  1643→            >
+  1644→              <Filter className="size-4" />
+  1645→              Refine
+  1646→              <ChevronDown
+  1647→                className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
+  1648→              />
+  1649→            </Button>
+  1650→            <Button
+  1651→              variant="outline"
+  1652→              size="sm"
+  1653→              onClick={() => setShowFilters((v) => !v)}
+  1654→              className={cn(
+  1655→                'hidden sm:inline-flex',
+  1656→                showFilters && 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+  1657→              )}
+  1658→            >
+  1659→              <Filter className="size-4" />
+  1660→              Filters
+  1661→              <ChevronDown
+  1662→                className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
+  1663→              />
+  1664→            </Button>
+  1665→            <div className="ml-auto flex items-center gap-2">
+  1666→              <Button variant="ghost" size="sm" onClick={handleSelectAll} className="text-xs">
+  1667→                <CheckSquare className="size-3.5" />
+  1668→                Select All
+  1669→              </Button>
+  1670→              <Button variant="ghost" size="sm" onClick={deselectAllReferences} className="text-xs">
+  1671→                <Square className="size-3.5" />
+  1672→                Deselect All
+  1673→              </Button>
+  1674→            </div>
+  1675→          </div>
+  1676→
+  1677→          {/* Filter panel - animated slide down */}
+  1678→          <AnimatePresence>
+  1679→            {showFilters && (
+  1680→              <motion.div
+  1681→                initial={{ height: 0, opacity: 0 }}
+  1682→                animate={{ height: 'auto', opacity: 1 }}
+  1683→                exit={{ height: 0, opacity: 0 }}
+  1684→                transition={{ duration: 0.3, ease: 'easeInOut' }}
+  1685→                className="overflow-hidden"
+  1686→              >
+  1687→                <Card className="border-border/60">
+  1688→                  <CardContent className="space-y-5 p-4">
+  1689→                    {/* Include/Exclude Keywords */}
+  1690→                    <div className="space-y-3">
+  1691→                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Keyword Criteria</label>
+  1692→                      <div className="space-y-2">
+  1693→                        <div className="flex items-center gap-2">
+  1694→                          <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
+  1695→                          <span className="text-xs font-medium text-muted-foreground">Must Include</span>
+  1696→                        </div>
+  1697→                        <div className='flex items-center gap-2 flex-wrap'>
+  1698→                          {includeKeywords.map((kw, i) => (
+  1699→                            <Badge key={i} variant='outline' className='gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 cursor-pointer' onClick={() => setIncludeKeywords(prev => prev.filter((_, j) => j !== i))}>
+  1700→                              <ShieldCheck className='size-3' /> {kw} <X className='size-3' />
+  1701→                            </Badge>
+  1702→                          ))}
+  1703→                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-emerald-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setIncludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+  1704→                        </div>
+  1705→
+  1706→                        <div className="flex items-center gap-2">
+  1707→                          <ShieldAlert className="size-3.5 text-red-600 shrink-0" />
+  1708→                          <span className="text-xs font-medium text-muted-foreground">Must Exclude</span>
+  1709→                        </div>
+  1710→                        <div className='flex items-center gap-2 flex-wrap'>
+  1711→                          {excludeKeywords.map((kw, i) => (
+  1712→                            <Badge key={i} variant='outline' className='gap-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 cursor-pointer' onClick={() => setExcludeKeywords(prev => prev.filter((_, j) => j !== i))}>
+  1713→                              <ShieldAlert className='size-3' /> {kw} <X className='size-3' />
+  1714→                            </Badge>
+  1715→                          ))}
+  1716→                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-red-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setExcludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+  1717→                        </div>
+  1718→                      </div>
+  1719→                    </div>
+  1720→
+  1721→                    <Separator />
+  1722→
+  1723→                    {/* Boolean Mode + Sort */}
+  1724→                    <div className="grid gap-4 sm:grid-cols-2">
+  1725→                      <div className="space-y-2">
+  1726→                        <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+  1727→                        <Select value={sortBy} onValueChange={setSortBy}>
+  1728→                          <SelectTrigger className="w-full">
+  1729→                            <SelectValue placeholder="Relevance" />
+  1730→                          </SelectTrigger>
+  1731→                          <SelectContent>
+  1732→                            {SORT_OPTIONS.map((opt) => (
+  1733→                              <SelectItem key={opt.value} value={opt.value}>
+  1734→                                {opt.label}
+  1735→                              </SelectItem>
+  1736→                            ))}
+  1737→                          </SelectContent>
+  1738→                        </Select>
+  1739→                      </div>
+  1740→
+  1741→                      <div className="space-y-2">
+  1742→                        <label className="text-xs font-medium text-muted-foreground">Boolean Mode</label>
+  1743→                        <div className='flex items-center gap-2'>
+  1744→                          <div className='flex rounded-lg border p-0.5'>
+  1745→                            <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'OR' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('OR')}>OR</button>
+  1746→                            <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'AND' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('AND')}>AND</button>
+  1747→                          </div>
+  1748→                          <span className='text-[11px] text-muted-foreground'>{booleanMode === 'OR' ? 'Any keyword matches' : 'All keywords required'}</span>
+  1749→                        </div>
+  1750→                      </div>
+  1751→                    </div>
+  1752→
+  1753→                    {/* Multi-select Reference Type Filter */}
+  1754→                    <div className="space-y-2">
+  1755→                      <label className="text-xs font-medium text-muted-foreground">
+  1756→                        Reference Type
+  1757→                      </label>
+  1758→                      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
+  1759→                        {TYPE_FILTER_OPTIONS.map((opt) => {
+  1760→                          const config = opt.value !== 'all' ? getTypeConfig(opt.value) : null;
+  1761→                          const isChecked = selectedTypes.includes(opt.value);
+  1762→                          return (
+  1763→                            <label
+  1764→                              key={opt.value}
+  1765→                              className={cn(
+  1766→                                'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors',
+  1767→                                isChecked
+  1768→                                  ? opt.value === 'all'
+  1769→                                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+  1770→                                    : `${config?.borderColor} ${config?.bgColor}`
+  1771→                                  : 'border-border/60 hover:border-border'
+  1772→                              )}
+  1773→                              onClick={() => toggleTypeFilter(opt.value)}
+  1774→                            >
+  1775→                              <Checkbox
+  1776→                                checked={isChecked}
+  1777→                                className={cn(
+  1778→                                  'size-3.5 shrink-0',
+  1779→                                  isChecked && 'data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600'
+  1780→                                )}
+  1781→                                onCheckedChange={() => toggleTypeFilter(opt.value)}
+  1782→                              />
+  1783→                              {config ? (
+  1784→                                <span
+  1785→                                  className={cn('rounded-sm size-2 shrink-0', opt.value === 'all' ? 'bg-emerald-500' : '')}
+  1786→                                  style={config ? { backgroundColor: config.barColor } : undefined}
+  1787→                                />
+  1788→                              ) : null}
+  1789→                              <span className={cn(
+  1790→                                'font-medium truncate',
+  1791→                                isChecked
+  1792→                                  ? opt.value === 'all'
+  1793→                                    ? 'text-emerald-700 dark:text-emerald-300'
+  1794→                                    : config?.color
+  1795→                                  : 'text-muted-foreground'
+  1796→                              )}>
+  1797→                                {opt.label}
+  1798→                              </span>
+  1799→                            </label>
+  1800→                          );
+  1801→                        })}
+  1802→                      </div>
+  1803→                    </div>
+  1804→
+  1805→                    {/* Year range */}
+  1806→                    <div className="space-y-2">
+  1807→                      <label className="text-xs font-medium text-muted-foreground">
+  1808→                        Year Range: {yearRange[0]} – {yearRange[1]}
+  1809→                      </label>
+  1810→                      <Slider
+  1811→                        value={yearRange}
+  1812→                        onValueChange={setYearRange}
+  1813→                        min={2015}
+  1814→                        max={2025}
+  1815→                        step={1}
+  1816→                        className="[&_[data-slot=slider-range]]:bg-emerald-500 [&_[data-slot=slider-thumb]]:border-emerald-500"
+  1817→                      />
+  1818→                    </div>
+  1819→
+  1820→                    {/* Search within */}
+  1821→                    <div className="space-y-2">
+  1822→                      <label className="text-xs font-medium text-muted-foreground">
+  1823→                        Search Within Results
+  1824→                      </label>
+  1825→                      <div className="relative">
+  1826→                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+  1827→                        <Input
+  1828→                          placeholder="Search by title, author, journal..."
+  1829→                          value={searchText}
+  1830→                          onChange={(e) => setSearchText(e.target.value)}
+  1831→                          className="pl-9"
+  1832→                        />
+  1833→                      </div>
+  1834→                    </div>
+  1835→
+  1836→                    {/* Search with Criteria button + Filter result count */}
+  1837→                    <div className='flex items-center justify-between'>
+  1838→                      <div className="text-xs text-muted-foreground">
+  1839→                        Showing {filteredReferences.length} of {totalCount} references
+  1840→                      </div>
+  1841→                      <Button
+  1842→                        size='sm'
+  1843→                        variant='outline'
+  1844→                        onClick={handleSearch}
+  1845→                        disabled={isSearchingReferences}
+  1846→                        className='gap-1.5 text-xs h-7'
+  1847→                      >
+  1848→                        <Search className='size-3' />
+  1849→                        Search with Criteria
+  1850→                      </Button>
+  1851→                    </div>
+  1852→                  </CardContent>
+  1853→                </Card>
+  1854→              </motion.div>
+  1855→            )}
+  1856→          </AnimatePresence>
+  1857→
+  1858→          {/* ─── Auto-Generated Boolean Keywords Panel ─── */
+  1859→          {generatedBoolean && (
+  1860→            <motion.div
+  1861→              initial={{ opacity: 0, y: -8 }}
+  1862→              animate={{ opacity: 1, y: 0 }}
+  1863→              transition={{ duration: 0.4, delay: 0.05 }}
+  1864→            >
+  1865→              <Card className="border-violet-200 dark:border-violet-800">
+  1866→                <div className="flex items-center justify-between p-4">
+  1867→                  <div className="flex items-center gap-2">
+  1868→                    <div className="flex size-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40">
+  1869→                      <Brain className="size-3.5 text-violet-600" />
+  1870→                    </div>
+  1871→                    <div>
+  1872→                      <span className="text-sm font-medium">Auto-Generated Boolean Queries</span>
+  1873→                      <p className="text-[11px] text-muted-foreground">AI-optimized search queries with synonym expansion</p>
+  1874→                    </div>
+  1875→                  </div>
+  1876→                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300">
+  1877→                    Auto
+  1878→                  </Badge>
+  1879→                </div>
+  1880→                <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-3">
+  1881→                  {/* AND queries */}
+  1882→                  {generatedBoolean.booleanQueries?.and?.length > 0 && (
+  1883→                    <div className="space-y-1.5">
+  1884→                      <div className="flex items-center gap-1.5">
+  1885→                        <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">AND</span>
+  1886→                        <span className="text-[11px] text-muted-foreground">All terms required</span>
+  1887→                      </div>
+  1888→                      <div className="space-y-1">
+  1889→                        {generatedBoolean.booleanQueries.and.map((q: string, i: number) => (
+  1890→                          <div key={i} className="rounded border border-border/40 bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1891→                        ))}
+  1892→                      </div>
+  1893→                    </div>
+  1894→                  )}
+  1895→                  {/* OR queries */}
+  1896→                  {generatedBoolean.booleanQueries?.or?.length > 0 && (
+  1897→                    <div className="space-y-1.5">
+  1898→                      <div className="flex items-center gap-1.5">
+  1899→                        <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">OR</span>
+  1900→                        <span className="text-[11px] text-muted-foreground">Any term matches</span>
+  1901→                      </div>
+  1902→                      <div className="space-y-1">
+  1903→                        {generatedBoolean.booleanQueries.or.map((q: string, i: number) => (
+  1904→                          <div key={i} className="rounded border border-border/40 bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1905→                        ))}
+  1906→                      </div>
+  1907→                    </div>
+  1908→                  )}
+  1909→                  {/* Combined queries */}
+  1910→                  {generatedBoolean.booleanQueries?.combined?.length > 0 && (
+  1911→                    <div className="space-y-1.5">
+  1912→                      <div className="flex items-center gap-1.5">
+  1913→                        <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">COMBINED</span>
+  1914→                        <span className="text-[11px] text-muted-foreground">Complex Boolean — most precise</span>
+  1915→                      </div>
+  1916→                      <div className="space-y-1">
+  1917→                        {generatedBoolean.booleanQueries.combined.map((q: string, i: number) => (
+  1918→                          <div key={i} className="rounded border border-violet-200/40 bg-violet-50/40 dark:border-violet-800/40 dark:bg-violet-950/10 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1919→                        ))}
+  1920→                      </div>
+  1921→                    </div>
+  1922→                  )}
+  1923→                  {/* Expanded keywords */}
+  1924→                  {generatedBoolean.expandedKeywords?.length > 0 && (
+  1925→                    <div className="space-y-1.5">
+  1926→                      <div className="flex items-center gap-1.5">
+  1927→                        <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">EXPANDED</span>
+  1928→                        <span className="text-[11px] text-muted-foreground">AI-discovered related terms</span>
+  1929→                      </div>
+  1930→                      <div className="flex flex-wrap gap-1">
+  1931→                        {generatedBoolean.expandedKeywords.map((k: string, i: number) => (
+  1932→                          <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300">{k}</Badge>
+  1933→                        ))}
+  1934→                      </div>
+  1935→                    </div>
+  1936→                  )}
+  1937→                </div>
+  1938→              </Card>
+  1939→            </motion.div>
+  1940→          )}
+  1941→
+  1942→          {/* ─── Multi-Language Search Panel ─── */}
+  1943→          <Card className="border-border/60">
+  1944→            <div className="flex items-center justify-between p-4">
+  1945→              <div className="flex items-center gap-2">
+  1946→                <div className="flex size-7 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/40">
+  1947→                  <Languages className="size-3.5 text-teal-600" />
+  1948→                </div>
+  1949→                <div>
+  1950→                  <span className="text-sm font-medium">5-Language Auto-Search</span>
+  1951→                  <p className="text-[11px] text-muted-foreground">Keywords & title auto-translated and searched in all 5 languages</p>
+  1952→                </div>
+  1953→              </div>
+  1954→              <Badge className="bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 gap-1 px-2.5 py-1 text-[10px]">
+  1955→                <Sparkles className="size-3" /> Auto
+  1956→              </Badge>
+  1957→            </div>
+  1958→            <div className="border-t border-border/40 px-4 pb-4 pt-3">
+  1959→              <div className="flex flex-wrap gap-2">
+  1960→                {[
+  1961→                  { name: 'English', code: 'en', flag: '🇬🇧', desc: 'International standard' },
+  1962→                  { name: 'Chinese', code: 'zh', flag: '🇨🇳', desc: '#1 Scopus output' },
+  1963→                  { name: 'Spanish', code: 'es', flag: '🇪🇸', desc: 'Growing Q1-Q4' },
+  1964→                  { name: 'German', code: 'de', flag: '🇩🇪', desc: 'Top 3 research' },
+  1965→                  { name: 'French', code: 'fr', flag: '🇫🇷', desc: 'Major output' },
+  1966→                ].map((lang) => {
+  1967→                  const isActive = searchLanguages.includes(lang.name);
+  1968→                  return (
+  1969→                    <div
+  1970→                      key={lang.code}
+  1971→                      className={cn(
+  1972→                        'flex items-center gap-1.5 rounded-lg border px-3 py-2 transition-colors',
+  1973→                        isActive
+  1974→                          ? 'border-teal-200 bg-teal-50/60 dark:border-teal-800 dark:bg-teal-950/20'
+  1975→                          : 'border-border/40 opacity-50'
+  1976→                      )}
+  1977→                    >
+  1978→                      <span className="text-base leading-none">{lang.flag}</span>
+  1979→                      <div className="flex flex-col">
+  1980→                        <span className={cn(
+  1981→                          'text-xs font-medium',
+  1982→                          isActive ? 'text-teal-700 dark:text-teal-300' : 'text-muted-foreground'
+  1983→                        )}>{lang.name}</span>
+  1984→                        <span className="text-[9px] text-muted-foreground">{lang.desc}</span>
+  1985→                      </div>
+  1986→                      {isActive && (
+  1987→                        <CheckSquare className="size-3 text-teal-600 shrink-0 ml-1" />
+  1988→                      )}
+  1989→                    </div>
+  1990→                  );
+  1991→                })}
+  1992→              </div>
+  1993→              <p className="mt-3 text-[11px] text-muted-foreground">
+  1994→                <Globe className="inline size-3 mr-1" />
+  1995→                Searching with: original keywords + Boolean queries + translated title variants across all active languages
+  1996→              </p>
+  1997→            </div>
+  1998→          </Card>
+  1999→
+  2000→          {/* ─── Reference List ─── */}
+  2001→          <div className="space-y-2">
+  2002→            {filteredReferences.length === 0 ? (
+  2003→              <Card className="border-dashed">
+  2004→                <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+  2005→                  <Search className="size-8 text-muted-foreground/40" />
+  2006→                  <p className="text-sm font-medium text-muted-foreground">No references match your filters</p>
+  2007→                  <p className="text-xs text-muted-foreground/70">
+  2008→                    Try adjusting the type, year range, or search text
+  2009→                  </p>
+  2010→                </CardContent>
+  2011→              </Card>
+  2012→            ) : (
+  2013→              <ScrollArea className="max-h-[600px] w-full">
+  2014→                <div className="space-y-2 pr-3">
+  2015→                  {filteredReferences.map((ref, index) => (
+  2016→                    <motion.div
+  2017→                      key={ref.id}
+  2018→                      initial={{ opacity: 0, y: 8 }}
+  2019→                      animate={{ opacity: 1, y: 0 }}
+  2020→                      transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.6) }}
+  2021→                      className="flex items-center gap-2"
+  2022→                    >
+  2023→                      <span className="shrink-0 text-[10px] font-medium text-muted-foreground/50 w-5 text-right tabular-nums">
+  2024→                        {index + 1}
+  2025→                      </span>
+  2026→                      <div className="flex-1">
+  2027→                        <ReferenceCard
+  2028→                          reference={ref}
+  2029→                          isExpanded={expandedIds.has(ref.id)}
+  2030→                          onToggleExpand={() => toggleExpand(ref.id)}
+  2031→                          onToggleSelect={() => toggleReference(ref.id)}
+  2032→                          onOpenDetail={() => handleOpenDetail(ref)}
+  2033→                        />
+  2034→                      </div>
+  2035→                    </motion.div>
+  2036→                  ))}
+  2037→                </div>
+  2038→              </ScrollArea>
+  2039→            )}
+  2040→          </div>
+  2041→
+  2042→          {/* ─── Theory Detection Panel ─── */}
+  2043→          <Collapsible open={!!theories}>
+  2044→            <Card className="border-border/60">
+  2045→              <div className="flex items-center justify-between p-4">
+  2046→                <div className="flex items-center gap-2">
+  2047→                  <Brain className="size-4 text-violet-600" />
+  2048→                  <span className="text-sm font-medium">Theory Detection</span>
+  2049→                  {theories && (
+  2050→                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300">
+  2051→                      {theories.dominantParadigm || 'Detected'}
+  2052→                    </Badge>
+  2053→                  )}
+  2054→                </div>
+  2055→                <Button
+  2056→                  size="sm"
+  2057→                  variant="outline"
+  2058→                  onClick={async () => {
+  2059→                    if (references.length === 0) return;
+  2060→                    setIsDetectingTheories(true);
+  2061→                    try {
+  2062→                      const postRes = await fetch('/api/references/detect-theories', {
+  2063→                        method: 'POST',
+  2064→                        headers: { 'Content-Type': 'application/json' },
+  2065→                        body: JSON.stringify({
+  2066→                          references: references.slice(0, 30).map((r) => ({
+  2067→                            title: r.title,
+  2068→                            abstract: r.abstract,
+  2069→                            year: r.year,
+  2070→                            authors: r.authors,
+  2071→                          })),
+  2072→                        }),
+  2073→                      });
+  2074→                      if (!postRes.ok) throw new Error('Failed to start theory detection');
+  2075→                      const postData = await postRes.json();
+  2076→                      if (!postData.success || !postData.jobId) throw new Error('Invalid response');
+  2077→
+  2078→                      const pollResult = await new Promise<any>((resolve, reject) => {
+  2079→                        const pInterval = setInterval(async () => {
+  2080→                          try {
+  2081→                            const pRes = await fetch(`/api/references/detect-theories?jobId=${postData.jobId}`);
+  2082→                            const pData = await pRes.json();
+  2083→                            if (pData.status === 'done' && pData.result) {
+  2084→                              clearInterval(pInterval);
+  2085→                              resolve(pData.result);
+  2086→                            } else if (pData.status === 'error') {
+  2087→                              clearInterval(pInterval);
+  2088→                              reject(new Error(pData.error || 'Theory detection failed'));
+  2089→                            }
+  2090→                          } catch { /* continue */ }
+  2091→                        }, 2000);
+  2092→                        setTimeout(() => { clearInterval(pInterval); reject(new Error('Theory detection timed out')); }, 90_000);
+  2093→                      });
+  2094→
+  2095→                      setTheories(pollResult);
+  2096→                      toast.success('Theory detection complete');
+  2097→                    } catch {
+  2098→                      toast.error('Theory detection failed. Please try again.');
+  2099→                    } finally {
+  2100→                      setIsDetectingTheories(false);
+  2101→                    }
+  2102→                  }}
+  2103→                  disabled={references.length === 0 || isDetectingTheories}
+  2104→                  className="gap-1.5 text-xs h-7"
+  2105→                >
+  2106→                  {isDetectingTheories ? (
+  2107→                    <Loader2 className="size-3.5 animate-spin" />
+  2108→                  ) : (
+  2109→                    <FlaskConical className="size-3.5" />
+  2110→                  )}
+  2111→                  {theories ? 'Re-detect Theories' : 'Detect Theories'}
+  2112→                </Button>
+  2113→              </div>
+  2114→
+  2115→              <CollapsibleContent>
+  2116→                {isDetectingTheories ? (
+  2117→                  <div className="px-4 pb-4">
+  2118→                    <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
+  2119→                      <Loader2 className="size-4 animate-spin text-violet-600" />
+  2120→                      <span className="text-xs text-muted-foreground">Analyzing theoretical frameworks across references...</span>
+  2121→                    </div>
+  2122→                  </div>
+  2123→                ) : theories ? (
+  2124→                  <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-4">
+  2125→                    {/* Dominant Paradigm + Maturity */}
+  2126→                    <div className="flex flex-wrap items-center gap-2">
+  2127→                      {theories.dominantParadigm && (
+  2128→                        <Badge className="bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800 gap-1 px-2.5 py-1">
+  2129→                          <BookMarked className="size-3" />
+  2130→                          Paradigm: {theories.dominantParadigm}
+  2131→                        </Badge>
+  2132→                      )}
+  2133→                      {theories.theoreticalMaturity && (
+  2134→                        <Badge className="bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 gap-1 px-2.5 py-1">
+  2135→                          <Eye className="size-3" />
+  2136→                          Maturity: {theories.theoreticalMaturity}
+  2137→                        </Badge>
+  2138→                      )}
+  2139→                    </div>
+  2140→
+  2141→                    {/* Grand Theories */}
+  2142→                    {theories.grandTheories && theories.grandTheories.length > 0 && (
+  2143→                      <div className="space-y-2">
+  2144→                        <div className="flex items-center gap-1.5">
+  2145→                          <span className="inline-flex items-center rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+  2146→                            Grand Theories
+  2147→                          </span>
+  2148→                          <span className="text-[11px] text-muted-foreground">({theories.grandTheories.length})</span>
+  2149→                        </div>
+  2150→                        <div className="space-y-1.5">
+  2151→                          {theories.grandTheories.map((t: any, i: number) => (
+  2152→                            <div key={i} className="rounded-md border border-border/40 bg-muted/20 p-2.5 space-y-1">
+  2153→                              <p className="text-xs font-semibold text-foreground">{t.name}</p>
+  2154→                              <p className="text-[11px] text-muted-foreground leading-relaxed">{t.description}</p>
+  2155→                              {t.sourceRefs && t.sourceRefs.length > 0 && (
+  2156→                                <p className="text-[10px] text-muted-foreground/70">Sources: {t.sourceRefs.join(', ')}</p>
+  2157→                              )}
+  2158→                            </div>
+  2159→                          ))}
+  2160→                        </div>
+  2161→                      </div>
+  2162→                    )}
+  2163→
+  2164→                    {/* Middle-Range Theories */}
+  2165→                    {theories.middleRangeTheories && theories.middleRangeTheories.length > 0 && (
+  2166→                      <div className="space-y-2">
+  2167→                        <div className="flex items-center gap-1.5">
+  2168→                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+  2169→                            Middle-Range Theories
+  2170→                          </span>
+  2171→                          <span className="text-[11px] text-muted-foreground">({theories.middleRangeTheories.length})</span>
+  2172→                        </div>
+  2173→                        <div className="space-y-1.5">
+  2174→                          {theories.middleRangeTheories.map((t: any, i: number) => (
+  2175→                            <div key={i} className="rounded-md border border-border/40 bg-muted/20 p-2.5 space-y-1">
+  2176→                              <p className="text-xs font-semibold text-foreground">{t.name}</p>
+  2177→                              <p className="text-[11px] text-muted-foreground leading-relaxed">{t.description}</p>
+  2178→                              {t.sourceRefs && t.sourceRefs.length > 0 && (
+  2179→                                <p className="text-[10px] text-muted-foreground/70">Sources: {t.sourceRefs.join(', ')}</p>
+  2180→                              )}
+  2181→                            </div>
+  2182→                          ))}
+  2183→                        </div>
+  2184→                      </div>
+  2185→                    )}
+  2186→
+  2187→                    {/* Applied Theories */}
+  2188→                    {theories.appliedTheories && theories.appliedTheories.length > 0 && (
+  2189→                      <div className="space-y-2">
+  2190→                        <div className="flex items-center gap-1.5">
+  2191→                          <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+  2192→                            Applied Theories
+  2193→                          </span>
+  2194→                          <span className="text-[11px] text-muted-foreground">({theories.appliedTheories.length})</span>
+  2195→                        </div>
+  2196→                        <div className="space-y-1.5">
+  2197→                          {theories.appliedTheories.map((t: any, i: number) => (
+  2198→                            <div key={i} className="rounded-md border border-border/40 bg-muted/20 p-2.5 space-y-1">
+  2199→                              <p className="text-xs font-semibold text-foreground">{t.name}</p>
+  2200→                              <p className="text-[11px] text-muted-foreground leading-relaxed">{t.description}</p>
+  2201→                              {t.sourceRefs && t.sourceRefs.length > 0 && (
+  2202→                                <p className="text-[10px] text-muted-foreground/70">Sources: {t.sourceRefs.join(', ')}</p>
+  2203→                              )}
+  2204→                            </div>
+  2205→                          ))}
+  2206→                        </div>
+  2207→                      </div>
+  2208→                    )}
+  2209→
+  2210→                    {/* Theoretical Gaps */}
+  2211→                    {theories.theoreticalGaps && theories.theoreticalGaps.length > 0 && (
+  2212→                      <div className="space-y-2">
+  2213→                        <div className="flex items-center gap-1.5">
+  2214→                          <AlertTriangle className="size-3.5 text-amber-500" />
+  2215→                          <span className="text-xs font-semibold text-foreground">Theoretical Gaps</span>
+  2216→                        </div>
+  2217→                        <ul className="space-y-1">
+  2218→                          {theories.theoreticalGaps.map((gap: string, i: number) => (
+  2219→                            <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
+  2220→                              <span className="mt-0.5 size-1 rounded-full bg-amber-400 shrink-0" />
+  2221→                              {gap}
+  2222→                            </li>
+  2223→                          ))}
+  2224→                        </ul>
+  2225→                      </div>
+  2226→                    )}
+  2227→                  </div>
+  2228→                ) : null}
+  2229→              </CollapsibleContent>
+  2230→            </Card>
+  2231→          </Collapsible>
+  2232→        </>
+  2233→      )}
+  2234→
+  2235→      {/* ─── Bottom Bar (sticky) ─── */}
+  2236→      {hasResults && (
+  2237→        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/80 backdrop-blur-lg">
+  2238→          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 sm:px-6">
+  2239→            <div className="flex items-center gap-3">
+  2240→              <div className="flex items-center gap-2">
+  2241→                <div
+  2242→                  className={cn(
+  2243→                    'flex size-8 items-center justify-center rounded-full text-xs font-bold text-white',
+  2244→                    selectedCount >= 5
+  2245→                      ? 'bg-emerald-600'
+  2246→                      : selectedCount > 0
+  2247→                        ? 'bg-amber-500'
+  2248→                        : 'bg-muted-foreground/30'
+  2249→                  )}
+  2250→                >
+  2251→                  {selectedCount}
+  2252→                </div>
+  2253→                <div>
+  2254→                  <p className="text-sm font-medium leading-tight">
+  2255→                    {selectedCount} reference{selectedCount !== 1 ? 's' : ''} selected
+  2256→                  </p>
+  2257→                  <p className="text-[11px] text-muted-foreground">
+  2258→                    {selectedCount < 5
+  2259→                      ? `Select at least ${5 - selectedCount} more to proceed`
+  2260→                      : 'Ready to proceed'}
+  2261→                  </p>
+  2262→                </div>
+  2263→              </div>
+  2264→            </div>
+  2265→            <div className="flex items-center gap-2">
+  2266→              <Button
+  2267→                variant="outline"
+  2268→                size="sm"
+  2269→                onClick={handleSearch}
+  2270→                disabled={isSearchingReferences}
+  2271→                className="hidden sm:inline-flex"
+  2272→              >
+  2273→                <Search className="size-4" />
+  2274→                Search More
+  2275→              </Button>
+  2276→              <Button
+  2277→                size="sm"
+  2278→                onClick={nextStep}
+  2279→                disabled={selectedCount < 5}
+  2280→                className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40"
+  2281→              >
+  2282→                Proceed to Method Selection
+  2283→                <ArrowRight className="size-4" />
+  2284→              </Button>
+  2285→            </div>
+  2286→          </div>
+  2287→        </div>
+  2288→      )}
+  2289→      {/* ─── Reference Detail Modal ─── */}
+  2290→      {detailReference && (
+  2291→        <ReferenceDetailModal
+  2292→          reference={detailReference}
+  2293→          open={detailOpen}
+  2294→          onOpenChange={(open) => {
+  2295→            setDetailOpen(open);
+  2296→            if (!open) setDetailReference(null);
+  2297→          }}
+  2298→          onToggleSelect={() => {
+  2299→            if (detailReference) {
+  2300→              toggleReference(detailReference.id);
+  2301→            }
+  2302→          }}
+  2303→        />
+  2304→      )}
+  2305→    </div>
+  2306→  );
+  2307→}

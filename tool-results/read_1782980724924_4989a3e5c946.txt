@@ -1,0 +1,502 @@
+  1501→              </div>
+  1502→            )}
+  1503→
+  1504→            {/* Phase 3: Database search */}
+  1505→            {isSearchingReferences && (
+  1506→              <>
+  1507→                <div className="flex items-center gap-3">
+  1508→                  <div className="flex size-7 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+  1509→                    <Database className="size-3.5 text-emerald-600 animate-pulse" />
+  1510→                  </div>
+  1511→                  <div className="flex-1">
+  1512→                    <p className="font-medium text-sm">
+  1513→                      {searchStatusMessage || 'Searching 11 academic databases with all query variants...'}
+  1514→                    </p>
+  1515→                    <p className="text-xs text-muted-foreground">
+  1516→                      Original keywords + Boolean queries + title in 5 languages
+  1517→                    </p>
+  1518→                  </div>
+  1519→                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300 shrink-0">
+  1520→                    Phase 3/3
+  1521→                  </Badge>
+  1522→                </div>
+  1523→                <Progress value={referenceSearchProgress} className="h-2 [&>div]:bg-emerald-500" />
+  1524→                <p className="text-right text-xs text-muted-foreground tabular-nums">
+  1525→                  {Math.round(referenceSearchProgress)}%
+  1526→                </p>
+  1527→
+  1528→                {/* Animated database list */}
+  1529→                <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+  1530→                  <p className="mb-2 text-[11px] font-medium text-muted-foreground">
+  1531→                    <Database className="mr-1 inline size-3" />
+  1532→                    Searching databases:
+  1533→                  </p>
+  1534→                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+  1535→                    {SEARCH_DATABASES.map((db, i) => (
+  1536→                      <motion.div
+  1537→                        key={db}
+  1538→                        initial={{ opacity: 0, x: -8 }}
+  1539→                        animate={
+  1540→                          i < searchedDatabaseCount
+  1541→                            ? { opacity: 1, x: 0 }
+  1542→                            : { opacity: 0.2, x: 0 }
+  1543→                        }
+  1544→                        transition={{ duration: 0.3, delay: 0.05 }}
+  1545→                        className="flex items-center gap-1.5 text-xs"
+  1546→                      >
+  1547→                        {i < searchedDatabaseCount ? (
+  1548→                          <motion.span
+  1549→                            initial={{ scale: 0 }}
+  1550→                            animate={{ scale: 1 }}
+  1551→                            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+  1552→                            className="size-1.5 rounded-full bg-emerald-500"
+  1553→                          />
+  1554→                        ) : (
+  1555→                          <Loader2 className="size-2.5 animate-spin text-muted-foreground/40" />
+  1556→                        )}
+  1557→                        <span
+  1558→                          className={cn(
+  1559→                            'text-muted-foreground',
+  1560→                            i < searchedDatabaseCount && 'text-foreground font-medium'
+  1561→                          )}
+  1562→                        >
+  1563→                          {db}
+  1564→                        </span>
+  1565→                      </motion.div>
+  1566→                    ))}
+  1567→                  </div>
+  1568→                </div>
+  1569→
+  1570→                <div className="space-y-2">
+  1571→                  <ReferenceSkeleton />
+  1572→                  <ReferenceSkeleton />
+  1573→                  <ReferenceSkeleton />
+  1574→                </div>
+  1575→              </>
+  1576→            )}
+  1577→          </CardContent>
+  1578→        </Card>
+  1579→      )}
+  1580→
+  1581→      {/* ─── Results section (only show after search) ─── */}
+  1582→      {hasResults && (
+  1583→        <>
+  1584→          {/* Real Data Success Banner */}
+  1585→          {isRealData && (
+  1586→            <motion.div
+  1587→              initial={{ opacity: 0, y: -8 }}
+  1588→              animate={{ opacity: 1, y: 0 }}
+  1589→              transition={{ duration: 0.4, delay: 0.05 }}
+  1590→              className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/40 dark:bg-emerald-950/20"
+  1591→            >
+  1592→              <span className="text-base leading-none">✅</span>
+  1593→              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+  1594→                All references are verified from real academic databases. DOIs link to actual papers.
+  1595→              </p>
+  1596→            </motion.div>
+  1597→          )}
+  1598→
+  1599→          {/* Reference Type Distribution Bar */}
+  1600→          <TypeDistributionBar references={references} />
+  1601→
+  1602→          {/* Drag Selection Hint */}
+  1603→          <motion.div
+  1604→            initial={{ opacity: 0, y: -4 }}
+  1605→            animate={{ opacity: 1, y: 0 }}
+  1606→            transition={{ delay: 0.3 }}
+  1607→          >
+  1608→            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50/60 px-3 py-2 dark:border-blue-800/40 dark:bg-blue-950/20">
+  1609→              <Tooltip>
+  1610→                <TooltipTrigger asChild>
+  1611→                  <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
+  1612→                    <Lightbulb className="size-3.5 shrink-0" />
+  1613→                    <span>
+  1614→                      <strong>Tip:</strong> Click a card to view details, or use the checkbox to select directly
+  1615→                    </span>
+  1616→                    <MousePointerClick className="size-3 shrink-0" />
+  1617→                  </div>
+  1618→                </TooltipTrigger>
+  1619→                <TooltipContent side="bottom" className="max-w-xs text-xs">
+  1620→                  <p>Click a reference card to view full details. Use the checkbox to select/deselect.</p>
+  1621→                </TooltipContent>
+  1622→              </Tooltip>
+  1623→            </div>
+  1624→          </motion.div>
+  1625→
+  1626→          {/* Search again + filter toggle */}
+  1627→          <div className="flex flex-wrap items-center gap-2">
+  1628→            <Button
+  1629→              variant="outline"
+  1630→              size="sm"
+  1631→              onClick={handleSearch}
+  1632→              disabled={isSearchingReferences}
+  1633→            >
+  1634→              {isSearchingReferences ? (
+  1635→                <Loader2 className="size-4 animate-spin" />
+  1636→              ) : (
+  1637→                <Search className="size-4" />
+  1638→              )}
+  1639→              Search Again
+  1640→            </Button>
+  1641→            {/* On mobile: show "Refine" button, on desktop: show "Filters" with toggle */}
+  1642→            <Button
+  1643→              variant="outline"
+  1644→              size="sm"
+  1645→              onClick={() => setShowFilters((v) => !v)}
+  1646→              className={cn(
+  1647→                'sm:hidden',
+  1648→                showFilters && 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+  1649→              )}
+  1650→            >
+  1651→              <Filter className="size-4" />
+  1652→              Refine
+  1653→              <ChevronDown
+  1654→                className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
+  1655→              />
+  1656→            </Button>
+  1657→            <Button
+  1658→              variant="outline"
+  1659→              size="sm"
+  1660→              onClick={() => setShowFilters((v) => !v)}
+  1661→              className={cn(
+  1662→                'hidden sm:inline-flex',
+  1663→                showFilters && 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+  1664→              )}
+  1665→            >
+  1666→              <Filter className="size-4" />
+  1667→              Filters
+  1668→              <ChevronDown
+  1669→                className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
+  1670→              />
+  1671→            </Button>
+  1672→            <div className="ml-auto flex items-center gap-2">
+  1673→              <Button variant="ghost" size="sm" onClick={handleSelectAll} className="text-xs">
+  1674→                <CheckSquare className="size-3.5" />
+  1675→                Select All
+  1676→              </Button>
+  1677→              <Button variant="ghost" size="sm" onClick={deselectAllReferences} className="text-xs">
+  1678→                <Square className="size-3.5" />
+  1679→                Deselect All
+  1680→              </Button>
+  1681→            </div>
+  1682→          </div>
+  1683→
+  1684→          {/* Filter panel - animated slide down */}
+  1685→          <AnimatePresence>
+  1686→            {showFilters && (
+  1687→              <motion.div
+  1688→                initial={{ height: 0, opacity: 0 }}
+  1689→                animate={{ height: 'auto', opacity: 1 }}
+  1690→                exit={{ height: 0, opacity: 0 }}
+  1691→                transition={{ duration: 0.3, ease: 'easeInOut' }}
+  1692→                className="overflow-hidden"
+  1693→              >
+  1694→                <Card className="border-border/60">
+  1695→                  <CardContent className="space-y-5 p-4">
+  1696→                    {/* Include/Exclude Keywords */}
+  1697→                    <div className="space-y-3">
+  1698→                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Keyword Criteria</label>
+  1699→                      <div className="space-y-2">
+  1700→                        <div className="flex items-center gap-2">
+  1701→                          <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
+  1702→                          <span className="text-xs font-medium text-muted-foreground">Must Include</span>
+  1703→                        </div>
+  1704→                        <div className='flex items-center gap-2 flex-wrap'>
+  1705→                          {includeKeywords.map((kw, i) => (
+  1706→                            <Badge key={i} variant='outline' className='gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800 cursor-pointer' onClick={() => setIncludeKeywords(prev => prev.filter((_, j) => j !== i))}>
+  1707→                              <ShieldCheck className='size-3' /> {kw} <X className='size-3' />
+  1708→                            </Badge>
+  1709→                          ))}
+  1710→                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-emerald-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setIncludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+  1711→                        </div>
+  1712→
+  1713→                        <div className="flex items-center gap-2">
+  1714→                          <ShieldAlert className="size-3.5 text-red-600 shrink-0" />
+  1715→                          <span className="text-xs font-medium text-muted-foreground">Must Exclude</span>
+  1716→                        </div>
+  1717→                        <div className='flex items-center gap-2 flex-wrap'>
+  1718→                          {excludeKeywords.map((kw, i) => (
+  1719→                            <Badge key={i} variant='outline' className='gap-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-800 cursor-pointer' onClick={() => setExcludeKeywords(prev => prev.filter((_, j) => j !== i))}>
+  1720→                              <ShieldAlert className='size-3' /> {kw} <X className='size-3' />
+  1721→                            </Badge>
+  1722→                          ))}
+  1723→                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-red-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setExcludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+  1724→                        </div>
+  1725→                      </div>
+  1726→                    </div>
+  1727→
+  1728→                    <Separator />
+  1729→
+  1730→                    {/* Boolean Mode + Sort */}
+  1731→                    <div className="grid gap-4 sm:grid-cols-2">
+  1732→                      <div className="space-y-2">
+  1733→                        <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+  1734→                        <Select value={sortBy} onValueChange={setSortBy}>
+  1735→                          <SelectTrigger className="w-full">
+  1736→                            <SelectValue placeholder="Relevance" />
+  1737→                          </SelectTrigger>
+  1738→                          <SelectContent>
+  1739→                            {SORT_OPTIONS.map((opt) => (
+  1740→                              <SelectItem key={opt.value} value={opt.value}>
+  1741→                                {opt.label}
+  1742→                              </SelectItem>
+  1743→                            ))}
+  1744→                          </SelectContent>
+  1745→                        </Select>
+  1746→                      </div>
+  1747→
+  1748→                      <div className="space-y-2">
+  1749→                        <label className="text-xs font-medium text-muted-foreground">Boolean Mode</label>
+  1750→                        <div className='flex items-center gap-2'>
+  1751→                          <div className='flex rounded-lg border p-0.5'>
+  1752→                            <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'OR' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('OR')}>OR</button>
+  1753→                            <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'AND' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('AND')}>AND</button>
+  1754→                          </div>
+  1755→                          <span className='text-[11px] text-muted-foreground'>{booleanMode === 'OR' ? 'Any keyword matches' : 'All keywords required'}</span>
+  1756→                        </div>
+  1757→                      </div>
+  1758→                    </div>
+  1759→
+  1760→                    {/* Multi-select Reference Type Filter */}
+  1761→                    <div className="space-y-2">
+  1762→                      <label className="text-xs font-medium text-muted-foreground">
+  1763→                        Reference Type
+  1764→                      </label>
+  1765→                      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
+  1766→                        {TYPE_FILTER_OPTIONS.map((opt) => {
+  1767→                          const config = opt.value !== 'all' ? getTypeConfig(opt.value) : null;
+  1768→                          const isChecked = selectedTypes.includes(opt.value);
+  1769→                          return (
+  1770→                            <label
+  1771→                              key={opt.value}
+  1772→                              className={cn(
+  1773→                                'flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer transition-colors',
+  1774→                                isChecked
+  1775→                                  ? opt.value === 'all'
+  1776→                                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+  1777→                                    : `${config?.borderColor} ${config?.bgColor}`
+  1778→                                  : 'border-border/60 hover:border-border'
+  1779→                              )}
+  1780→                              onClick={() => toggleTypeFilter(opt.value)}
+  1781→                            >
+  1782→                              <Checkbox
+  1783→                                checked={isChecked}
+  1784→                                className={cn(
+  1785→                                  'size-3.5 shrink-0',
+  1786→                                  isChecked && 'data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600'
+  1787→                                )}
+  1788→                                onCheckedChange={() => toggleTypeFilter(opt.value)}
+  1789→                              />
+  1790→                              {config ? (
+  1791→                                <span
+  1792→                                  className={cn('rounded-sm size-2 shrink-0', opt.value === 'all' ? 'bg-emerald-500' : '')}
+  1793→                                  style={config ? { backgroundColor: config.barColor } : undefined}
+  1794→                                />
+  1795→                              ) : null}
+  1796→                              <span className={cn(
+  1797→                                'font-medium truncate',
+  1798→                                isChecked
+  1799→                                  ? opt.value === 'all'
+  1800→                                    ? 'text-emerald-700 dark:text-emerald-300'
+  1801→                                    : config?.color
+  1802→                                  : 'text-muted-foreground'
+  1803→                              )}>
+  1804→                                {opt.label}
+  1805→                              </span>
+  1806→                            </label>
+  1807→                          );
+  1808→                        })}
+  1809→                      </div>
+  1810→                    </div>
+  1811→
+  1812→                    {/* Year range */}
+  1813→                    <div className="space-y-2">
+  1814→                      <label className="text-xs font-medium text-muted-foreground">
+  1815→                        Year Range: {yearRange[0]} – {yearRange[1]}
+  1816→                      </label>
+  1817→                      <Slider
+  1818→                        value={yearRange}
+  1819→                        onValueChange={setYearRange}
+  1820→                        min={2015}
+  1821→                        max={2025}
+  1822→                        step={1}
+  1823→                        className="[&_[data-slot=slider-range]]:bg-emerald-500 [&_[data-slot=slider-thumb]]:border-emerald-500"
+  1824→                      />
+  1825→                    </div>
+  1826→
+  1827→                    {/* Search within */}
+  1828→                    <div className="space-y-2">
+  1829→                      <label className="text-xs font-medium text-muted-foreground">
+  1830→                        Search Within Results
+  1831→                      </label>
+  1832→                      <div className="relative">
+  1833→                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+  1834→                        <Input
+  1835→                          placeholder="Search by title, author, journal..."
+  1836→                          value={searchText}
+  1837→                          onChange={(e) => setSearchText(e.target.value)}
+  1838→                          className="pl-9"
+  1839→                        />
+  1840→                      </div>
+  1841→                    </div>
+  1842→
+  1843→                    {/* Search with Criteria button + Filter result count */}
+  1844→                    <div className='flex items-center justify-between'>
+  1845→                      <div className="text-xs text-muted-foreground">
+  1846→                        Showing {filteredReferences.length} of {totalCount} references
+  1847→                      </div>
+  1848→                      <Button
+  1849→                        size='sm'
+  1850→                        variant='outline'
+  1851→                        onClick={handleSearch}
+  1852→                        disabled={isSearchingReferences}
+  1853→                        className='gap-1.5 text-xs h-7'
+  1854→                      >
+  1855→                        <Search className='size-3' />
+  1856→                        Search with Criteria
+  1857→                      </Button>
+  1858→                    </div>
+  1859→                  </CardContent>
+  1860→                </Card>
+  1861→              </motion.div>
+  1862→            )}
+  1863→          </AnimatePresence>
+  1864→
+  1865→          {/* Auto-Generated Boolean Keywords Panel */}
+  1866→          {generatedBoolean ? (
+  1867→            <motion.div
+  1868→              initial={{ opacity: 0, y: -8 }}
+  1869→              animate={{ opacity: 1, y: 0 }}
+  1870→              transition={{ duration: 0.4, delay: 0.05 }}
+  1871→            >
+  1872→              <Card className="border-violet-200 dark:border-violet-800">
+  1873→                <div className="flex items-center justify-between p-4">
+  1874→                  <div className="flex items-center gap-2">
+  1875→                    <div className="flex size-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40">
+  1876→                      <Brain className="size-3.5 text-violet-600" />
+  1877→                    </div>
+  1878→                    <div>
+  1879→                      <span className="text-sm font-medium">Auto-Generated Boolean Queries</span>
+  1880→                      <p className="text-[11px] text-muted-foreground">AI-optimized search queries with synonym expansion</p>
+  1881→                    </div>
+  1882→                  </div>
+  1883→                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300">
+  1884→                    Auto
+  1885→                  </Badge>
+  1886→                </div>
+  1887→                <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-3">
+  1888→                  {/* AND queries */}
+  1889→                  {generatedBoolean.booleanQueries?.and?.length > 0 && (
+  1890→                    <div className="space-y-1.5">
+  1891→                      <div className="flex items-center gap-1.5">
+  1892→                        <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">AND</span>
+  1893→                        <span className="text-[11px] text-muted-foreground">All terms required</span>
+  1894→                      </div>
+  1895→                      <div className="space-y-1">
+  1896→                        {generatedBoolean.booleanQueries.and.map((q: string, i: number) => (
+  1897→                          <div key={i} className="rounded border border-border/40 bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1898→                        ))}
+  1899→                      </div>
+  1900→                    </div>
+  1901→                  )}
+  1902→                  {/* OR queries */}
+  1903→                  {generatedBoolean.booleanQueries?.or?.length > 0 && (
+  1904→                    <div className="space-y-1.5">
+  1905→                      <div className="flex items-center gap-1.5">
+  1906→                        <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">OR</span>
+  1907→                        <span className="text-[11px] text-muted-foreground">Any term matches</span>
+  1908→                      </div>
+  1909→                      <div className="space-y-1">
+  1910→                        {generatedBoolean.booleanQueries.or.map((q: string, i: number) => (
+  1911→                          <div key={i} className="rounded border border-border/40 bg-muted/20 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1912→                        ))}
+  1913→                      </div>
+  1914→                    </div>
+  1915→                  )}
+  1916→                  {/* Combined queries */}
+  1917→                  {generatedBoolean.booleanQueries?.combined?.length > 0 && (
+  1918→                    <div className="space-y-1.5">
+  1919→                      <div className="flex items-center gap-1.5">
+  1920→                        <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">COMBINED</span>
+  1921→                        <span className="text-[11px] text-muted-foreground">Complex Boolean - most precise</span>
+  1922→                      </div>
+  1923→                      <div className="space-y-1">
+  1924→                        {generatedBoolean.booleanQueries.combined.map((q: string, i: number) => (
+  1925→                          <div key={i} className="rounded border border-violet-200/40 bg-violet-50/40 dark:border-violet-800/40 dark:bg-violet-950/10 px-2.5 py-1.5 font-mono text-[11px] text-foreground/80 break-all">{q}</div>
+  1926→                        ))}
+  1927→                      </div>
+  1928→                    </div>
+  1929→                  )}
+  1930→                  {/* Expanded keywords */}
+  1931→                  {generatedBoolean.expandedKeywords?.length > 0 && (
+  1932→                    <div className="space-y-1.5">
+  1933→                      <div className="flex items-center gap-1.5">
+  1934→                        <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">EXPANDED</span>
+  1935→                        <span className="text-[11px] text-muted-foreground">AI-discovered related terms</span>
+  1936→                      </div>
+  1937→                      <div className="flex flex-wrap gap-1">
+  1938→                        {generatedBoolean.expandedKeywords.map((k: string, i: number) => (
+  1939→                          <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0 border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300">{k}</Badge>
+  1940→                        ))}
+  1941→                      </div>
+  1942→                    </div>
+  1943→                  )}
+  1944→                </div>
+  1945→              </Card>
+  1946→            </motion.div>
+  1947→          ) : null}
+  1948→
+  1949→          {/* Multi-Language Search Panel */}
+  1950→          <Card className="border-border/60">
+  1951→            <div className="flex items-center justify-between p-4">
+  1952→              <div className="flex items-center gap-2">
+  1953→                <div className="flex size-7 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/40">
+  1954→                  <Languages className="size-3.5 text-teal-600" />
+  1955→                </div>
+  1956→                <div>
+  1957→                  <span className="text-sm font-medium">5-Language Auto-Search</span>
+  1958→                  <p className="text-[11px] text-muted-foreground">Keywords and title auto-translated and searched in all 5 languages</p>
+  1959→                </div>
+  1960→              </div>
+  1961→              <Badge className="bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 gap-1 px-2.5 py-1 text-[10px]">
+  1962→                <Sparkles className="size-3" /> Auto
+  1963→              </Badge>
+  1964→            </div>
+  1965→            <div className="border-t border-border/40 px-4 pb-4 pt-3">
+  1966→              <div className="flex flex-wrap gap-2">
+  1967→                {[
+  1968→                  { name: 'English', code: 'en', flag: '🇬🇧', desc: 'International standard' },
+  1969→                  { name: 'Chinese', code: 'zh', flag: '🇨🇳', desc: '#1 Scopus output' },
+  1970→                  { name: 'Spanish', code: 'es', flag: '🇪🇸', desc: 'Growing Q1-Q4' },
+  1971→                  { name: 'German', code: 'de', flag: '🇩🇪', desc: 'Top 3 research' },
+  1972→                  { name: 'French', code: 'fr', flag: '🇫🇷', desc: 'Major output' },
+  1973→                ].map((lang) => {
+  1974→                  const isActive = searchLanguages.includes(lang.name);
+  1975→                  return (
+  1976→                    <div
+  1977→                      key={lang.code}
+  1978→                      className={cn(
+  1979→                        'flex items-center gap-1.5 rounded-lg border px-3 py-2 transition-colors',
+  1980→                        isActive
+  1981→                          ? 'border-teal-200 bg-teal-50/60 dark:border-teal-800 dark:bg-teal-950/20'
+  1982→                          : 'border-border/40 opacity-50'
+  1983→                      )}
+  1984→                    >
+  1985→                      <span className="text-base leading-none">{lang.flag}</span>
+  1986→                      <div className="flex flex-col">
+  1987→                        <span className={cn(
+  1988→                          'text-xs font-medium',
+  1989→                          isActive ? 'text-teal-700 dark:text-teal-300' : 'text-muted-foreground'
+  1990→                        )}>{lang.name}</span>
+  1991→                        <span className="text-[9px] text-muted-foreground">{lang.desc}</span>
+  1992→                      </div>
+  1993→                      {isActive && (
+  1994→                        <CheckSquare className="size-3 text-teal-600 shrink-0 ml-1" />
+  1995→                      )}
+  1996→                    </div>
+  1997→                  );
+  1998→                })}
+  1999→              </div>
+  2000→              <p className="mt-3 text-[11px] text-muted-foreground">
+
+[showing lines 1501-2000 of 2314; use offset=2001 with limit to continue reading]

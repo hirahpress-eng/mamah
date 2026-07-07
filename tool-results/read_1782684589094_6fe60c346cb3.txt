@@ -1,0 +1,1030 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useCallback, useRef, useMemo } from 'react';
+     4→     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→     5→import { toast } from 'sonner';
+     6→     6→import {
+     7→     7→  BookOpen, FlaskConical, Beaker, FileText, ArrowRight, ArrowLeft,
+     8→     8→  Loader2, CheckCircle2, Check, Clock, Sparkles, Play, ChevronDown,
+     9→     9→  ChevronUp, Pencil, Library, BrainCircuit, MessageSquareWarning,
+    10→    10→  BarChart3, Search, Settings, Star, Image, Table2, RotateCcw,
+    11→    11→  XCircle, AlertCircle, ListOrdered, GraduationCap, type LucideIcon,
+    12→    12→} from 'lucide-react';
+    13→    13→import ReactMarkdown from 'react-markdown';
+    14→    14→
+    15→    15→import { AI_ENGINES, type AIEngineId } from '@/lib/ai-engine-config';
+    16→    16→import {
+    17→    17→  useArticleStore, type ResearchMethod, type StageId,
+    18→    18→  type SectionStage, type VisualPlaceholder, STAGE_DEFINITIONS,
+    19→    19→} from '@/store/article-store';
+    20→    20→
+    21→    21→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    22→    22→import { Button } from '@/components/ui/button';
+    23→    23→import { Badge } from '@/components/ui/badge';
+    24→    24→import { Textarea } from '@/components/ui/textarea';
+    25→    25→import { Separator } from '@/components/ui/separator';
+    26→    26→import { ScrollArea } from '@/components/ui/scroll-area';
+    27→    27→import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+    28→    28→import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+    29→    29→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    30→    30→import { cn } from '@/lib/utils';
+    31→    31→
+    32→    32→// ─── Types & Constants ──────────────────────────────────────────────────────────
+    33→    33→
+    34→    34→type ViewMode = 'config' | 'generating' | 'compile';
+    35→    35→
+    36→    36→interface MethodInfo {
+    37→    37→  id: ResearchMethod;
+    38→    38→  title: string;
+    39→    39→  description: string;
+    40→    40→  longDescription: string;
+    41→    41→  details: string;
+    42→    42→  icon: LucideIcon;
+    43→    43→  bestFor: string;
+    44→    44→  complexity: 'Low' | 'Medium' | 'High';
+    45→    45→  outputLength: string;
+    46→    46→}
+    47→    47→
+    48→    48→const RESEARCH_METHODS: MethodInfo[] = [
+    49→    49→  { id: 'literature-review', title: 'Literature Review', description: 'Traditional qualitative literature review', longDescription: 'A comprehensive overview of existing research, synthesising key findings and identifying themes across selected sources.', details: 'A comprehensive overview of existing research, synthesising key findings and identifying themes across selected sources.', icon: BookOpen, bestFor: 'Broad topic exploration', complexity: 'Low', outputLength: '3,000–5,000 words' },
+    50→    50→  { id: 'systematic-review', title: 'Systematic Review', description: 'PRISMA-guided systematic literature review', longDescription: 'A structured, reproducible review following PRISMA guidelines with explicit search strategy and quality assessment.', details: 'A structured, reproducible review following PRISMA guidelines with explicit search strategy and inclusion criteria.', icon: FlaskConical, bestFor: 'Evidence-based research', complexity: 'High', outputLength: '5,000–8,000 words' },
+    51→    51→  { id: 'meta-analysis', title: 'Meta-Analysis', description: 'Statistical meta-analysis of findings', longDescription: 'Combines quantitative results from multiple studies using statistical methods to derive pooled effect sizes.', details: 'Combines quantitative results from multiple studies using statistical methods to derive pooled effect sizes.', icon: Beaker, bestFor: 'Quantitative synthesis', complexity: 'High', outputLength: '4,000–7,000 words' },
+    52→    52→  { id: 'meta-synthesis', title: 'Meta-Synthesis', description: 'Qualitative meta-synthesis', longDescription: 'Integrates findings from qualitative studies to produce new interpretive insights beyond individual studies.', details: 'Integrates findings from qualitative studies to produce new interpretive insights beyond individual studies.', icon: BrainCircuit, bestFor: 'Qualitative integration', complexity: 'High', outputLength: '4,000–6,000 words' },
+    53→    53→  { id: 'narrative-review', title: 'Narrative Review', description: 'Narrative/thematic review', longDescription: 'A thematic narrative approach that organises literature by concepts or topics with critical discussion.', details: 'A thematic narrative approach that organises literature by concepts or topics with critical discussion.', icon: FileText, bestFor: 'Theoretical papers', complexity: 'Low', outputLength: '3,000–5,000 words' },
+    54→    54→  { id: 'scoping-review', title: 'Scoping Review', description: 'Scoping review methodology', longDescription: 'Maps the breadth of literature on a topic, identifying key concepts, gaps, and types of available evidence.', details: 'Maps the breadth of literature on a topic, identifying key concepts, gaps, and types of available evidence.', icon: Search, bestFor: 'Emerging fields', complexity: 'Medium', outputLength: '4,000–6,000 words' },
+    55→    55→  { id: 'critical-review', title: 'Critical Review', description: 'Critical analysis approach', longDescription: 'Evaluates and critiques existing literature with a focus on methodological rigour, bias, and validity.', details: 'Evaluates and critiques existing literature with a focus on methodological rigour, bias, and validity.', icon: MessageSquareWarning, bestFor: 'Identifying gaps', complexity: 'Medium', outputLength: '3,000–5,000 words' },
+    56→    56→];
+    57→    57→
+    58→    58→const STAGE_ICONS: Record<StageId, LucideIcon> = {
+    59→    59→  abstract: FileText,
+    60→    60→  introduction: BookOpen,
+    61→    61→  methodology: FlaskConical,
+    62→    62→  results_discussion: BarChart3,
+    63→    63→  conclusion: CheckCircle2,
+    64→    64→  bibliography: ListOrdered,
+    65→    65→};
+    66→    66→
+    67→    67→const STAGE_DESCRIPTIONS: Record<StageId, string> = {
+    68→    68→  abstract: 'A concise summary covering background, objectives, method, key findings, and conclusions.',
+    69→    69→  introduction: 'Research context, comprehensive literature review, research gaps, and research questions.',
+    70→    70→  methodology: 'Research design, search strategy, inclusion/exclusion criteria, and data analysis approach.',
+    71→    71→  results_discussion: 'Study selection, thematic findings for each RQ, interpretation, and theoretical contributions.',
+    72→    72→  conclusion: 'Synthesis of key findings, contributions, limitations, and future research directions.',
+    73→    73→  bibliography: 'APA 7th Edition formatted reference list of all cited sources.',
+    74→    74→};
+    75→    75→
+    76→    76→const PLACEHOLDER_REGEX = /\[(FIGURE|TABLE):\s*(.+?)\]/gi;
+    77→    77→
+    78→    78→// ─── ReferencesSummary ──────────────────────────────────────────────────────────
+    79→    79→
+    80→    80→function ReferencesSummary() {
+    81→    81→  const { references, prevStep } = useArticleStore();
+    82→    82→  const selectedRefs = references.filter((r) => r.isSelected);
+    83→    83→  const [isOpen, setIsOpen] = useState(false);
+    84→    84→  const yearVals = selectedRefs.map((r) => parseInt(String(r.year))).filter((y) => !isNaN(y));
+    85→    85→  const minYear = yearVals.length > 0 ? Math.min(...yearVals) : '—';
+    86→    86→  const maxYear = yearVals.length > 0 ? Math.max(...yearVals) : '—';
+    87→    87→  const journalCount = new Set(selectedRefs.map((r) => r.journal).filter(Boolean)).size;
+    88→    88→
+    89→    89→  return (
+    90→    90→    <section>
+    91→    91→      <div className="flex items-center justify-between mb-3">
+    92→    92→        <div className="flex items-center gap-3">
+    93→    93→          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
+    94→    94→            <Library className="w-5 h-5" />
+    95→    95→          </div>
+    96→    96→          <div>
+    97→    97→            <h3 className="text-base font-semibold text-foreground">Selected References</h3>
+    98→    98→            <p className="text-sm text-muted-foreground">Review your selected literature sources</p>
+    99→    99→          </div>
+   100→   100→        </div>
+   101→   101→        <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 font-semibold text-sm px-3 py-1">
+   102→   102→          {selectedRefs.length} reference{selectedRefs.length !== 1 ? 's' : ''}
+   103→   103→        </Badge>
+   104→   104→      </div>
+   105→   105→
+   106→   106→      <Card className="overflow-hidden">
+   107→   107→        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+   108→   108→          <div className="px-6 py-4">
+   109→   109→            <div className="flex items-center justify-between">
+   110→   110→              <div className="flex items-center gap-2 flex-wrap">
+   111→   111→                {selectedRefs.length > 0 ? (
+   112→   112→                  <>
+   113→   113→                    <span className="text-sm text-muted-foreground">
+   114→   114→                      Spanning <span className="font-medium text-foreground">{minYear}–{maxYear}</span>
+   115→   115→                    </span>
+   116→   116→                    <Separator orientation="vertical" className="h-4" />
+   117→   117→                    <span className="text-sm text-muted-foreground">
+   118→   118→                      {journalCount} journal{journalCount !== 1 ? 's' : ''}
+   119→   119→                    </span>
+   120→   120→                  </>
+   121→   121→                ) : (
+   122→   122→                  <span className="text-sm text-amber-600 dark:text-amber-400">No references selected yet</span>
+   123→   123→                )}
+   124→   124→              </div>
+   125→   125→              <div className="flex items-center gap-2">
+   126→   126→                <Button variant="ghost" size="sm" onClick={() => prevStep()} className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30">
+   127→   127→                  <Pencil className="w-3.5 h-3.5" /> Edit References
+   128→   128→                </Button>
+   129→   129→                <CollapsibleTrigger asChild>
+   130→   130→                  <Button variant="ghost" size="sm" className="text-muted-foreground">
+   131→   131→                    {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+   132→   132→                  </Button>
+   133→   133→                </CollapsibleTrigger>
+   134→   134→              </div>
+   135→   135→            </div>
+   136→   136→          </div>
+   137→   137→          <AnimatePresence>
+   138→   138→            {isOpen && (
+   139→   139→              <CollapsibleContent forceMount>
+   140→   140→                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+   141→   141→                  <Separator />
+   142→   142→                  <ScrollArea className="max-h-64">
+   143→   143→                    <div className="px-6 py-3 space-y-2">
+   144→   144→                      {selectedRefs.length === 0 && (
+   145→   145→                        <p className="text-sm text-muted-foreground py-4 text-center">Go back to Step 2 to search and select references.</p>
+   146→   146→                      )}
+   147→   147→                      {selectedRefs.map((ref, idx) => (
+   148→   148→                        <div key={ref.id} className="flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+   149→   149→                          <span className="text-xs font-mono text-muted-foreground mt-0.5 shrink-0">[{idx + 1}]</span>
+   150→   150→                          <div className="min-w-0 flex-1">
+   151→   151→                            <p className="text-sm font-medium text-foreground leading-snug truncate">{ref.title}</p>
+   152→   152→                            <p className="text-xs text-muted-foreground mt-0.5">{ref.authors} ({ref.year}){ref.journal && ` — ${ref.journal}`}</p>
+   153→   153→                          </div>
+   154→   154→                          <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-wider font-medium">{ref.refType.replace('_', '-')}</Badge>
+   155→   155→                        </div>
+   156→   156→                      ))}
+   157→   157→                    </div>
+   158→   158→                  </ScrollArea>
+   159→   159→                </motion.div>
+   160→   160→              </CollapsibleContent>
+   161→   161→            )}
+   162→   162→          </AnimatePresence>
+   163→   163→        </Collapsible>
+   164→   164→      </Card>
+   165→   165→    </section>
+   166→   166→  );
+   167→   167→}
+   168→   168→
+   169→   169→// ─── MethodSelection ────────────────────────────────────────────────────────────
+   170→   170→
+   171→   171→function MethodSelectionCard({ method, isSelected, onSelect, isRecommended }: { method: MethodInfo; isSelected: boolean; onSelect: () => void; isRecommended: boolean }) {
+   172→   172→  const Icon = method.icon;
+   173→   173→  return (
+   174→   174→    <Tooltip>
+   175→   175→      <TooltipTrigger asChild>
+   176→   176→        <motion.button type="button" onClick={onSelect} whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}
+   177→   177→          className={cn('relative w-full text-left rounded-xl border-2 p-4 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
+   178→   178→            isSelected ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-sm shadow-emerald-100 dark:shadow-emerald-950/30' : 'border-border hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-muted/30'
+   179→   179→          )}>
+   180→   180→          {isRecommended && !isSelected && (
+   181→   181→            <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="absolute -top-2 -right-2">
+   182→   182→              <Badge className="bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0 text-[10px] font-bold shadow-sm px-1.5 py-0.5 gap-1"><Star className="w-2.5 h-2.5" />Recommended</Badge>
+   183→   183→            </motion.div>
+   184→   184→          )}
+   185→   185→          {isSelected && (
+   186→   186→            <motion.div layoutId="method-sel-ind" className="absolute top-3 right-3" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+   187→   187→              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-white" /></div>
+   188→   188→            </motion.div>
+   189→   189→          )}
+   190→   190→          <div className="flex items-start gap-3">
+   191→   191→            <div className={cn('flex items-center justify-center w-10 h-10 rounded-lg shrink-0 transition-colors', isSelected ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground')}>
+   192→   192→              <Icon className="w-5 h-5" />
+   193→   193→            </div>
+   194→   194→            <div className={cn('min-w-0 flex-1', isSelected ? 'pr-6' : 'pr-2')}>
+   195→   195→              <h4 className={cn('font-semibold text-sm transition-colors', isSelected ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground')}>{method.title}</h4>
+   196→   196→              <p className="text-xs text-muted-foreground mt-0.5">{method.description}</p>
+   197→   197→            </div>
+   198→   198→          </div>
+   199→   199→          <AnimatePresence>
+   200→   200→            {isSelected && (
+   201→   201→              <motion.div initial={{ height: 0, opacity: 0, marginTop: 0 }} animate={{ height: 'auto', opacity: 1, marginTop: 12 }} exit={{ height: 0, opacity: 0, marginTop: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+   202→   202→                <p className="text-xs text-muted-foreground leading-relaxed pl-[52px]">{method.details}</p>
+   203→   203→                <p className="mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 pl-[52px]">Estimated output: <span className="font-semibold tabular-nums">{method.outputLength}</span></p>
+   204→   204→              </motion.div>
+   205→   205→            )}
+   206→   206→          </AnimatePresence>
+   207→   207→        </motion.button>
+   208→   208→      </TooltipTrigger>
+   209→   209→      <TooltipContent side="bottom" className="max-w-xs" sideOffset={8}><p className="text-xs leading-relaxed">{method.longDescription}</p></TooltipContent>
+   210→   210→    </Tooltip>
+   211→   211→  );
+   212→   212→}
+   213→   213→
+   214→   214→function MethodSelection() {
+   215→   215→  const { researchMethod, setResearchMethod } = useArticleStore();
+   216→   216→  return (
+   217→   217→    <section>
+   218→   218→      <div className="flex items-center gap-3 mb-4">
+   219→   219→        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><FlaskConical className="w-5 h-5" /></div>
+   220→   220→        <div>
+   221→   221→          <h3 className="text-base font-semibold text-foreground">Research Method</h3>
+   222→   222→          <p className="text-sm text-muted-foreground">Select the methodology for your article</p>
+   223→   223→        </div>
+   224→   224→      </div>
+   225→   225→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+   226→   226→        {RESEARCH_METHODS.map((method) => (
+   227→   227→          <MethodSelectionCard key={method.id} method={method} isSelected={researchMethod === method.id} onSelect={() => setResearchMethod(method.id)} isRecommended={method.id === 'literature-review'} />
+   228→   228→        ))}
+   229→   229→      </div>
+   230→   230→    </section>
+   231→   231→  );
+   232→   232→}
+   233→   233→
+   234→   234→// ─── Visual Placeholder Card ────────────────────────────────────────────────────
+   235→   235→
+   236→   236→function VisualPlaceholderCard({ placeholder, onGenerate, stageId }: { placeholder: VisualPlaceholder; onGenerate: (id: string) => void; stageId: StageId }) {
+   237→   237→  const Icon = placeholder.type === 'figure' ? Image : Table2;
+   238→   238→  const [isGenerating, setIsGenerating] = useState(false);
+   239→   239→
+   240→   240→  const handleGen = async () => {
+   241→   241→    setIsGenerating(true);
+   242→   242→    try {
+   243→   243→      await onGenerate(placeholder.id);
+   244→   244→    } finally {
+   245→   245→      setIsGenerating(false);
+   246→   246→    }
+   247→   247→  };
+   248→   248→
+   249→   249→  return (
+   250→   250→    <Card className="border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50/30 dark:bg-emerald-950/10 my-4">
+   251→   251→      <CardContent className="p-4">
+   252→   252→        <div className="flex items-start gap-3">
+   253→   253→          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 shrink-0">
+   254→   254→            <Icon className="w-5 h-5" />
+   255→   255→          </div>
+   256→   256→          <div className="flex-1 min-w-0">
+   257→   257→            <div className="flex items-center gap-2 mb-1">
+   258→   258→              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 capitalize">{placeholder.type}</span>
+   259→   259→              {placeholder.generated && <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[10px]">Generated</Badge>}
+   260→   260→              {placeholder.error && <Badge variant="outline" className="text-red-600 border-red-300 text-[10px]">Error</Badge>}
+   261→   261→            </div>
+   262→   262→            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{placeholder.description}</p>
+   263→   263→
+   264→   264→            {placeholder.generated && placeholder.data && (
+   265→   265→              <div className="mt-2">
+   266→   266→                {placeholder.type === 'figure' ? (
+   267→   267→                  <img src={`data:image/png;base64,${placeholder.data}`} alt={placeholder.description} className="max-w-full rounded-md border border-border" />
+   268→   268→                ) : (
+   269→   269→                  <div className="rounded-md border border-border bg-background p-3 overflow-x-auto">
+   270→   270→                    <ReactMarkdown>{placeholder.data}</ReactMarkdown>
+   271→   271→                  </div>
+   272→   272→                )}
+   273→   273→              </div>
+   274→   274→            )}
+   275→   275→
+   276→   276→            {placeholder.error && !placeholder.generated && (
+   277→   277→              <p className="text-xs text-red-500 mt-1">{placeholder.error}</p>
+   278→   278→            )}
+   279→   279→
+   280→   280→            {!placeholder.generated && (
+   281→   281→              <Button size="sm" variant="outline" onClick={handleGen} disabled={isGenerating} className="mt-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950/30">
+   282→   282→                {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Icon className="w-3.5 h-3.5 mr-1.5" />}
+   283→   283→                Generate {placeholder.type === 'figure' ? 'Figure' : 'Table'}
+   284→   284→              </Button>
+   285→   285→            )}
+   286→   286→          </div>
+   287→   287→        </div>
+   288→   288→      </CardContent>
+   289→   289→    </Card>
+   290→   290→  );
+   291→   291→}
+   292→   292→
+   293→   293→// ─── Markdown Preview with Visual Placeholders ──────────────────────────────────
+   294→   294→
+   295→   295→function MarkdownPreview({ content, stageId, onGenerateVisual }: { content: string; stageId: StageId; onGenerateVisual: (placeholderId: string) => void }) {
+   296→   296→  const { sectionStages } = useArticleStore();
+   297→   297→  const stage = sectionStages.find((s) => s.id === stageId);
+   298→   298→  const placeholders = stage?.visualPlaceholders || [];
+   299→   299→
+   300→   300→  // Split content by placeholder pattern and interleave with cards
+   301→   301→  const parts: React.ReactNode[] = [];
+   302→   302→  let lastIndex = 0;
+   303→   303→  const regex = new RegExp(PLACEHOLDER_REGEX.source, 'gi');
+   304→   304→  let match;
+   305→   305→
+   306→   306→  while ((match = regex.exec(content)) !== null) {
+   307→   307→    // Text before placeholder
+   308→   308→    if (match.index > lastIndex) {
+   309→   309→      parts.push(<div key={`md-${lastIndex}`} className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown>{content.slice(lastIndex, match.index)}</ReactMarkdown></div>);
+   310→   310→    }
+   311→   311→    // Find matching placeholder
+   312→   312→    const phType = match[1].toLowerCase() as 'figure' | 'table';
+   313→   313→    const phDesc = match[2].trim();
+   314→   314→    const ph = placeholders.find((p) => p.description === phDesc && p.type === phType);
+   315→   315→    if (ph) {
+   316→   316→      parts.push(<VisualPlaceholderCard key={ph.id} placeholder={ph} onGenerate={onGenerateVisual} stageId={stageId} />);
+   317→   317→    } else {
+   318→   318→      parts.push(
+   319→   319→        <div key={`placeholder-${match.index}`} className="my-3 p-3 rounded-lg border border-dashed border-muted-foreground/30 text-sm text-muted-foreground">
+   320→   320→          <span className="capitalize">{phType}:</span> {phDesc}
+   321→   321→        </div>
+   322→   322→      );
+   323→   323→    }
+   324→   324→    lastIndex = match.index + match[0].length;
+   325→   325→  }
+   326→   326→
+   327→   327→  // Remaining text
+   328→   328→  if (lastIndex < content.length) {
+   329→   329→    parts.push(<div key={`md-end`} className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown>{content.slice(lastIndex)}</ReactMarkdown></div>);
+   330→   330→  }
+   331→   331→
+   332→   332→  return <div className="space-y-1">{parts}</div>;
+   333→   333→}
+   334→   334→
+   335→   335→// ─── Stage Navigation Item (Left Column) ─────────────────────────────────────────
+   336→   336→
+   337→   337→function StageNavItem({ stage, index, isActive, onClick }: { stage: SectionStage; index: number; isActive: boolean; onClick: () => void }) {
+   338→   338→  const Icon = STAGE_ICONS[stage.id];
+   339→   339→  const statusColors = {
+   340→   340→    pending: 'text-muted-foreground bg-muted',
+   341→   341→    generating: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30',
+   342→   342→    done: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30',
+   343→   343→    error: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30',
+   344→   344→  };
+   345→   345→
+   346→   346→  return (
+   347→   347→    <button onClick={onClick} className={cn('w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group', isActive ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800' : 'hover:bg-muted/50 border border-transparent')}>
+   348→   348→      <div className="flex items-center gap-3">
+   349→   349→        <div className={cn('flex items-center justify-center w-8 h-8 rounded-md shrink-0 transition-colors', statusColors[stage.status])}>
+   350→   350→          {stage.status === 'generating' ? <Loader2 className="w-4 h-4 animate-spin" /> : stage.status === 'done' ? <Check className="w-4 h-4" /> : stage.status === 'error' ? <XCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+   351→   351→        </div>
+   352→   352→        <div className="flex-1 min-w-0">
+   353→   353→          <div className="flex items-center gap-2">
+   354→   354→            <span className={cn('text-sm font-medium truncate', isActive ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground')}>{stage.label}</span>
+   355→   355→          </div>
+   356→   356→          <div className="flex items-center gap-1.5 mt-0.5">
+   357→   357→            {stage.targetWords > 0 && (
+   358→   358→              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+   359→   359→                {stage.targetWords.toLocaleString()} words
+   360→   360→              </Badge>
+   361→   361→            )}
+   362→   362→            {stage.status === 'done' && stage.wordCount > 0 && (
+   363→   363→              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">
+   364→   364→                {stage.wordCount.toLocaleString()} actual
+   365→   365→              </Badge>
+   366→   366→            )}
+   367→   367→          </div>
+   368→   368→        </div>
+   369→   369→        {isActive && stage.status === 'generating' && (
+   370→   370→          <motion.div className="w-2 h-2 rounded-full bg-emerald-500" animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
+   371→   371→        )}
+   372→   372→      </div>
+   373→   373→    </button>
+   374→   374→  );
+   375→   375→}
+   376→   376→
+   377→   377→// ─── Stage Generation Area (Right Column) ────────────────────────────────────────
+   378→   378→
+   379→   379→function StageGenerationArea({
+   380→   380→  stage,
+   381→   381→  stageIndex,
+   382→   382→  onGenerate,
+   383→   383→  onRegenerate,
+   384→   384→  onCancel,
+   385→   385→  onNext,
+   386→   386→  isLastStage,
+   387→   387→  onGenerateVisual,
+   388→   388→  abortRef,
+   389→   389→  statusText,
+   390→   390→}: {
+   391→   391→  stage: SectionStage;
+   392→   392→  stageIndex: number;
+   393→   393→  onGenerate: () => void;
+   394→   394→  onRegenerate: () => void;
+   395→   395→  onCancel: () => void;
+   396→   396→  onNext: () => void;
+   397→   397→  isLastStage: boolean;
+   398→   398→  onGenerateVisual: (placeholderId: string) => void;
+   399→   399→  abortRef: React.MutableRefObject<AbortController | null>;
+   400→   400→  statusText: string;
+   401→   401→}) {
+   402→   402→  if (stage.status === 'pending') {
+   403→   403→    return (
+   404→   404→      <motion.div key={`${stage.id}-pending`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="flex flex-col items-center justify-center py-16 text-center">
+   405→   405→        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-6">
+   406→   406→          {React.createElement(STAGE_ICONS[stage.id], { className: 'w-8 h-8' })}
+   407→   407→        </div>
+   408→   408→        <h2 className="text-xl font-bold text-foreground mb-2">{stage.label}</h2>
+   409→   409→        <p className="text-sm text-muted-foreground max-w-md mb-2">{STAGE_DESCRIPTIONS[stage.id]}</p>
+   410→   410→        {stage.targetWords > 0 && <p className="text-xs text-muted-foreground mb-8">Target: <span className="font-semibold text-foreground">{stage.targetWords.toLocaleString()} words</span></p>}
+   411→   411→        <Button size="lg" onClick={onGenerate} className={cn('h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 gap-2')}>
+   412→   412→          <Play className="w-5 h-5" /> Generate {stage.label}
+   413→   413→        </Button>
+   414→   414→      </motion.div>
+   415→   415→    );
+   416→   416→  }
+   417→   417→
+   418→   418→  if (stage.status === 'generating') {
+   419→   419→    return (
+   420→   420→      <motion.div key={`${stage.id}-generating`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="flex flex-col items-center justify-center py-16 text-center">
+   421→   421→        <motion.div className="relative mb-6" animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
+   422→   422→          <Loader2 className="w-12 h-12 text-emerald-500" />
+   423→   423→        </motion.div>
+   424→   424→        <h2 className="text-xl font-bold text-foreground mb-2">Generating {stage.label}...</h2>
+   425→   425→        <p className="text-sm text-muted-foreground max-w-md mb-6">{statusText || `AI is writing your ${stage.label.toLowerCase()} section. This may take a moment.`}</p>
+   426→   426→        <Button variant="outline" size="sm" onClick={onCancel} className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/30 gap-2">
+   427→   427→          <XCircle className="w-4 h-4" /> Cancel
+   428→   428→        </Button>
+   429→   429→      </motion.div>
+   430→   430→    );
+   431→   431→  }
+   432→   432→
+   433→   433→  if (stage.status === 'error') {
+   434→   434→    return (
+   435→   435→      <motion.div key={`${stage.id}-error`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="flex flex-col items-center justify-center py-16 text-center">
+   436→   436→        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-500 mb-6"><AlertCircle className="w-8 h-8" /></div>
+   437→   437→        <h2 className="text-xl font-bold text-foreground mb-2">Generation Failed</h2>
+   438→   438→        <p className="text-sm text-muted-foreground max-w-md mb-2">{stage.error || 'An unexpected error occurred.'}</p>
+   439→   439→        <div className="flex gap-3 mt-4">
+   440→   440→          <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back</Button>
+   441→   441→          <Button onClick={onRegenerate} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white gap-2"><RotateCcw className="w-4 h-4" /> Retry</Button>
+   442→   442→        </div>
+   443→   443→      </motion.div>
+   444→   444→    );
+   445→   445→  }
+   446→   446→
+   447→   447→  // 'done' status
+   448→   448→  return (
+   449→   449→    <motion.div key={`${stage.id}-done`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4">
+   450→   450→      <div className="flex items-center justify-between">
+   451→   451→        <div className="flex items-center gap-3">
+   452→   452→          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="w-5 h-5" /></div>
+   453→   453→          <div>
+   454→   454→            <h2 className="text-lg font-bold text-foreground">{stage.label}</h2>
+   455→   455→            <div className="flex items-center gap-2 mt-0.5">
+   456→   456→              <Badge variant="outline" className="text-xs">{stage.wordCount.toLocaleString()} words</Badge>
+   457→   457→              {stage.targetWords > 0 && <span className="text-xs text-muted-foreground">/ {stage.targetWords.toLocaleString()} target</span>}
+   458→   458→            </div>
+   459→   459→          </div>
+   460→   460→        </div>
+   461→   461→        <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> Regenerate</Button>
+   462→   462→      </div>
+   463→   463→      <Separator />
+   464→   464→      <ScrollArea className="max-h-[60vh]">
+   465→   465→        <Card className="bg-background">
+   466→   466→          <CardContent className="p-4 sm:p-6">
+   467→   467→            <MarkdownPreview content={stage.content} stageId={stage.id} onGenerateVisual={onGenerateVisual} />
+   468→   468→          </CardContent>
+   469→   469→        </Card>
+   470→   470→      </ScrollArea>
+   471→   471→      {!isLastStage && (
+   472→   472→        <div className="flex justify-end pt-2">
+   473→   473→          <Button onClick={onNext} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white gap-2">
+   474→   474→            Next: {STAGE_DEFINITIONS[stageIndex + 1]?.label} <ArrowRight className="w-4 h-4" />
+   475→   475→          </Button>
+   476→   476→        </div>
+   477→   477→      )}
+   478→   478→    </motion.div>
+   479→   479→  );
+   480→   480→}
+   481→   481→
+   482→   482→// ─── Compile View (View 3) ──────────────────────────────────────────────────────
+   483→   483→
+   484→   484→function CompileView({ onRegenerateAll, onCompile }: { onRegenerateAll: () => void; onCompile: () => void }) {
+   485→   485→  const { sectionStages } = useArticleStore();
+   486→   486→  const totalWords = sectionStages.reduce((sum, s) => sum + s.wordCount, 0);
+   487→   487→  const allDone = sectionStages.every((s) => s.status === 'done');
+   488→   488→
+   489→   489→  if (!allDone) return null;
+   490→   490→
+   491→   491→  return (
+   492→   492→    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl mx-auto py-8">
+   493→   493→      <div className="text-center mb-8">
+   494→   494→        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-4">
+   495→   495→          <GraduationCap className="w-8 h-8" />
+   496→   496→        </motion.div>
+   497→   497→        <h2 className="text-2xl font-bold text-foreground mb-2">All Sections Complete!</h2>
+   498→   498→        <p className="text-muted-foreground">Your article sections have been generated. Review and compile below.</p>
+   499→   499→      </div>
+   500→   500→
+   501→   501→      <Card className="mb-6">
+   502→   502→        <CardHeader className="pb-3">
+   503→   503→          <CardTitle className="text-base">Section Summary</CardTitle>
+   504→   504→        </CardHeader>
+   505→   505→        <CardContent>
+   506→   506→          <div className="space-y-3">
+   507→   507→            {sectionStages.map((stage) => {
+   508→   508→              const Icon = STAGE_ICONS[stage.id];
+   509→   509→              return (
+   510→   510→                <div key={stage.id} className="flex items-center gap-3 text-sm">
+   511→   511→                  <Icon className="w-4 h-4 text-emerald-500 shrink-0" />
+   512→   512→                  <span className="flex-1 text-foreground font-medium">{stage.label}</span>
+   513→   513→                  <Badge variant="outline" className="text-xs tabular-nums">{stage.wordCount.toLocaleString()} words</Badge>
+   514→   514→                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+   515→   515→                </div>
+   516→   516→              );
+   517→   517→            })}
+   518→   518→          </div>
+   519→   519→          <Separator className="my-4" />
+   520→   520→          <div className="flex items-center justify-between text-sm font-semibold">
+   521→   521→            <span>Total</span>
+   522→   522→            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 font-semibold">{totalWords.toLocaleString()} words</Badge>
+   523→   523→          </div>
+   524→   524→        </CardContent>
+   525→   525→      </Card>
+   526→   526→
+   527→   527→      <div className="flex flex-col sm:flex-row gap-3">
+   528→   528→        <Button size="lg" onClick={onCompile} className={cn('flex-1 h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 gap-2')}>
+   529→   529→          <Sparkles className="w-5 h-5" /> Compile Article <ArrowRight className="w-5 h-5" />
+   530→   530→        </Button>
+   531→   531→        <Button size="lg" variant="outline" onClick={onRegenerateAll} className="gap-2 h-12">
+   532→   532→          <RotateCcw className="w-4 h-4" /> Regenerate All
+   533→   533→        </Button>
+   534→   534→      </div>
+   535→   535→    </motion.div>
+   536→   536→  );
+   537→   537→}
+   538→   538→
+   539→   539→// ═══════════════════════════════════════════════════════════════════════════════════
+   540→   540→// MAIN COMPONENT
+   541→   541→// ═══════════════════════════════════════════════════════════════════════════════════
+   542→   542→
+   543→   543→export default function Step3Method() {
+   544→   544→  const {
+   545→   545→    references, selectedTitle, selectedKeywords, researchMethod, additionalInstructions,
+   546→   546→    sectionStages, currentStageIndex, setCurrentStageIndex, updateStage, resetStages,
+   547→   547→    compileArticleFromStages, nextStep,
+   548→   548→  } = useArticleStore();
+   549→   549→
+   550→   550→  const [view, setView] = useState<ViewMode>('config');
+   551→   551→  const [selectedEngine, setSelectedEngine] = useState<AIEngineId>('zai');
+   552→   552→  const [statusText, setStatusText] = useState('');
+   553→   553→  const abortRef = useRef<AbortController | null>(null);
+   554→   554→  const visualAbortRef = useRef<AbortController | null>(null);
+   555→   555→
+   556→   556→  const selectedRefs = useMemo(() => references.filter((r) => r.isSelected), [references]);
+   557→   557→  const canGenerate = selectedRefs.length >= 5;
+   558→   558→  const currentStage = sectionStages[currentStageIndex];
+   559→   559→  const allDone = sectionStages.every((s) => s.status === 'done');
+   560→   560→  const completedStages = sectionStages.filter((s) => s.status === 'done' && s.id !== currentStage?.id);
+   561→   561→  const isLastStage = currentStageIndex === sectionStages.length - 1;
+   562→   562→
+   563→   563→  // Switch to compile view when all done
+   564→   564→  React.useEffect(() => {
+   565→   565→    if (allDone && view === 'generating') {
+   566→   566→      setView('compile');
+   567→   567→    }
+   568→   568→  }, [allDone, view]);
+   569→   569→
+   570→   570→  // Auto-advance to next pending stage after completion
+   571→   571→  React.useEffect(() => {
+   572→   572→    if (currentStage?.status === 'done' && !allDone) {
+   573→   573→      const nextIdx = sectionStages.findIndex((s, i) => i > currentStageIndex && s.status === 'pending');
+   574→   574→      if (nextIdx !== -1) {
+   575→   575→        setCurrentStageIndex(nextIdx);
+   576→   576→      } else {
+   577→   577→        // Check if any stage before current is pending (regenerate scenario)
+   578→   578→        const prevPending = sectionStages.findIndex((s, i) => i < currentStageIndex && s.status === 'pending');
+   579→   579→        if (prevPending === -1) {
+   580→   580→          // All done or all handled
+   581→   581→        }
+   582→   582→      }
+   583→   583→    }
+   584→   584→  }, [currentStage?.status, allDone, currentStageIndex, sectionStages, setCurrentStageIndex]);
+   585→   585→
+   586→   586→  const handleStartGeneration = useCallback(() => {
+   587→   587→    if (!canGenerate) {
+   588→   588→      toast.error('Please select at least 5 references.');
+   589→   589→      return;
+   590→   590→    }
+   591→   591→    resetStages();
+   592→   592→    setCurrentStageIndex(0);
+   593→   593→    setView('generating');
+   594→   594→    toast.success('Generation started! Generate each section step by step.');
+   595→   595→  }, [canGenerate, resetStages, setCurrentStageIndex]);
+   596→   596→
+   597→   597→  const handleGenerateStage = useCallback(async () => {
+   598→   598→    if (!currentStage || currentStage.status === 'generating') return;
+   599→   599→
+   600→   600→    const abort = new AbortController();
+   601→   601→    abortRef.current = abort;
+   602→   602→
+   603→   603→    updateStage(currentStage.id, {
+   604→   604→      status: 'generating',
+   605→   605→      error: undefined,
+   606→   606→      content: '',
+   607→   607→      wordCount: 0,
+   608→   608→      visualPlaceholders: [],
+   609→   609→      startedAt: new Date().toISOString(),
+   610→   610→    });
+   611→   611→    setStatusText(`Preparing to generate ${currentStage.label}...`);
+   612→   612→
+   613→   613→    try {
+   614→   614→      // 1. POST to create a generation job (returns immediately)
+   615→   615→      const postRes = await fetch('/api/article/generate-section', {
+   616→   616→        method: 'POST',
+   617→   617→        headers: { 'Content-Type': 'application/json' },
+   618→   618→        body: JSON.stringify({
+   619→   619→          stageId: currentStage.id,
+   620→   620→          title: selectedTitle,
+   621→   621→          keywords: selectedKeywords,
+   622→   622→          references: selectedRefs,
+   623→   623→          researchMethod,
+   624→   624→          additionalInstructions,
+   625→   625→          engineId: selectedEngine,
+   626→   626→          previousSections: completedStages.map((s) => ({ id: s.id, label: s.label, content: s.content })),
+   627→   627→        }),
+   628→   628→        signal: abort.signal,
+   629→   629→      });
+   630→   630→
+   631→   631→      const postData = await postRes.json();
+   632→   632→      if (!postData.success || !postData.jobId) {
+   633→   633→        throw new Error(postData.error || 'Failed to start generation job');
+   634→   634→      }
+   635→   635→
+   636→   636→      const jobId = postData.jobId;
+   637→   637→      setStatusText(`Generation job started, waiting for ${currentStage.label}...`);
+   638→   638→
+   639→   639→      // 2. Poll for result every 3 seconds
+   640→   640→      const POLL_INTERVAL = 3000;
+   641→   641→      const MAX_POLL_TIME = 10 * 60 * 1000; // 10 minutes max
+   642→   642→      const startTime = Date.now();
+   643→   643→
+   644→   644→      while (Date.now() - startTime < MAX_POLL_TIME) {
+   645→   645→        if (abort.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+   646→   646→        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+   647→   647→        if (abort.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+   648→   648→
+   649→   649→        const pollRes = await fetch(`/api/article/generate-section?jobId=${jobId}`, {
+   650→   650→          signal: abort.signal,
+   651→   651→        });
+   652→   652→        const pollData = await pollRes.json();
+   653→   653→
+   654→   654→        if (!pollData.success) throw new Error(pollData.error || 'Polling failed');
+   655→   655→
+   656→   656→        // Update status text from server
+   657→   657→        if (pollData.statusMessage) {
+   658→   658→          setStatusText(pollData.statusMessage);
+   659→   659→        }
+   660→   660→
+   661→   661→        if (pollData.status === 'done' && pollData.result) {
+   662→   662→          updateStage(currentStage.id, {
+   663→   663→            status: 'done',
+   664→   664→            content: pollData.result.content,
+   665→   665→            wordCount: pollData.result.wordCount || 0,
+   666→   666→            visualPlaceholders: (pollData.result.visualPlaceholders || []).map((p: { id: string; type: 'figure' | 'table'; description: string }) => ({
+   667→   667→              ...p,
+   668→   668→              generated: false,
+   669→   669→            })),
+   670→   670→            completedAt: new Date().toISOString(),
+   671→   671→          });
+   672→   672→          toast.success(`${currentStage.label} generated successfully!`);
+   673→   673→          return;
+   674→   674→        }
+   675→   675→
+   676→   676→        if (pollData.status === 'error') {
+   677→   677→          throw new Error(pollData.error || 'Generation failed on server');
+   678→   678→        }
+   679→   679→      }
+   680→   680→
+   681→   681→      throw new Error('Generation timed out after 10 minutes');
+   682→   682→    } catch (err: unknown) {
+   683→   683→      if (err instanceof DOMException && err.name === 'AbortError') {
+   684→   684→        updateStage(currentStage.id, { status: 'pending', error: undefined });
+   685→   685→        toast.info(`${currentStage.label} generation cancelled.`);
+   686→   686→        return;
+   687→   687→      }
+   688→   688→      const message = err instanceof Error ? err.message : 'Unknown error';
+   689→   689→      updateStage(currentStage.id, { status: 'error', error: message });
+   690→   690→      toast.error(`Failed to generate ${currentStage.label}: ${message}`);
+   691→   691→    } finally {
+   692→   692→      abortRef.current = null;
+   693→   693→    }
+   694→   694→  }, [currentStage, selectedTitle, selectedKeywords, selectedRefs, researchMethod, additionalInstructions, selectedEngine, completedStages, updateStage]);
+   695→   695→
+   696→   696→  const handleCancelGeneration = useCallback(() => {
+   697→   697→    abortRef.current?.abort();
+   698→   698→  }, []);
+   699→   699→
+   700→   700→  const handleRegenerate = useCallback(() => {
+   701→   701→    if (!currentStage) return;
+   702→   702→    updateStage(currentStage.id, { status: 'pending', content: '', wordCount: 0, visualPlaceholders: [], error: undefined });
+   703→   703→  }, [currentStage, updateStage]);
+   704→   704→
+   705→   705→  const handleNext = useCallback(() => {
+   706→   706→    if (currentStageIndex < sectionStages.length - 1) {
+   707→   707→      setCurrentStageIndex(currentStageIndex + 1);
+   708→   708→    }
+   709→   709→  }, [currentStageIndex, sectionStages.length, setCurrentStageIndex]);
+   710→   710→
+   711→   711→  const handleStageClick = useCallback((index: number) => {
+   712→   712→    const stage = sectionStages[index];
+   713→   713→    if (stage.status === 'done' || stage.status === 'error' || stage.status === 'pending') {
+   714→   714→      setCurrentStageIndex(index);
+   715→   715→    }
+   716→   716→  }, [sectionStages, setCurrentStageIndex]);
+   717→   717→
+   718→   718→  const handleGenerateVisual = useCallback(async (placeholderId: string) => {
+   719→   719→    const stage = sectionStages.find((s) => s.id === currentStage?.id);
+   720→   720→    if (!stage) return;
+   721→   721→    const placeholder = stage.visualPlaceholders.find((p) => p.id === placeholderId);
+   722→   722→    if (!placeholder || placeholder.generated) return;
+   723→   723→
+   724→   724→    const abort = new AbortController();
+   725→   725→    visualAbortRef.current = abort;
+   726→   726→
+   727→   727→    const failPlaceholder = (errMsg: string) => {
+   728→   728→      const updatedPlaceholders = stage.visualPlaceholders.map((p) =>
+   729→   729→        p.id === placeholderId ? { ...p, error: errMsg } : p
+   730→   730→      );
+   731→   731→      updateStage(stage.id, { visualPlaceholders: updatedPlaceholders });
+   732→   732→    };
+   733→   733→
+   734→   734→    try {
+   735→   735→      // POST to start visual generation job
+   736→   736→      const postRes = await fetch('/api/article/generate-visual', {
+   737→   737→        method: 'POST',
+   738→   738→        headers: { 'Content-Type': 'application/json' },
+   739→   739→        body: JSON.stringify({
+   740→   740→          type: placeholder.type,
+   741→   741→          description: placeholder.description,
+   742→   742→          context: stage.content.substring(0, 500),
+   743→   743→          articleTitle: selectedTitle,
+   744→   744→          engineId: selectedEngine,
+   745→   745→        }),
+   746→   746→        signal: abort.signal,
+   747→   747→      });
+   748→   748→
+   749→   749→      const postData = await postRes.json();
+   750→   750→      if (!postData.success || !postData.jobId) {
+   751→   751→        failPlaceholder(postData.error || 'Failed to start visual generation');
+   752→   752→        toast.error(postData.error || 'Failed to start visual generation');
+   753→   753→        return;
+   754→   754→      }
+   755→   755→
+   756→   756→      const jobId = postData.jobId;
+   757→   757→
+   758→   758→      // Poll for result every 3 seconds
+   759→   759→      const POLL_INTERVAL = 3000;
+   760→   760→      const MAX_POLL_TIME = 5 * 60 * 1000;
+   761→   761→      const startTime = Date.now();
+   762→   762→
+   763→   763→      while (Date.now() - startTime < MAX_POLL_TIME) {
+   764→   764→        if (abort.signal.aborted) return;
+   765→   765→        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+   766→   766→        if (abort.signal.aborted) return;
+   767→   767→
+   768→   768→        const pollRes = await fetch(`/api/article/generate-visual?jobId=${jobId}`, {
+   769→   769→          signal: abort.signal,
+   770→   770→        });
+   771→   771→        const pollData = await pollRes.json();
+   772→   772→
+   773→   773→        if (!pollData.success) {
+   774→   774→          failPlaceholder(pollData.error || 'Polling failed');
+   775→   775→          toast.error(pollData.error || 'Polling failed');
+   776→   776→          return;
+   777→   777→        }
+   778→   778→
+   779→   779→        if (pollData.status === 'done' && pollData.result) {
+   780→   780→          const updatedPlaceholders = stage.visualPlaceholders.map((p) =>
+   781→   781→            p.id === placeholderId ? { ...p, generated: true, data: pollData.result.data, error: undefined } : p
+   782→   782→          );
+   783→   783→          updateStage(stage.id, { visualPlaceholders: updatedPlaceholders });
+   784→   784→          toast.success(`${placeholder.type === 'figure' ? 'Figure' : 'Table'} generated!`);
+   785→   785→          return;
+   786→   786→        }
+   787→   787→
+   788→   788→        if (pollData.status === 'error') {
+   789→   789→          failPlaceholder(pollData.error || 'Generation failed');
+   790→   790→          toast.error(pollData.error || 'Generation failed');
+   791→   791→          return;
+   792→   792→        }
+   793→   793→      }
+   794→   794→
+   795→   795→      failPlaceholder('Visual generation timed out');
+   796→   796→      toast.error('Visual generation timed out');
+   797→   797→    } catch (err: unknown) {
+   798→   798→      if (err instanceof DOMException && err.name === 'AbortError') return;
+   799→   799→      const message = err instanceof Error ? err.message : 'Unknown error';
+   800→   800→      failPlaceholder(message);
+   801→   801→      toast.error(message);
+   802→   802→    }
+   803→   803→  }, [sectionStages, currentStage, selectedTitle, selectedEngine, updateStage]);
+   804→   804→
+   805→   805→  const handleCompile = useCallback(() => {
+   806→   806→    compileArticleFromStages();
+   807→   807→    nextStep();
+   808→   808→    toast.success('Article compiled! Moving to preview.');
+   809→   809→  }, [compileArticleFromStages, nextStep]);
+   810→   810→
+   811→   811→  const handleRegenerateAll = useCallback(() => {
+   812→   812→    resetStages();
+   813→   813→    setCurrentStageIndex(0);
+   814→   814→    setView('generating');
+   815→   815→  }, [resetStages, setCurrentStageIndex]);
+   816→   816→
+   817→   817→  // ─── View 1: Configuration ──────────────────────────────────────────────────
+   818→   818→  if (view === 'config') {
+   819→   819→    return (
+   820→   820→      <div className="space-y-6">
+   821→   821→        {/* Step Progress Indicator */}
+   822→   822→        <div className="flex items-center justify-center">
+   823→   823→          <div className="flex items-center gap-0">
+   824→   824→            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white"><Check className="size-3.5" /></div>
+   825→   825→            <div className="w-12 h-0.5 bg-emerald-500" />
+   826→   826→            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white"><Check className="size-3.5" /></div>
+   827→   827→            <div className="w-12 h-0.5 bg-emerald-500" />
+   828→   828→            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-white pulse-dot"><span className="text-[10px] font-bold">3</span></div>
+   829→   829→          </div>
+   830→   830→        </div>
+   831→   831→        <div className="flex items-center justify-center gap-8 text-[10px] font-medium text-muted-foreground -mt-1">
+   832→   832→          <span>Define</span><span>References</span><span className="text-emerald-600 dark:text-emerald-400">Generate</span>
+   833→   833→        </div>
+   834→   834→
+   835→   835→        <ReferencesSummary />
+   836→   836→        <Separator />
+   837→   837→        <MethodSelection />
+   838→   838→        <Separator />
+   839→   839→
+   840→   840→        {/* Engine Selector */}
+   841→   841→        <section>
+   842→   842→          <div className="flex items-center gap-3 mb-3">
+   843→   843→            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><Sparkles className="w-5 h-5" /></div>
+   844→   844→            <div>
+   845→   845→              <h3 className="text-base font-semibold text-foreground">AI Engine</h3>
+   846→   846→              <p className="text-sm text-muted-foreground">Select the AI model for generation</p>
+   847→   847→            </div>
+   848→   848→          </div>
+   849→   849→          <Card className="relative overflow-hidden">
+   850→   850→            <motion.div className="absolute inset-0 rounded-lg pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08), transparent 40%, transparent 60%, rgba(20,184,166,0.08))', backgroundSize: '200% 200%' }} animate={{ backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'] }} transition={{ duration: 6, repeat: Infinity, ease: 'linear' }} />
+   851→   851→            <CardContent className="relative py-4">
+   852→   852→              <Select value={selectedEngine} onValueChange={(val) => setSelectedEngine(val as AIEngineId)}>
+   853→   853→                <SelectTrigger className="w-full sm:w-[320px] bg-background border-emerald-200 dark:border-emerald-800 focus:ring-emerald-500 focus:border-emerald-500">
+   854→   854→                  <SelectValue placeholder="Select an AI engine" />
+   855→   855→                </SelectTrigger>
+   856→   856→                <SelectContent>
+   857→   857→                  {AI_ENGINES.map((engine) => (
+   858→   858→                    <SelectItem key={engine.id} value={engine.id} className="py-2.5">
+   859→   859→                      <div className="flex flex-col gap-0.5">
+   860→   860→                        <span className="font-medium text-sm">{engine.name}</span>
+   861→   861→                        <span className="text-xs text-muted-foreground">{engine.description}</span>
+   862→   862→                      </div>
+   863→   863→                    </SelectItem>
+   864→   864→                  ))}
+   865→   865→                </SelectContent>
+   866→   866→              </Select>
+   867→   867→              <AnimatePresence mode="wait">
+   868→   868→                <motion.p key={selectedEngine} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.2 }} className="mt-2.5 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+   869→   869→                  <Sparkles className="w-3 h-3" /> Selected engine: {AI_ENGINES.find((e) => e.id === selectedEngine)?.bestFor}
+   870→   870→                </motion.p>
+   871→   871→              </AnimatePresence>
+   872→   872→            </CardContent>
+   873→   873→          </Card>
+   874→   874→        </section>
+   875→   875→        <Separator />
+   876→   876→
+   877→   877→        {/* Additional Instructions */}
+   878→   878→        <section>
+   879→   879→          <div className="flex items-center gap-3 mb-3">
+   880→   880→            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><Settings className="w-5 h-5" /></div>
+   881→   881→            <div>
+   882→   882→              <h3 className="text-base font-semibold text-foreground">Additional Instructions</h3>
+   883→   883→              <p className="text-sm text-muted-foreground">Provide specific requirements (optional)</p>
+   884→   884→            </div>
+   885→   885→          </div>
+   886→   886→          <Card><CardContent className="pt-0">
+   887→   887→            <Textarea value={additionalInstructions} onChange={(e) => useArticleStore.getState().setAdditionalInstructions(e.target.value)} placeholder="Specify additional requirements such as target journal, focus areas, theoretical framework, citation style..." className="min-h-[100px] resize-y text-sm leading-relaxed" />
+   888→   888→            <p className="text-xs text-muted-foreground mt-2">{additionalInstructions.length > 0 ? `${additionalInstructions.length} characters` : 'Optional — leave blank for auto-generation'}</p>
+   889→   889→          </CardContent></Card>
+   890→   890→        </section>
+   891→   891→        <Separator />
+   892→   892→
+   893→   893→        {/* Start Generation */}
+   894→   894→        <section>
+   895→   895→          <Card className="bg-gradient-to-br from-muted/50 to-muted/30 border-dashed">
+   896→   896→            <CardContent className="pt-0 space-y-4">
+   897→   897→              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+   898→   898→                <div><span className="text-muted-foreground">Method</span><p className="font-medium text-foreground mt-0.5 capitalize">{researchMethod.replace(/-/g, ' ')}</p></div>
+   899→   899→                <div><span className="text-muted-foreground">References</span><p className="font-medium text-foreground mt-0.5">{selectedRefs.length} selected</p></div>
+   900→   900→                <div><span className="text-muted-foreground">Engine</span><p className="font-medium text-foreground mt-0.5">{AI_ENGINES.find((e) => e.id === selectedEngine)?.name}</p></div>
+   901→   901→              </div>
+   902→   902→              {!canGenerate && (
+   903→   903→                <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3">
+   904→   904→                  <p className="text-sm text-amber-700 dark:text-amber-400"><MessageSquareWarning className="w-4 h-4 inline mr-1.5 -mt-0.5" />Please select at least <strong>5 references</strong> before generating.</p>
+   905→   905→                </div>
+   906→   906→              )}
+   907→   907→              {canGenerate && (
+   908→   908→                <div className="flex items-center gap-2 rounded-lg bg-emerald-50/60 border border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-800/30 px-3 py-2">
+   909→   909→                  <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+   910→   910→                  <span className="text-xs text-emerald-700 dark:text-emerald-300">Sections will be generated one at a time. You can review and regenerate each before proceeding.</span>
+   911→   911→                </div>
+   912→   912→              )}
+   913→   913→              <Button size="lg" disabled={!canGenerate} onClick={handleStartGeneration} className={cn('w-full h-14 text-base font-semibold relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300')}>
+   914→   914→                <Play className="w-5 h-5" /> Start Generation <ArrowRight className="w-5 h-5" />
+   915→   915→                <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" animate={{ x: ['-100%', '100%'] }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} />
+   916→   916→              </Button>
+   917→   917→            </CardContent>
+   918→   918→          </Card>
+   919→   919→        </section>
+   920→   920→        <Separator />
+   921→   921→
+   922→   922→        {/* Navigation */}
+   923→   923→        <div className="flex items-center justify-between">
+   924→   924→          <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back to References</Button>
+   925→   925→          <span className="text-xs text-muted-foreground">Step 3 of 5</span>
+   926→   926→        </div>
+   927→   927→      </div>
+   928→   928→    );
+   929→   929→  }
+   930→   930→
+   931→   931→  // ─── View 3: Compile Complete ──────────────────────────────────────────────
+   932→   932→  if (view === 'compile') {
+   933→   933→    return (
+   934→   934→      <div className="min-h-screen flex flex-col">
+   935→   935→        <div className="flex-1">
+   936→   936→          <CompileView onRegenerateAll={handleRegenerateAll} onCompile={handleCompile} />
+   937→   937→        </div>
+   938→   938→        <Separator />
+   939→   939→        <div className="flex items-center justify-between py-4">
+   940→   940→          <Button variant="outline" onClick={() => setView('generating')} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back to Sections</Button>
+   941→   941→          <span className="text-xs text-muted-foreground">Step 3 of 5</span>
+   942→   942→        </div>
+   943→   943→      </div>
+   944→   944→    );
+   945→   945→  }
+   946→   946→
+   947→   947→  // ─── View 2: Step-by-Step Generation ──────────────────────────────────────
+   948→   948→  return (
+   949→   949→    <div className="min-h-screen flex flex-col">
+   950→   950→      <div className="flex-1">
+   951→   951→        {/* Header */}
+   952→   952→        <div className="flex items-center justify-between mb-4">
+   953→   953→          <div className="flex items-center gap-3">
+   954→   954→            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><GraduationCap className="w-5 h-5" /></div>
+   955→   955→            <div>
+   956→   956→              <h2 className="text-lg font-bold text-foreground">Section Generation</h2>
+   957→   957→              <p className="text-xs text-muted-foreground">Generate your article section by section</p>
+   958→   958→            </div>
+   959→   959→          </div>
+   960→   960→          <div className="flex items-center gap-2">
+   961→   961→            <Badge variant="outline" className="text-xs">
+   962→   962→              {sectionStages.filter((s) => s.status === 'done').length}/{sectionStages.length} done
+   963→   963→            </Badge>
+   964→   964→            <Button variant="ghost" size="sm" onClick={() => setView('config')} className="text-muted-foreground gap-1.5 text-xs">
+   965→   965→              <Settings className="w-3.5 h-3.5" /> Settings
+   966→   966→            </Button>
+   967→   967→          </div>
+   968→   968→        </div>
+   969→   969→
+   970→   970→        {/* 2-Column Layout */}
+   971→   971→        <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+   972→   972→          {/* Left Column: Stage Navigation */}
+   973→   973→          <div className="md:w-[300px] shrink-0">
+   974→   974→            <Card className="sticky top-4">
+   975→   975→              <CardContent className="p-3">
+   976→   976→                <div className="space-y-1">
+   977→   977→                  {sectionStages.map((stage, idx) => (
+   978→   978→                    <StageNavItem key={stage.id} stage={stage} index={idx} isActive={idx === currentStageIndex} onClick={() => handleStageClick(idx)} />
+   979→   979→                  ))}
+   980→   980→                </div>
+   981→   981→                {/* Overall progress */}
+   982→   982→                <Separator className="my-3" />
+   983→   983→                <div className="px-1">
+   984→   984→                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+   985→   985→                    <span>Overall Progress</span>
+   986→   986→                    <span>{sectionStages.filter((s) => s.status === 'done').length}/{sectionStages.length}</span>
+   987→   987→                  </div>
+   988→   988→                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+   989→   989→                    <motion.div
+   990→   990→                      className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-400"
+   991→   991→                      initial={{ width: 0 }}
+   992→   992→                      animate={{ width: `${(sectionStages.filter((s) => s.status === 'done').length / sectionStages.length) * 100}%` }}
+   993→   993→                      transition={{ duration: 0.5, ease: 'easeOut' }}
+   994→   994→                    />
+   995→   995→                  </div>
+   996→   996→                </div>
+   997→   997→              </CardContent>
+   998→   998→            </Card>
+   999→   999→          </div>
+  1000→  1000→
+  1001→  1001→          {/* Right Column: Generation Area */}
+  1002→  1002→          <div className="flex-1 min-w-0">
+  1003→  1003→            <AnimatePresence mode="wait">
+  1004→  1004→              <StageGenerationArea
+  1005→  1005→                key={currentStage?.id || 'empty'}
+  1006→  1006→                stage={currentStage || sectionStages[0]}
+  1007→  1007→                stageIndex={currentStageIndex}
+  1008→  1008→                onGenerate={handleGenerateStage}
+  1009→  1009→                onRegenerate={handleRegenerate}
+  1010→  1010→                onCancel={handleCancelGeneration}
+  1011→  1011→                onNext={handleNext}
+  1012→  1012→                isLastStage={isLastStage}
+  1013→  1013→                onGenerateVisual={handleGenerateVisual}
+  1014→  1014→                abortRef={abortRef}
+  1015→  1015→                statusText={statusText}
+  1016→  1016→              />
+  1017→  1017→            </AnimatePresence>
+  1018→  1018→          </div>
+  1019→  1019→        </div>
+  1020→  1020→      </div>
+  1021→  1021→
+  1022→  1022→      {/* Footer */}
+  1023→  1023→      <Separator className="mt-6" />
+  1024→  1024→      <div className="flex items-center justify-between py-4">
+  1025→  1025→        <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back to References</Button>
+  1026→  1026→        <span className="text-xs text-muted-foreground">Step 3 of 5</span>
+  1027→  1027→      </div>
+  1028→  1028→    </div>
+  1029→  1029→  );
+  1030→  1030→}

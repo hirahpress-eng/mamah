@@ -1,0 +1,1489 @@
+     1→/**
+     2→ * Writing Flows — Complete cicil (incremental) generation configurations
+     3→ *
+     4→ * Defines the structure for each writing mode:
+     5→ * - Skripsi (S1): BAB 1-5 + Referensi, 5-7 sub-steps per BAB
+     6→ * - Tesis (S2): BAB 1-5 + Referensi, 5-8 sub-steps per BAB
+     7→ * - Disertasi (S3): BAB 1-5 + Referensi, 8-11 sub-steps per BAB
+     8→ * - Buku Ilmiah Indonesia: Book chapters
+     9→ * - Buku Ilmiah English: Book chapters (English)
+    10→ * - Buku Bahasa Arab: Arabic book structure
+    11→ * - Buku Eksakta/Matematika: Science/Math book structure
+    12→ * - Buku Keislaman: Islamic Studies book structure
+    13→ * - Proposal Penelitian: Research proposal stages
+    14→ * - Esai Beasiswa: Scholarship essay stages
+    15→ * - Makalah: Paper stages
+    16→ */
+    17→
+    18→// ─── Types ──────────────────────────────────────────────────────────────────
+    19→
+    20→export type CicilWritingMode =
+    21→  | 'skripsi'
+    22→  | 'tesis'
+    23→  | 'disertasi'
+    24→  | 'buku-id'
+    25→  | 'buku-en'
+    26→  | 'buku-arab'
+    27→  | 'buku-eksakta'
+    28→  | 'buku-keislaman'
+    29→  | 'proposal'
+    30→  | 'scholarship'
+    31→  | 'paper';
+    32→
+    33→export interface CicilSubStep {
+    34→  id: string;
+    35→  label: string;
+    36→  labelId: string;
+    37→  targetWords: number;
+    38→  promptFocus: string;
+    39→}
+    40→
+    41→export interface CicilChapter {
+    42→  id: string;
+    43→  label: string;
+    44→  labelId: string;
+    45→  subSteps: CicilSubStep[];
+    46→}
+    47→
+    48→export interface WritingFlowConfig {
+    49→  id: CicilWritingMode;
+    50→  title: string;
+    51→  description: string;
+    52→  language: 'id' | 'en' | 'ar';
+    53→  maxWordsPerStep: number;
+    54→  chapters: CicilChapter[];
+    55→  systemPrompt: string;
+    56→  referenceStyle: string;
+    57→}
+    58→
+    59→// ─── System Prompts ─────────────────────────────────────────────────────────
+    60→
+    61→const SYSTEM_PROMPT_ID = `You are CONSILIUM PROFESSORUM — a consortium of 20 world-class Indonesian professors.
+    62→REPRESENTED EXPERTISE: Research Methodology, Academic Writing, Domain Expert, Statistical Analysis, Literature Synthesis, Theoretical Frameworks, Critical Analysis, APA 7th Edition, Research Ethics, Peer Review.
+    63→RULES:
+    64→- Every sentence must pass ALL 20 professors' scrutiny
+    65→- Use ONLY provided references — ZERO fabricated citations
+    66→- Academic rigor: precise terminology, logical flow, evidence-based claims
+    67→- CRITICAL: Every (Author, Year) citation MUST match a reference in the list
+    68→- Write in formal academic Bahasa Indonesia
+    69→- Use markdown: # and ## for headings, **bold** for key terms
+    70→- For figures: [FIGURE: description] — For tables: [TABLE: title | Col1 | Col2 | description]
+    71→- Do NOT generate actual markdown tables — use placeholders ONLY`;
+    72→
+    73→const SYSTEM_PROMPT_EN = SYSTEM_PROMPT_ID.replace(
+    74→  'Indonesian professors',
+    75→  'professors'
+    76→).replace(
+    77→  'formal academic Bahasa Indonesia',
+    78→  'formal academic English with sophisticated vocabulary'
+    79→);
+    80→
+    81→const SYSTEM_PROMPT_AR = `أنت CONSILIUM PROFESSORUM — اتحاد من 20 عالمًا من الدرجة الأولى.
+    82→القواعد:
+    83→- استخدم فقط المراجع المقدمة — لا تختلق اقتباسات
+    84→- اكتب باللغة العربية الأكاديمية الرسمية
+    85→- استخدم تنسيق APA الإصدار السابع
+    86→- لكل قسم اكتب بحد أقصى الكلمات المطلوبة
+    87→- استخدم مراجع حقيقية فقط مع الاقتباس (المؤلف، السنة)`;
+    88→
+    89→// ─── SKRIPSI (S1) ──────────────────────────────────────────────────────────
+    90→
+    91→const SKRIPSI_CHAPTERS: CicilChapter[] = [
+    92→  {
+    93→    id: 'abstrak',
+    94→    label: 'Abstrak',
+    95→    labelId: 'Abstrak',
+    96→    subSteps: [
+    97→      {
+    98→        id: 'abstrak-id',
+    99→        label: 'Abstrak Bahasa Indonesia',
+   100→        labelId: 'Abstrak Bahasa Indonesia',
+   101→        targetWords: 400,
+   102→        promptFocus: 'Write a comprehensive Indonesian abstract (400 words ±20) covering: latar belakang, tujuan penelitian, metode, hasil utama, kesimpulan. End with Kata Kunci: 5-7 keywords.',
+   103→      },
+   104→    ],
+   105→  },
+   106→  {
+   107→    id: 'bab1',
+   108→    label: 'BAB I Pendahuluan',
+   109→    labelId: 'BAB I Pendahuluan',
+   110→    subSteps: [
+   111→      {
+   112→        id: 'bab1-1',
+   113→        label: 'Latar Belakang Masalah',
+   114→        labelId: '1.1 Latar Belakang Masalah',
+   115→        targetWords: 1500,
+   116→        promptFocus: 'Tulis latar belakang masalah yang komprehensif: konteks penelitian, fenomena yang menjadi perhatian, data statistik pendukung dari referensi, urgensi dan signifikansi penelitian. Gunakan pendekatan funnel: dari umum ke spesifik. Minimal 5 sitasi dari referensi.',
+   117→      },
+   118→      {
+   119→        id: 'bab1-2',
+   120→        label: 'Identifikasi Masalah',
+   121→        labelId: '1.2 Identifikasi Masalah',
+   122→        targetWords: 800,
+   123→        promptFocus: 'Identifikasi permasalahan secara rinci: 4-6 masalah spesifik yang ditemukan dalam literatur, kontradiksi atau gap dalam penelitian sebelumnya, alasan mengapa masalah ini perlu diteliti.',
+   124→      },
+   125→      {
+   126→        id: 'bab1-3',
+   127→        label: 'Batasan Masalah',
+   128→        labelId: '1.3 Batasan Masalah',
+   129→        targetWords: 400,
+   130→        promptFocus: 'Tulis batasan masalah: batasan ruang lingkup, batasan objek/subjek, batasan waktu, batasan variabel yang diteliti, dan batasan metode yang digunakan.',
+   131→      },
+   132→      {
+   133→        id: 'bab1-4',
+   134→        label: 'Rumusan Masalah',
+   135→        labelId: '1.4 Rumusan Masalah',
+   136→        targetFocus: '1.4 Rumusan Masalah',
+   137→        targetWords: 500,
+   138→        promptFocus: 'Rumuskan 3-5 pertanyaan penelitian yang jelas, terukur, dan dapat dijawab melalui penelitian ini. Setiap rumusan harus mengacu pada gap yang telah diidentifikasi.',
+   139→      },
+   140→      {
+   141→        id: 'bab1-5',
+   142→        label: 'Tujuan Penelitian',
+   143→        labelId: '1.5 Tujuan Penelitian',
+   144→        targetWords: 500,
+   145→        promptFocus: 'Tulis tujuan umum dan tujuan khusus penelitian. Tujuan khusus harus selaras dengan setiap rumusan masalah. Gunakan kata kerja operasional (menganalisis, menguji, mengidentifikasi, mendeskripsikan, dll).',
+   146→      },
+   147→      {
+   148→        id: 'bab1-6',
+   149→        label: 'Manfaat Penelitian',
+   150→        labelId: '1.6 Manfaat Penelitian',
+   151→        targetWords: 700,
+   152→        promptFocus: 'Tulis manfaat teoretis (kontribusi ilmu pengetahuan, pengembangan teori) dan manfaat praktis (bagi praktisi, kebijakan, masyarakat, institusi).',
+   153→      },
+   154→      {
+   155→        id: 'bab1-7',
+   156→        label: 'Definisi Operasional',
+   157→        labelId: '1.7 Definisi Operasional',
+   158→        targetWords: 500,
+   159→        promptFocus: 'Berikan definisi operasional untuk setiap variabel/konsep kunci dalam penelitian. Definisi harus sesuai konteks penelitian dan merujuk pada sumber teori yang relevan.',
+   160→      },
+   161→    ],
+   162→  },
+   163→  {
+   164→    id: 'bab2',
+   165→    label: 'BAB II Tinjauan Pustaka',
+   166→    labelId: 'BAB II Tinjauan Pustaka',
+   167→    subSteps: [
+   168→      {
+   169→        id: 'bab2-1',
+   170→        label: 'Landasan Teori',
+   171→        labelId: '2.1 Landasan Teori',
+   172→        targetWords: 1500,
+   173→        promptFocus: 'Tulis landasan teori utama: jelaskan teori-teori inti yang relevan, riwayat perkembangan teori, tokoh-tokoh kunci, dan bagaimana teori tersebut diterapkan dalam konteks penelitian ini. Minimal 8 sitasi.',
+   174→      },
+   175→      {
+   176→        id: 'bab2-2',
+   177→        label: 'Kerangka Teori',
+   178→        labelId: '2.2 Kerangka Teori',
+   179→        targetWords: 1000,
+   180→        promptFocus: 'Bangun kerangka teori yang menunjukkan hubungan antar konsep/variabel. Jelaskan alur logis dari teori ke variabel penelitian. Sertakan [FIGURE: Kerangka Teori — diagram hubungan antar variabel].',
+   181→      },
+   182→      {
+   183→        id: 'bab2-3',
+   184→        label: 'Kajian Penelitian Terdahulu',
+   185→        labelId: '2.3 Kajian Penelitian Terdahulu',
+   186→        targetWords: 1200,
+   187→        promptFocus: 'Tinjau minimal 10 penelitian terdahulu yang relevan. Untuk setiap penelitian: jelaskan metode, temuan, dan relevansinya. Sertakan [TABLE: Ringkasan Penelitian Terdahulu | No | Peneliti | Tahun | Metode | Temuan Utama | Relevansi].',
+   188→      },
+   189→      {
+   190→        id: 'bab2-4',
+   191→        label: 'Gap Analysis dan Posisi Penelitian',
+   192→        labelId: '2.4 Gap Analysis dan Posisi Penelitian',
+   193→        targetWords: 800,
+   194→        promptFocus: 'Identifikasi gap penelitian dari literatur: apa yang belum diteliti, kelemahan metode penelitian sebelumnya, konteks yang belum dieksplorasi. Posisikan penelitian ini terhadap gap yang ditemukan.',
+   195→      },
+   196→      {
+   197→        id: 'bab2-5',
+   198→        label: 'Hipotesis',
+   199→        labelId: '2.5 Hipotesis',
+   200→        targetWords: 500,
+   201→        promptFocus: 'Rumuskan hipotesis penelitian (jika penelitian kuantitatif): hipotesis nol (H0) dan hipotesis alternatif (Ha/H1) untuk setiap variabel. Jelaskan dasar teoretis untuk setiap hipotesis.',
+   202→      },
+   203→    ],
+   204→  },
+   205→  {
+   206→    id: 'bab3',
+   207→    label: 'BAB III Metodologi Penelitian',
+   208→    labelId: 'BAB III Metodologi Penelitian',
+   209→    subSteps: [
+   210→      {
+   211→        id: 'bab3-1',
+   212→        label: 'Jenis dan Pendekatan Penelitian',
+   213→        labelId: '3.1 Jenis dan Pendekatan Penelitian',
+   214→        targetWords: 700,
+   215→        promptFocus: 'Jelaskan jenis penelitian (eksploratif, deskriptif, eksplanatori, dll), pendekatan (kuantitatif, kualitatif, mixed method), dan justifikasi pemilihan metode terhadap rumusan masalah.',
+   216→      },
+   217→      {
+   218→        id: 'bab3-2',
+   219→        label: 'Lokasi dan Waktu Penelitian',
+   220→        labelId: '3.2 Lokasi dan Waktu Penelitian',
+   221→        targetWords: 300,
+   222→        promptFocus: 'Jelaskan lokasi penelitian dan alasan pemilihan lokasi, serta jadwal waktu pelaksanaan penelitian.',
+   223→      },
+   224→      {
+   225→        id: 'bab3-3',
+   226→        label: 'Populasi dan Sampel',
+   227→        labelId: '3.3 Populasi dan Sampel',
+   228→        targetWords: 800,
+   229→        promptFocus: 'Jelaskan populasi penelitian, teknik sampling (probability/non-probability), ukuran sampel dan rumus yang digunakan, kriteria inklusi/eksklusi. Sertakan perhitungan ukuran sampel jika kuantitatif.',
+   230→      },
+   231→      {
+   232→        id: 'bab3-4',
+   233→        label: 'Variabel dan Definisi Operasional',
+   234→        labelId: '3.4 Variabel dan Definisi Operasional',
+   235→        targetWords: 600,
+   236→        promptFocus: 'Identifikasi variabel bebas, terikat, dan kontrol (jika ada). Berikan definisi operasional setiap variabel beserta indikator dan skala pengukuran.',
+   237→      },
+   238→      {
+   239→        id: 'bab3-5',
+   240→        label: 'Teknik Pengumpulan Data',
+   241→        labelId: '3.5 Teknik Pengumpulan Data',
+   242→        targetWords: 800,
+   243→        promptFocus: 'Jelaskan teknik pengumpulan data: kuesioner, wawancara, observasi, dokumentasi. Sertakan contoh instrumen/kuesioner. Jelaskan validitas dan reliabilitas instrumen.',
+   244→      },
+   245→      {
+   246→        id: 'bab3-6',
+   247→        label: 'Teknik Analisis Data',
+   248→        labelId: '3.6 Teknik Analisis Data',
+   249→        targetWords: 1000,
+   250→        promptFocus: 'Jelaskan teknik analisis data yang digunakan: statistik deskriptif, inferensial, uji hipotesis, analisis kualitatif (coding, tematik). Jelaskan uji prasyarat (normalitas, homogenitas, linearitas) jika kuantitatif. Sertakan software yang digunakan.',
+   251→      },
+   252→    ],
+   253→  },
+   254→  {
+   255→    id: 'bab4',
+   256→    label: 'BAB IV Hasil dan Pembahasan',
+   257→    labelId: 'BAB IV Hasil dan Pembahasan',
+   258→    subSteps: [
+   259→      {
+   260→        id: 'bab4-1',
+   261→        label: 'Deskripsi Data/Responden',
+   262→        labelId: '4.1 Deskripsi Data/Responden',
+   263→        targetWords: 800,
+   264→        promptFocus: 'Deskripsikan karakteristik data atau responden: demografi, distribusi jawaban, statistik deskriptif variabel. Sertakan [TABLE: Statistik Deskriptif Variabel].',
+   265→      },
+   266→      {
+   267→        id: 'bab4-2',
+   268→        label: 'Uji Prasyarat Analisis',
+   269→        labelId: '4.2 Uji Prasyarat Analisis',
+   270→        targetWords: 700,
+   271→        promptFocus: 'Laporkan hasil uji prasyarat: uji normalitas (Kolmogorov-Smirnov/Shapiro-Wilk), uji homogenitas (Levene), uji linearitas, uji multikolinearitas. Sertakan tabel hasil uji.',
+   272→      },
+   273→      {
+   274→        id: 'bab4-3',
+   275→        label: 'Hasil Analisis Utama',
+   276→        labelId: '4.3 Hasil Analisis Utama',
+   277→        targetWords: 1200,
+   278→        promptFocus: 'Presentasikan hasil analisis utama: uji hipotesis, regresi, korelasi, ANOVA, atau analisis tematik. Sertakan [TABLE: Hasil Analisis] dan [FIGURE: Visualisasi Hasil]. Interpretasikan output statistik.',
+   279→      },
+   280→      {
+   281→        id: 'bab4-4',
+   282→        label: 'Hasil Analisis Lanjutan',
+   283→        labelId: '4.4 Hasil Analisis Lanjutan',
+   284→        targetWords: 1000,
+   285→        promptFocus: 'Presentasikan analisis tambahan: uji tambahan, analisis sub-group, efek interaksi, atau triangulasi data kualitatif.',
+   286→      },
+   287→      {
+   288→        id: 'bab4-5',
+   289→        label: 'Pembahasan Temuan',
+   290→        labelId: '4.5 Pembahasan Temuan',
+   291→        targetWords: 1500,
+   292→        promptFocus: 'Bahaskan temuan secara mendalam: bandingkan dengan teori di BAB II, bandingkan dengan penelitian terdahulu, jelaskan mengapa hasil demikian, identifikasi implikasi teoretis. Hubungkan setiap temuan dengan referensi.',
+   293→      },
+   294→      {
+   295→        id: 'bab4-6',
+   296→        label: 'Pembahasan Implikasi',
+   297→        labelId: '4.6 Pembahasan Implikasi',
+   298→        targetWords: 1000,
+   299→        promptFocus: 'Bahaskan implikasi praktis temuan: rekomendasi untuk praktisi, kebijakan, atau pengembangan. Jelaskan keterbatasan temuan dan konteks penerapannya.',
+   300→      },
+   301→      {
+   302→        id: 'bab4-7',
+   303→        label: 'Sintesis dan Integrasi Temuan',
+   304→        labelId: '4.7 Sintesis dan Integrasi Temuan',
+   305→        targetWords: 800,
+   306→        promptFocus: 'Integrasikan semua temuan ke dalam narasi koheren. Jawab setiap rumusan masalah secara eksplisit. Sintesiskan temuan ke dalam model/conceptual framework baru jika relevan.',
+   307→      },
+   308→    ],
+   309→  },
+   310→  {
+   311→    id: 'bab5',
+   312→    label: 'BAB V Kesimpulan dan Saran',
+   313→    labelId: 'BAB V Kesimpulan dan Saran',
+   314→    subSteps: [
+   315→      {
+   316→        id: 'bab5-1',
+   317→        label: 'Kesimpulan dan Saran',
+   318→        labelId: 'Kesimpulan dan Saran',
+   319→        targetWords: 1200,
+   320→        promptFocus: 'Tulis kesimpulan yang menjawab setiap rumusan masalah secara jelas dan ringkas. Berikan saran teoretis, saran praktis, dan saran untuk penelitian selanjutnya. Jangan tambahkan informasi baru.',
+   321→      },
+   322→    ],
+   323→  },
+   324→  {
+   325→    id: 'referensi',
+   326→    label: 'Daftar Pustaka',
+   327→    labelId: 'Daftar Pustaka',
+   328→    subSteps: [
+   329→      {
+   330→        id: 'referensi-format',
+   331→        label: 'Format Daftar Pustaka',
+   332→        labelId: 'Format Daftar Pustaka APA 7',
+   333→        targetWords: 0,
+   334→        promptFocus: 'Format all cited references in APA 7th Edition. Include ONLY references actually cited in the text. Alphabetical order.',
+   335→      },
+   336→      {
+   337→        id: 'referensi-lampiran',
+   338→        label: 'Daftar Lampiran',
+   339→        labelId: 'Daftar Lampiran',
+   340→        targetWords: 300,
+   341→        promptFocus: 'Buat daftar lampiran: instrumen penelitian, data mentah, dokumen pendukung, hasil uji validitas/reliabilitas, surat izin penelitian.',
+   342→      },
+   343→    ],
+   344→  },
+   345→];
+   346→
+   347→// ─── TESIS (S2) — More detailed ────────────────────────────────────────────
+   348→
+   349→function createTesisChapters(): CicilChapter[] {
+   350→  const bab2 = [...SKRIPSI_CHAPTERS[1].subSteps];
+   351→  // Add more detailed sub-steps for tesis
+   352→  bab2.splice(2, 0, {
+   353→    id: 'bab2-2b',
+   354→    label: 'Tinjauan Teori Pendukung',
+   355→    labelId: '2.2b Tinjauan Teori Pendukung',
+   356→    targetWords: 1000,
+   357→    promptFocus: 'Tinjau teori-teori pendukung tambahan yang relevan: teori dari disiplin ilmu terkait, perspektif lintas budaya, perkembangan terkini dalam literatur internasional.',
+   358→  });
+   359→
+   360→  const bab4 = [...SKRIPSI_CHAPTERS[3].subSteps];
+   361→  bab4.splice(4, 0, {
+   362→    id: 'bab4-4b',
+   363→    label: 'Analisis Model/Struktur',
+   364→    labelId: '4.4b Analisis Model/Struktur',
+   365→    targetWords: 1000,
+   366→    promptFocus: 'Lakukan analisis model: structural equation modeling, path analysis, atau analisis struktur jika relevan. Uji goodness-of-fit model. Sertakan diagram model.',
+   367→  });
+   368→
+   369→  return [
+   370→    SKRIPSI_CHAPTERS[0], // Abstrak
+   371→    { ...SKRIPSI_CHAPTERS[1], subSteps: bab2 }, // BAB II enhanced
+   372→    SKRIPSI_CHAPTERS[2], // BAB III
+   373→    { ...SKRIPSI_CHAPTERS[3], subSteps: bab4 }, // BAB IV enhanced
+   374→    SKRIPSI_CHAPTERS[4], // BAB V
+   375→    SKRIPSI_CHAPTERS[5], // Referensi
+   376→  ];
+   377→}
+   378→
+   379→// ─── DISERTASI (S3) — Most detailed ────────────────────────────────────────
+   380→
+   381→function createDisertasiChapters(): CicilChapter[] {
+   382→  const bab1Subs = [
+   383→    { ...SKRIPSI_CHAPTERS[1].subSteps[0], targetWords: 2000 }, // Latar belakang longer
+   384→    { ...SKRIPSI_CHAPTERS[1].subSteps[1], targetWords: 1200 }, // Identifikasi masalah longer
+   385→    SKRIPSI_CHAPTERS[1].subSteps[2], // Batasan masalah
+   386→    SKRIPSI_CHAPTERS[1].subSteps[3], // Rumusan masalah
+   387→    SKRIPSI_CHAPTERS[1].subSteps[4], // Tujuan
+   388→    SKRIPSI_CHAPTERS[1].subSteps[5], // Manfaat
+   389→    SKRIPSI_CHAPTERS[1].subSteps[6], // Definisi operasional
+   390→    {
+   391→      id: 'bab1-8',
+   392→      label: 'Orisinalitas Penelitian',
+   393→      labelId: '1.8 Orisinalitas Penelitian',
+   394→      targetWords: 600,
+   395→      promptFocus: 'Jelaskan orisinalitas dan novelty penelitian: apa yang baru dari penelitian ini, kontribusi terhadap pengembangan ilmu, pengembangan metode atau instrumen baru.',
+   396→    },
+   397→  ];
+   398→
+   399→  const bab2Subs = [
+   400→    { ...SKRIPSI_CHAPTERS[1].subSteps[0], targetWords: 2000, id: 'bab2-1d' }, // Landasan teori
+   401→    SKRIPSI_CHAPTERS[1].subSteps[1], // Kerangka teori
+   402→    {
+   403→      id: 'bab2-2d',
+   404→      label: 'Tinjauan Teori Interdisipliner',
+   405→      labelId: '2.2 Tinjauan Teori Interdisipliner',
+   406→      targetWords: 1200,
+   407→      promptFocus: 'Tinjau perspektif interdisipliner: kaitkan dengan teori dari bidang ilmu lain, paradigma alternatif, dan pendekatan lintas budaya.',
+   408→    },
+   409→    { ...SKRIPSI_CHAPTERS[1].subSteps[2], targetWords: 1500, id: 'bab2-3d' }, // Kajian terdahulu
+   410→    {
+   411→      id: 'bab2-3bd',
+   412→      label: 'Systematic Literature Review',
+   413→      labelId: '2.3b Systematic Literature Review',
+   414→      targetWords: 1200,
+   415→      promptFocus: 'Lakukan tinjauan literatur sistematis: PRISMA flow, kriteria inklusi/eksklusi, kualitas studi, sintesis temuan. Sertakan [FIGURE: PRISMA Flow Diagram].',
+   416→    },
+   417→    { ...SKRIPSI_CHAPTERS[1].subSteps[3], targetWords: 1000, id: 'bab2-4d' }, // Gap analysis
+   418→    SKRIPSI_CHAPTERS[1].subSteps[4], // Hipotesis
+   419→    {
+   420→      id: 'bab2-6',
+   421→      label: 'Kerangka Konseptual',
+   422→      labelId: '2.6 Kerangka Konseptual',
+   423→      targetWords: 800,
+   424→      promptFocus: 'Bangun kerangka konseptual komprehensif yang mengintegrasikan semua teori, variabel, dan hipotesis. Sertakan [FIGURE: Kerangka Konseptual Komprehensif].',
+   425→    },
+   426→  ];
+   427→
+   428→  const bab3Subs = [
+   429→    { ...SKRIPSI_CHAPTERS[2].subSteps[0], targetWords: 1000, id: 'bab3-1d' },
+   430→    SKRIPSI_CHAPTERS[2].subSteps[1],
+   431→    { ...SKRIPSI_CHAPTERS[2].subSteps[2], targetWords: 1000, id: 'bab3-3d' },
+   432→    SKRIPSI_CHAPTERS[2].subSteps[3],
+   433→    { ...SKRIPSI_CHAPTERS[2].subSteps[4], targetWords: 1000, id: 'bab3-5d' },
+   434→    { ...SKRIPSI_CHAPTERS[2].subSteps[5], targetWords: 1200, id: 'bab3-6d' },
+   435→    {
+   436→      id: 'bab3-7',
+   437→      label: 'Ethical Considerations',
+   438→      labelId: '3.7 Pertimbangan Etis',
+   439→      targetWords: 600,
+   440→      promptFocus: 'Jelaskan pertimbangan etis: informed consent, kerahasiaan data, approval dari ethical committee, potensi conflict of interest.',
+   441→    },
+   442→    {
+   443→      id: 'bab3-8',
+   444→      label: 'Strategi Validitas dan Reliabilitas',
+   445→      labelId: '3.8 Strategi Validitas dan Reliabilitas',
+   446→      targetWords: 800,
+   447→      promptFocus: 'Jelaskan strategi untuk menjamin validitas (content, construct, criterion) dan reliabilitas (test-retest, inter-rater, internal consistency). Triangulasi data jika mixed method.',
+   448→    },
+   449→  ];
+   450→
+   451→  const bab4Subs = [
+   452→    { ...SKRIPSI_CHAPTERS[3].subSteps[0], id: 'bab4-1d' },
+   453→    { ...SKRIPSI_CHAPTERS[3].subSteps[1], id: 'bab4-2d' },
+   454→    { ...SKRIPSI_CHAPTERS[3].subSteps[2], targetWords: 1500, id: 'bab4-3d' },
+   455→    {
+   456→      id: 'bab4-3b',
+   457→      label: 'Analisis Mediasi dan Moderasi',
+   458→      labelId: '4.3b Analisis Mediasi dan Moderasi',
+   459→      targetWords: 1000,
+   460→      promptFocus: 'Lakukan analisis mediasi (Sobel test, bootstrap) dan moderasi (interaction effect, simple slope). Sertakan diagram path dan tabel hasil.',
+   461→    },
+   462→    { ...SKRIPSI_CHAPTERS[3].subSteps[3], id: 'bab4-4d' },
+   463→    { ...SKRIPSI_CHAPTERS[3].subSteps[4], targetWords: 2000, id: 'bab4-5d' },
+   464→    { ...SKRIPSI_CHAPTERS[3].subSteps[5], id: 'bab4-6d' },
+   465→    {
+   466→      id: 'bab4-7d',
+   467→      label: 'Pembahasan Komparatif',
+   468→      labelId: '4.7 Pembahasan Komparatif',
+   469→      targetWords: 1000,
+   470→      promptFocus: 'Bandingkan temuan secara komparatif: lintas budaya, lintas periode, antar kelompok. Identifikasi pola universal vs kontekstual.',
+   471→    },
+   472→    { ...SKRIPSI_CHAPTERS[3].subSteps[6], targetWords: 1000, id: 'bab4-8d' },
+   473→    {
+   474→      id: 'bab4-9',
+   475→      label: 'Rekomendasi Berbasis Bukti',
+   476→      labelId: '4.9 Rekomendasi Berbasis Bukti',
+   477→      targetWords: 800,
+   478→      promptFocus: 'Berikan rekomendasi berbasis bukti (evidence-based): rekomendasi kebijakan, rekomendasi praktik, rekomendasi teoretis, dengan level of evidence untuk setiap rekomendasi.',
+   479→    },
+   480→  ];
+   481→
+   482→  return [
+   483→    SKRIPSI_CHAPTERS[0], // Abstrak
+   484→    { ...SKRIPSI_CHAPTERS[1], subSteps: bab1Subs }, // BAB I enhanced
+   485→    { ...SKRIPSI_CHAPTERS[1], id: 'bab2', label: 'BAB II Tinjauan Pustaka', labelId: 'BAB II Tinjauan Pustaka', subSteps: bab2Subs },
+   486→    { ...SKRIPSI_CHAPTERS[2], id: 'bab3d', subSteps: bab3Subs }, // BAB III enhanced
+   487→    { ...SKRIPSI_CHAPTERS[3], id: 'bab4d', subSteps: bab4Subs }, // BAB IV enhanced
+   488→    SKRIPSI_CHAPTERS[4], // BAB V
+   489→    SKRIPSI_CHAPTERS[5], // Referensi
+   490→  ];
+   491→}
+   492→
+   493→// ─── BUKU ILMIAH INDONESIA ─────────────────────────────────────────────────
+   494→
+   495→const BUKU_ID_CHAPTERS: CicilChapter[] = [
+   496→  {
+   497→    id: 'ft-kata-pengantar',
+   498→    label: 'Kata Pengantar',
+   499→    labelId: 'Kata Pengantar',
+   500→    subSteps: [
+   501→      {
+   502→        id: 'ft-kata-pengantar-1',
+   503→        label: 'Kata Pengantar',
+   504→        labelId: 'Kata Pengantar',
+   505→        targetWords: 800,
+   506→        promptFocus: 'Tulis kata pengantar buku yang profesional: ucapan syukur, latar belakang penulisan, tujuan buku, target pembaca, harapan kontribusi.',
+   507→      },
+   508→    ],
+   509→  },
+   510→  {
+   511→    id: 'ft-daftar-isi',
+   512→    label: 'Daftar Isi',
+   513→    labelId: 'Daftar Isi',
+   514→    subSteps: [
+   515→      {
+   516→        id: 'ft-daftar-isi-1',
+   517→        label: 'Daftar Isi',
+   518→        labelId: 'Daftar Isi',
+   519→        targetWords: 300,
+   520→        promptFocus: 'Buat daftar isi lengkap: bagian, bab, sub-bab, lampiran, dan halaman.',
+   521→      },
+   522→    ],
+   523→  },
+   524→  {
+   525→    id: 'bab1-buku',
+   526→    label: 'BAB 1 Pendahuluan',
+   527→    labelId: 'BAB 1 Pendahuluan',
+   528→    subSteps: [
+   529→      {
+   530→        id: 'buku-bab1-1',
+   531→        label: 'Latar Belakang Topik Buku',
+   532→        labelId: '1.1 Latar Belakang Topik Buku',
+   533→        targetWords: 1500,
+   534→        promptFocus: 'Tulis pendahuluan buku: konteks dan urgensi topik, perkembangan terkini, alasan mengapa buku ini diperlukan, profil target pembaca.',
+   535→      },
+   536→      {
+   537→        id: 'buku-bab1-2',
+   538→        label: 'Tujuan dan Manfaat Buku',
+   539→        labelId: '1.2 Tujuan dan Manfaat Buku',
+   540→        targetWords: 700,
+   541→        promptFocus: 'Jelaskan tujuan buku, manfaat bagi pembaca, dan kontribusi yang diharapkan.',
+   542→      },
+   543→      {
+   544→        id: 'buku-bab1-3',
+   545→        label: 'Sistematika Penulisan',
+   546→        labelId: '1.3 Sistematika Penulisan',
+   547→        targetWords: 600,
+   548→        promptFocus: 'Jelaskan sistematika penulisan: overview setiap bab, alur logis pembahasan, dan bagaimana bab-bab saling terkait.',
+   549→      },
+   550→    ],
+   551→  },
+   552→  {
+   553→    id: 'bab2-buku',
+   554→    label: 'BAB 2 Landasan Teori',
+   555→    labelId: 'BAB 2 Landasan Teori',
+   556→    subSteps: [
+   557→      {
+   558→        id: 'buku-bab2-1',
+   559→        label: 'Teori Utama',
+   560→        labelId: '2.1 Teori Utama',
+   561→        targetWords: 1500,
+   562→        promptFocus: 'Jelaskan teori-teori utama yang menjadi landasan buku ini secara mendalam dan komprehensif.',
+   563→      },
+   564→      {
+   565→        id: 'buku-bab2-2',
+   566→        label: 'Perkembangan Konsep',
+   567→        labelId: '2.2 Perkembangan Konsep',
+   568→        targetWords: 1200,
+   569→        promptFocus: 'Tinjau perkembangan konsep dari masa ke masa, perdebatan akademis, dan state of the art.',
+   570→      },
+   571→      {
+   572→        id: 'buku-bab2-3',
+   573→        label: 'Kerangka Pemikiran',
+   574→        labelId: '2.3 Kerangka Pemikiran',
+   575→        targetWords: 800,
+   576→        promptFocus: 'Bangun kerangka pemikiran buku ini: hubungan antar konsep, paradigma yang digunakan, pendekatan analitis.',
+   577→      },
+   578→    ],
+   579→  },
+   580→  {
+   581→    id: 'bab3-buku',
+   582→    label: 'BAB 3 Pembahasan Utama',
+   583→    labelId: 'BAB 3 Pembahasan Utama',
+   584→    subSteps: [
+   585→      {
+   586→        id: 'buku-bab3-1',
+   587→        label: 'Sub-Bab 3.1',
+   588→        labelId: '3.1 Pembahasan Sub-Topik Pertama',
+   589→        targetWords: 1500,
+   590→        promptFocus: 'Tulis pembahasan sub-topik pertama secara mendalam dengan referensi yang kuat, contoh konkret, dan analisis yang tajam.',
+   591→      },
+   592→      {
+   593→        id: 'buku-bab3-2',
+   594→        label: 'Sub-Bab 3.2',
+   595→        labelId: '3.2 Pembahasan Sub-Topik Kedua',
+   596→        targetWords: 1500,
+   597→        promptFocus: 'Tulis pembahasan sub-topik kedua: kaitkan dengan teori di BAB 2, berikan contoh, data, dan studi kasus.',
+   598→      },
+   599→      {
+   600→        id: 'buku-bab3-3',
+   601→        label: 'Sub-Bab 3.3',
+   602→        labelId: '3.3 Pembahasan Sub-Topik Ketiga',
+   603→        targetWords: 1500,
+   604→        promptFocus: 'Tulis pembahasan sub-topik ketiga: analisis mendalam dengan perspektif yang berbeda.',
+   605→      },
+   606→      {
+   607→        id: 'buku-bab3-4',
+   608→        label: 'Sub-Bab 3.4',
+   609→        labelId: '3.4 Studi Kasus dan Contoh',
+   610→        targetWords: 1200,
+   611→        promptFocus: 'Berikan studi kasus dan contoh konkret yang mengilustrasikan konsep-konsep yang dibahas.',
+   612→      },
+   613→    ],
+   614→  },
+   615→  {
+   616→    id: 'bab4-buku',
+   617→    label: 'BAB 4 Analisis dan Sintesis',
+   618→    labelId: 'BAB 4 Analisis dan Sintesis',
+   619→    subSteps: [
+   620→      {
+   621→        id: 'buku-bab4-1',
+   622→        label: 'Analisis Temuan',
+   623→        labelId: '4.1 Analisis Temuan',
+   624→        targetWords: 1500,
+   625→        promptFocus: 'Analisis mendalam temuan-temuan yang telah dibahas, identifikasi pola dan hubungan.',
+   626→      },
+   627→      {
+   628→        id: 'buku-bab4-2',
+   629→        label: 'Sintesis dan Integrasi',
+   630→        labelId: '4.2 Sintesis dan Integrasi',
+   631→        targetWords: 1200,
+   632→        promptFocus: 'Sintesiskan semua pembahasan ke dalam kerangka yang koheren dan komprehensif.',
+   633→      },
+   634→      {
+   635→        id: 'buku-bab4-3',
+   636→        label: 'Implikasi dan Rekomendasi',
+   637→        labelId: '4.3 Implikasi dan Rekomendasi',
+   638→        targetWords: 1000,
+   639→        promptFocus: 'Berikan implikasi teoretis dan praktis, serta rekomendasi untuk penelitian dan praktik ke depan.',
+   640→      },
+   641→    ],
+   642→  },
+   643→  {
+   644→    id: 'bab5-buku',
+   645→    label: 'BAB 5 Penutup',
+   646→    labelId: 'BAB 5 Penutup',
+   647→    subSteps: [
+   648→      {
+   649→        id: 'buku-bab5-1',
+   650→        label: 'Kesimpulan dan Penutup',
+   651→        labelId: 'Kesimpulan dan Penutup',
+   652→        targetWords: 1000,
+   653→        promptFocus: 'Tulis kesimpulan buku: ringkasan temuan utama, kontribusi buku, pesan akhir penulis, dan arah pengembangan ke depan.',
+   654→      },
+   655→    ],
+   656→  },
+   657→  {
+   658→    id: 'referensi-buku',
+   659→    label: 'Daftar Pustaka',
+   660→    labelId: 'Daftar Pustaka',
+   661→    subSteps: [
+   662→      {
+   663→        id: 'referensi-buku-1',
+   664→        label: 'Format Daftar Pustaka',
+   665→        labelId: 'Format Daftar Pustaka APA 7',
+   666→        targetWords: 0,
+   667→        promptFocus: 'Format all cited references in APA 7th Edition. Alphabetical order.',
+   668→      },
+   669→      {
+   670→        id: 'referensi-buku-2',
+   671→        label: 'Indeks',
+   672→        labelId: 'Indeks',
+   673→        targetWords: 300,
+   674→        promptFocus: 'Buat indeks: daftar istilah penting, nama tokoh, dan konsep kunci beserta nomor halaman.',
+   675→      },
+   676→    ],
+   677→  },
+   678→];
+   679→
+   680→// ─── BUKU ILMIAH ENGLISH ──────────────────────────────────────────────────
+   681→
+   682→function createBukuEnChapters(): CicilChapter[] {
+   683→  return BUKU_ID_CHAPTERS.map((ch) => ({
+   684→    ...ch,
+   685→    label: ch.label.replace(/BAB (\d+)/, 'Chapter $1').replace(/Daftar Pustaka/, 'References').replace(/Kata Pengantar/, 'Preface').replace(/Daftar Isi/, 'Table of Contents').replace(/Indeks/, 'Index'),
+   686→    labelId: ch.labelId.replace(/BAB (\d+)/, 'Chapter $1').replace(/Daftar Pustaka/, 'References').replace(/Kata Pengantar/, 'Preface').replace(/Daftar Isi/, 'Table of Contents').replace(/Indeks/, 'Index'),
+   687→    subSteps: ch.subSteps.map((ss) => ({
+   688→      ...ss,
+   689→      label: ss.label.replace(/Sub-Bab (\d+\.\d+)/, 'Section $1').replace(/Kata Pengantar/, 'Preface').replace(/Daftar Isi/, 'Table of Contents').replace(/Daftar Pustaka/, 'References'),
+   690→      labelId: ss.labelId.replace(/Sub-Bab (\d+\.\d+)/, 'Section $1').replace(/Kata Pengantar/, 'Preface').replace(/Daftar Isi/, 'Table of Contents').replace(/Daftar Pustaka/, 'References'),
+   691→      promptFocus: ss.promptFocus.replace(/Tulis /g, 'Write ').replace(/Jelaskan /g, 'Explain ').replace(/Buat /g, 'Create ').replace(/Berikan /g, 'Provide ').replace(/Bahaskan /g, 'Discuss ').replace(/Tinjau /g, 'Review ').replace(/Bangun /g, 'Build ').replace(/Sintesiskan /g, 'Synthesize ').replace(/Jelaskan /g, 'Explain ').replace(/Laporkan /g, 'Report ').replace(/Identifikasi /g, 'Identify ').replace(/Format /g, 'Format '),
+   692→    })),
+   693→  }));
+   694→}
+   695→
+   696→// ─── BUKU BAHASA ARAB ─────────────────────────────────────────────────────
+   697→
+   698→const BUKU_ARAB_CHAPTERS: CicilChapter[] = [
+   699→  {
+   700→    id: 'ar-muqaddimah',
+   701→    label: 'مقدمة (Pendahuluan)',
+   702→    labelId: 'مقدمة (Pendahuluan)',
+   703→    subSteps: [
+   704→      {
+   705→        id: 'ar-muqaddimah-1',
+   706→        label: 'مقدمة الكتاب (Pendahuluan Buku)',
+   707→        labelId: 'مقدمة الكتاب',
+   708→        targetWords: 1000,
+   709→        promptFocus: 'اكتب مقدمة الكتاب باللغة العربية الفصحى: خلفية الموضوع، أهمية الكتاب، الأهداف، والمنهج المتبع. Write the book introduction in formal Arabic: background, importance, objectives, methodology.',
+   710→      },
+   711→    ],
+   712→  },
+   713→  {
+   714→    id: 'ar-bab1',
+   715→    label: 'الفصل الأول: الإطار النظري',
+   716→    labelId: 'الفصل الأول: الإطار النظري',
+   717→    subSteps: [
+   718→      {
+   719→        id: 'ar-bab1-1',
+   720→        label: 'المفاهيم الأساسية',
+   721→        labelId: 'المفاهيم الأساسية',
+   722→        targetWords: 1500,
+   723→        promptFocus: 'اكتب عن المفاهيم الأساسية والتأسيس النظري باللغة العربية الفصحى. Write about fundamental concepts and theoretical foundations in formal Arabic.',
+   724→      },
+   725→      {
+   726→        id: 'ar-bab1-2',
+   727→        label: 'الدراسات السابقة',
+   728→        labelId: 'الدراسات السابقة',
+   729→        targetWords: 1200,
+   730→        promptFocus: 'راجع الدراسات السابقة ذات الصلة. Review relevant previous studies. Write in formal Arabic with proper academic citations.',
+   731→      },
+   732→      {
+   733→        id: 'ar-bab1-3',
+   734→        label: 'الإطار المفاهيمي',
+   735→        labelId: 'الإطار المفاهيمي',
+   736→        targetWords: 800,
+   737→        promptFocus: 'ابنِ الإطار المفاهيمي. Build the conceptual framework. Write in formal Arabic.',
+   738→      },
+   739→    ],
+   740→  },
+   741→  {
+   742→    id: 'ar-bab2',
+   743→    label: 'الفصل الثاني: المنهج والدراسة',
+   744→    labelId: 'الفصل الثاني: المنهج والدراسة',
+   745→    subSteps: [
+   746→      {
+   747→        id: 'ar-bab2-1',
+   748→        label: 'المنهج البحثي',
+   749→        labelId: 'المنهج البحثي',
+   750→        targetWords: 1000,
+   751→        promptFocus: 'اشرح المنهجية البحثية بالتفصيل. Explain the research methodology in detail. Write in formal Arabic.',
+   752→      },
+   753→      {
+   754→        id: 'ar-bab2-2',
+   755→        label: 'النتائج والتحليل',
+   756→        labelId: 'النتائج والتحليل',
+   757→        targetWords: 1500,
+   758→        promptFocus: 'قدم النتائج والتحليل الإحصائي أو النوعي. Present results and analysis. Write in formal Arabic with tables and figures placeholders.',
+   759→      },
+   760→    ],
+   761→  },
+   762→  {
+   763→    id: 'ar-bab3',
+   764→    label: 'الفصل الثالث: المناقشة',
+   765→    labelId: 'الفصل الثالث: المناقشة',
+   766→    subSteps: [
+   767→      {
+   768→        id: 'ar-bab3-1',
+   769→        label: 'مناقشة النتائج',
+   770→        labelId: 'مناقشة النتائج',
+   771→        targetWords: 1500,
+   772→        promptFocus: 'ناقش النتائج بعمق مع المقارنة بالدراسات السابقة. Discuss findings in depth, compare with previous studies. Write in formal Arabic.',
+   773→      },
+   774→      {
+   775→        id: 'ar-bab3-2',
+   776→        label: 'التطبيقات العملية',
+   777→        labelId: 'التطبيقات العملية',
+   778→        targetWords: 1000,
+   779→        promptFocus: 'اقترح التطبيقات العملية والتوصيات. Suggest practical applications and recommendations. Write in formal Arabic.',
+   780→      },
+   781→    ],
+   782→  },
+   783→  {
+   784→    id: 'ar-khatimah',
+   785→    label: 'الخاتمة (Penutup)',
+   786→    labelId: 'الخاتمة (Penutup)',
+   787→    subSteps: [
+   788→      {
+   789→        id: 'ar-khatimah-1',
+   790→        label: 'الخاتمة والمراجع',
+   791→        labelId: 'الخاتمة والمراجع',
+   792→        targetWords: 800,
+   793→        promptFocus: 'اكتب الخاتمة والمراجع باللغة العربية. Write the conclusion and references in formal Arabic using APA 7th format.',
+   794→      },
+   795→    ],
+   796→  },
+   797→];
+   798→
+   799→// ─── BUKU EKSAKTA/MATEMATIKA ──────────────────────────────────────────────
+   800→
+   801→const BUKU_EKSAKTA_CHAPTERS: CicilChapter[] = [
+   802→  {
+   803→    id: 'eks-pendahuluan',
+   804→    label: 'BAB 1 Pendahuluan',
+   805→    labelId: 'BAB 1 Pendahuluan',
+   806→    subSteps: [
+   807→      {
+   808→        id: 'eks-bab1-1',
+   809→        label: 'Latar Belakang',
+   810→        labelId: '1.1 Latar Belakang',
+   811→        targetWords: 1200,
+   812→        promptFocus: 'Tulis latar belakang buku eksakta: konteks ilmiah, perkembangan terkini dalam bidang ini, pentingnya topik untuk sains dan teknologi.',
+   813→      },
+   814→      {
+   815→        id: 'eks-bab1-2',
+   816→        label: 'Ruang Lingkup dan Notasi',
+   817→        labelId: '1.2 Ruang Lingkup dan Notasi',
+   818→        targetWords: 600,
+   819→        promptFocus: 'Definisikan ruang lingkup buku, notasi matematika yang digunakan, konvensi simbol. Sertakan [TABLE: Daftar Notasi dan Simbol].',
+   820→      },
+   821→      {
+   822→        id: 'eks-bab1-3',
+   823→        label: 'Sistematika Buku',
+   824→        labelId: '1.3 Sistematika Buku',
+   825→        targetWords: 400,
+   826→        promptFocus: 'Jelaskan sistematika penulisan buku: alur logis, prasyarat pembaca, dan overview setiap bab.',
+   827→      },
+   828→    ],
+   829→  },
+   830→  {
+   831→    id: 'eks-bab2',
+   832→    label: 'BAB 2 Dasar-Dasar Teori',
+   833→    labelId: 'BAB 2 Dasar-Dasar Teori',
+   834→    subSteps: [
+   835→      {
+   836→        id: 'eks-bab2-1',
+   837→        label: 'Definisi dan Aksioma',
+   838→        labelId: '2.1 Definisi dan Aksioma',
+   839→        targetWords: 1500,
+   840→        promptFocus: 'Tulis definisi formal dan aksioma yang menjadi dasar. Gunakan notasi matematika yang tepat. Setiap definisi harus rigorus dan jelas.',
+   841→      },
+   842→      {
+   843→        id: 'eks-bab2-2',
+   844→        label: 'Teorema Dasar',
+   845→        labelId: '2.2 Teorema Dasar',
+   846→        targetWords: 1500,
+   847→        promptFocus: 'Tulis teorema-teorema dasar beserta buktinya (proof). Setiap teorema diikuti proof yang rigorus langkah demi langkah.',
+   848→      },
+   849→      {
+   850→        id: 'eks-bab2-3',
+   851→        label: 'Lemma dan Proposisi Pendukung',
+   852→        labelId: '2.3 Lemma dan Proposisi Pendukung',
+   853→        targetWords: 1200,
+   854→        promptFocus: 'Tulis lemma dan proposisi pendukung beserta bukti. Jelaskan keterkaitan antar teorema.',
+   855→      },
+   856→    ],
+   857→  },
+   858→  {
+   859→    id: 'eks-bab3',
+   860→    label: 'BAB 3 Pembahasan Utama',
+   861→    labelId: 'BAB 3 Pembahasan Utama',
+   862→    subSteps: [
+   863→      {
+   864→        id: 'eks-bab3-1',
+   865→        label: 'Teori Utama dan Pembuktian',
+   866→        labelId: '3.1 Teori Utama dan Pembuktian',
+   867→        targetWords: 1500,
+   868→        promptFocus: 'Presentasikan teori utama buku ini beserta pembuktian lengkap. Gunakan notasi yang konsisten.',
+   869→      },
+   870→      {
+   871→        id: 'eks-bab3-2',
+   872→        label: 'Contoh dan Aplikasi',
+   873→        labelId: '3.2 Contoh dan Aplikasi',
+   874→        targetWords: 1200,
+   875→        promptFocus: 'Berikan contoh numerik dan aplikasi nyata dari teori yang dibahas. Tunjukkan langkah perhitungan secara detail.',
+   876→      },
+   877→      {
+   878→        id: 'eks-bab3-3',
+   879→        label: 'Analisis Kasus Khusus',
+   880→        labelId: '3.3 Analisis Kasus Khusus',
+   881→        targetWords: 1000,
+   882→        promptFocus: 'Analisis kasus-kasus khusus dan batas-batas teori. Kapan teori berlaku dan kapan tidak.',
+   883→      },
+   884→    ],
+   885→  },
+   886→  {
+   887→    id: 'eks-bab4',
+   888→    label: 'BAB 4 Perluasan dan Generalisasi',
+   889→    labelId: 'BAB 4 Perluasan dan Generalisasi',
+   890→    subSteps: [
+   891→      {
+   892→        id: 'eks-bab4-1',
+   893→        label: 'Generalisasi Teori',
+   894→        labelId: '4.1 Generalisasi Teori',
+   895→        targetWords: 1500,
+   896→        promptFocus: 'Generalisasi teori ke domain yang lebih luas. Hubungkan dengan teori-teori terkait dalam matematika/sains.',
+   897→      },
+   898→      {
+   899→        id: 'eks-bab4-2',
+   900→        label: 'Open Problems',
+   901→        labelId: '4.2 Open Problems dan Penelitian Lanjutan',
+   902→        targetWords: 800,
+   903→        promptFocus: 'Identifikasi open problems dan area penelitian lanjutan. Berikan conjecture dan research questions.',
+   904→      },
+   905→    ],
+   906→  },
+   907→  {
+   908→    id: 'eks-bab5',
+   909→    label: 'BAB 5 Penutup',
+   910→    labelId: 'BAB 5 Penutup',
+   911→    subSteps: [
+   912→      {
+   913→        id: 'eks-bab5-1',
+   914→        label: 'Kesimpulan',
+   915→        labelId: 'Kesimpulan',
+   916→        targetWords: 600,
+   917→        promptFocus: 'Tulis kesimpulan: ringkasan kontribusi utama buku, implikasi untuk sains dan pendidikan.',
+   918→      },
+   919→    ],
+   920→  },
+   921→  {
+   922→    id: 'eks-referensi',
+   923→    label: 'Daftar Pustaka',
+   924→    labelId: 'Daftar Pustaka',
+   925→    subSteps: [
+   926→      {
+   927→        id: 'eks-ref-1',
+   928→        label: 'Daftar Pustaka',
+   929→        labelId: 'Daftar Pustaka',
+   930→        targetWords: 0,
+   931→        promptFocus: 'Format all references in APA 7th. Include mathematical texts, journals, and online resources.',
+   932→      },
+   933→    ],
+   934→  },
+   935→];
+   936→
+   937→// ─── BUKU KEISLAMAN ───────────────────────────────────────────────────────
+   938→
+   939→const BUKU_KEISLAMAN_CHAPTERS: CicilChapter[] = [
+   940→  {
+   941→    id: 'islam-pendahuluan',
+   942→    label: 'BAB 1 Pendahuluan',
+   943→    labelId: 'BAB 1 Pendahuluan',
+   944→    subSteps: [
+   945→      {
+   946→        id: 'islam-bab1-1',
+   947→        label: 'Latar Belakang Keagamaan',
+   948→        labelId: '1.1 Latar Belakang Keagamaan',
+   949→        targetWords: 1500,
+   950→        promptFocus: 'Tulis latar belakang berdasarkan perspektif Islam: dalil Al-Quran dan Hadits yang relevan, konteks historis, urgensi kajian ini dalam Islam.',
+   951→      },
+   952→      {
+   953→        id: 'islam-bab1-2',
+   954→        label: 'Rumusan Masalah dan Tujuan',
+   955→        labelId: '1.2 Rumusan Masalah dan Tujuan',
+   956→        targetWords: 700,
+   957→        promptFocus: 'Rumuskan masalah dan tujuan kajian: berdasarkan Al-Quran, Sunnah, dan perspektif ulama terkemuka.',
+   958→      },
+   959→    ],
+   960→  },
+   961→  {
+   962→    id: 'islam-bab2',
+   963→    label: 'BAB 2 Landasan Keislaman',
+   964→    labelId: 'BAB 2 Landasan Keislaman',
+   965→    subSteps: [
+   966→      {
+   967→        id: 'islam-bab2-1',
+   968→        label: 'Dalil Al-Quran',
+   969→        labelId: '2.1 Dalil Al-Quran',
+   970→        targetWords: 1500,
+   971→        promptFocus: 'Tinjau dalil-dalil Al-Quran yang relevan: ayat-ayat beserta tafsir (Ibn Katsir, Al-Qurtubi, At-Thabari). Jelaskan asbabun nuzul jika relevan.',
+   972→      },
+   973→      {
+   974→        id: 'islam-bab2-2',
+   975→        label: 'Hadits Nabi dan Sunnah',
+   976→        labelId: '2.2 Hadits Nabi dan Sunnah',
+   977→        targetWords: 1200,
+   978→        promptFocus: 'Tinjau hadits-hadits shahih yang relevan: derajat hadits (shahih, hasan, dhaif), penjelasan ulama hadits, konteks hadits.',
+   979→      },
+   980→      {
+   981→        id: 'islam-bab2-3',
+   982→        label: 'Perspektif Ulama dan Mazhab',
+   983→        labelId: '2.3 Perspektif Ulama dan Mazhab',
+   984→        targetWords: 1200,
+   985→        promptFocus: 'Tinjau pandangan ulama terkemuka dari berbagai mazhab: Hanafi, Maliki, Syafii, Hanbali. Jelaskan perbedaan dan kesamaan pandangan.',
+   986→      },
+   987→      {
+   988→        id: 'islam-bab2-4',
+   989→        label: 'Ijtihad dan Fiqih Kontemporer',
+   990→        labelId: '2.4 Ijtihad dan Fiqih Kontemporer',
+   991→        targetWords: 1000,
+   992→        promptFocus: 'Tinjau ijtihad kontemporer: fatwa MUI, pendapat ulama modern, maqashid syariah, dan kaidah usul fiqih yang relevan.',
+   993→      },
+   994→    ],
+   995→  },
+   996→  {
+   997→    id: 'islam-bab3',
+   998→    label: 'BAB 3 Analisis dan Pembahasan',
+   999→    labelId: 'BAB 3 Analisis dan Pembahasan',
+  1000→    subSteps: [
+  1001→      {
+  1002→        id: 'islam-bab3-1',
+  1003→        label: 'Analisis Tematis',
+  1004→        labelId: '3.1 Analisis Tematis',
+  1005→        targetWords: 1500,
+  1006→        promptFocus: 'Lakukan analisis tematis: kumpulkan ayat dan hadits bertema sama, identifikasi pola, dan bangun sintesis. Gunakan metode tafsir tematik (tafsir maudhui).',
+  1007→      },
+  1008→      {
+  1009→        id: 'islam-bab3-2',
+  1010→        label: 'Studi Kasus Kontemporer',
+  1011→        labelId: '3.2 Studi Kasus Kontemporer',
+  1012→        targetWords: 1200,
+  1013→        promptFocus: 'Analisis studi kasus kontemporer: bagaimana prinsip Islam diterapkan dalam konteks modern, tantangan dan solusi.',
+  1014→      },
+  1015→      {
+  1016→        id: 'islam-bab3-3',
+  1017→        label: 'Perbandingan dengan Tradisi Lain',
+  1018→        labelId: '3.3 Perbandingan dengan Tradisi Lain',
+  1019→        targetWords: 1000,
+  1020→        promptFocus: 'Bandingkan perspektif Islam dengan tradisi pemikiran lain secara akademis dan objektif.',
+  1021→      },
+  1022→    ],
+  1023→  },
+  1024→  {
+  1025→    id: 'islam-bab4',
+  1026→    label: 'BAB 4 Implikasi dan Rekomendasi',
+  1027→    labelId: 'BAB 4 Implikasi dan Rekomendasi',
+  1028→    subSteps: [
+  1029→      {
+  1030→        id: 'islam-bab4-1',
+  1031→        label: 'Implikasi Praktis',
+  1032→        labelId: '4.1 Implikasi Praktis',
+  1033→        targetWords: 1200,
+  1034→        promptFocus: 'Berikan implikasi praktis: panduan untuk individu, masyarakat, lembaga pendidikan, dan pemerintah berdasarkan temuan kajian.',
+  1035→      },
+  1036→      {
+  1037→        id: 'islam-bab4-2',
+  1038→        label: 'Rekomendasi dan Penutup',
+  1039→        labelId: '4.2 Rekomendasi dan Penutup',
+  1040→        targetWords: 1000,
+  1041→        promptFocus: 'Berikan rekomendasi berdasarkan Islam: doa penutup, harapan, dan arah pengembangan kajian ke depan.',
+  1042→      },
+  1043→    ],
+  1044→  },
+  1045→  {
+  1046→    id: 'islam-referensi',
+  1047→    label: 'Daftar Pustaka',
+  1048→    labelId: 'Daftar Pustaka',
+  1049→    subSteps: [
+  1050→      {
+  1051→        id: 'islam-ref-1',
+  1052→        label: 'Daftar Pustaka',
+  1053→        labelId: 'Daftar Pustaka',
+  1054→        targetWords: 0,
+  1055→        promptFocus: 'Format all references: kitab klasik (Ibn Katsir, Bukhari, Muslim, dll), jurnal ilmiah, buku modern. Use APA 7th for modern sources.',
+  1056→      },
+  1057→    ],
+  1058→  },
+  1059→];
+  1060→
+  1061→// ─── PROPOSAL ──────────────────────────────────────────────────────────────
+  1062→
+  1063→const PROPOSAL_CHAPTERS: CicilChapter[] = [
+  1064→  {
+  1065→    id: 'prop-bab1',
+  1066→    label: 'BAB I Pendahuluan',
+  1067→    labelId: 'BAB I Pendahuluan',
+  1068→    subSteps: [
+  1069→      {
+  1070→        id: 'prop-1-1',
+  1071→        label: 'Latar Belakang',
+  1072→        labelId: '1.1 Latar Belakang',
+  1073→        targetWords: 1500,
+  1074→        promptFocus: 'Tulis latar belakang penelitian yang kuat dan meyakinkan.',
+  1075→      },
+  1076→      {
+  1077→        id: 'prop-1-2',
+  1078→        label: 'Rumusan Masalah',
+  1079→        labelId: '1.2 Rumusan Masalah',
+  1080→        targetWords: 500,
+  1081→        promptFocus: 'Rumuskan masalah penelitian secara jelas.',
+  1082→      },
+  1083→      {
+  1084→        id: 'prop-1-3',
+  1085→        label: 'Tujuan dan Manfaat',
+  1086→        labelId: '1.3 Tujuan dan Manfaat',
+  1087→        targetWords: 600,
+  1088→        promptFocus: 'Tulis tujuan dan manfaat penelitian.',
+  1089→      },
+  1090→    ],
+  1091→  },
+  1092→  {
+  1093→    id: 'prop-bab2',
+  1094→    label: 'BAB II Tinjauan Pustaka',
+  1095→    labelId: 'BAB II Tinjauan Pustaka',
+  1096→    subSteps: [
+  1097→      {
+  1098→        id: 'prop-2-1',
+  1099→        label: 'Landasan Teori',
+  1100→        labelId: '2.1 Landasan Teori',
+  1101→        targetWords: 1500,
+  1102→        promptFocus: 'Jelaskan teori-teori yang menjadi dasar penelitian.',
+  1103→      },
+  1104→      {
+  1105→        id: 'prop-2-2',
+  1106→        label: 'Penelitian Terdahulu',
+  1107→        labelId: '2.2 Penelitian Terdahulu',
+  1108→        targetWords: 1000,
+  1109→        promptFocus: 'Tinjau penelitian terdahulu yang relevan.',
+  1110→      },
+  1111→      {
+  1112→        id: 'prop-2-3',
+  1113→        label: 'Kerangka Berpikir',
+  1114→        labelId: '2.3 Kerangka Berpikir',
+  1115→        targetWords: 600,
+  1116→        promptFocus: 'Bangun kerangka berpikir penelitian.',
+  1117→      },
+  1118→    ],
+  1119→  },
+  1120→  {
+  1121→    id: 'prop-bab3',
+  1122→    label: 'BAB III Metodologi',
+  1123→    labelId: 'BAB III Metodologi',
+  1124→    subSteps: [
+  1125→      {
+  1126→        id: 'prop-3-1',
+  1127→        label: 'Jenis Penelitian',
+  1128→        labelId: '3.1 Jenis Penelitian',
+  1129→        targetWords: 600,
+  1130→        promptFocus: 'Jelaskan jenis dan pendekatan penelitian.',
+  1131→      },
+  1132→      {
+  1133→        id: 'prop-3-2',
+  1134→        label: 'Populasi, Sampel, dan Teknik Sampling',
+  1135→        labelId: '3.2 Populasi, Sampel, dan Teknik Sampling',
+  1136→        targetWords: 800,
+  1137→        promptFocus: 'Jelaskan populasi, sampel, dan teknik sampling.',
+  1138→      },
+  1139→      {
+  1140→        id: 'prop-3-3',
+  1141→        label: 'Teknik Pengumpulan dan Analisis Data',
+  1142→        labelId: '3.3 Teknik Pengumpulan dan Analisis Data',
+  1143→        targetWords: 800,
+  1144→        promptFocus: 'Jelaskan teknik pengumpulan dan analisis data.',
+  1145→      },
+  1146→      {
+  1147→        id: 'prop-3-4',
+  1148→        label: 'Jadwal Penelitian (Gantt Chart)',
+  1149→        labelId: '3.4 Jadwal Penelitian',
+  1150→        targetWords: 400,
+  1151→        promptFocus: 'Buat jadwal penelitian. Sertakan [TABLE: Jadwal Penelitian | Kegiatan | Bulan 1 | Bulan 2 | ... | Bulan 12].',
+  1152→      },
+  1153→      {
+  1154→        id: 'prop-3-5',
+  1155→        label: 'Anggaran Biaya',
+  1156→        labelId: '3.5 Anggaran Biaya',
+  1157→        targetWords: 400,
+  1158→        promptFocus: 'Buat rincian anggaran biaya. Sertakan [TABLE: Anggaran Biaya | No | Uraian | Volume | Satuan | Jumlah].',
+  1159→      },
+  1160→    ],
+  1161→  },
+  1162→  {
+  1163→    id: 'prop-referensi',
+  1164→    label: 'Daftar Pustaka',
+  1165→    labelId: 'Daftar Pustaka',
+  1166→    subSteps: [
+  1167→      {
+  1168→        id: 'prop-ref-1',
+  1169→        label: 'Daftar Pustaka',
+  1170→        labelId: 'Daftar Pustaka APA 7',
+  1171→        targetWords: 0,
+  1172→        promptFocus: 'Format all references in APA 7th Edition.',
+  1173→      },
+  1174→    ],
+  1175→  },
+  1176→];
+  1177→
+  1178→// ─── ESAI BEASISWA ─────────────────────────────────────────────────────────
+  1179→
+  1180→const SCHOLARSHIP_CHAPTERS: CicilChapter[] = [
+  1181→  {
+  1182→    id: 'scholar-1',
+  1183→    label: 'Personal Statement',
+  1184→    labelId: 'Personal Statement',
+  1185→    subSteps: [
+  1186→      {
+  1187→        id: 'scholar-1-1',
+  1188→        label: 'Pengantar Diri',
+  1189→        labelId: 'Pengantar Diri',
+  1190→        targetWords: 800,
+  1191→        promptFocus: 'Tulis pengantar diri yang memikat: siapa Anda, latar belakang akademik, pencapaian utama, dan apa yang membuat Anda unik.',
+  1192→      },
+  1193→      {
+  1194→        id: 'scholar-1-2',
+  1195→        label: 'Perjalanan Akademik',
+  1196→        labelId: 'Perjalanan Akademik',
+  1197→        targetWords: 1000,
+  1198→        promptFocus: 'Ceritakan perjalanan akademik: tantangan yang dihadapi, bagaimana Anda mengatasinya, momen-momen penting yang membentuk visi akademik Anda.',
+  1199→      },
+  1200→    ],
+  1201→  },
+  1202→  {
+  1203→    id: 'scholar-2',
+  1204→    label: 'Motivasi dan Visi',
+  1205→    labelId: 'Motivasi dan Visi',
+  1206→    subSteps: [
+  1207→      {
+  1208→        id: 'scholar-2-1',
+  1209→        label: 'Motivasi dan Passion',
+  1210→        labelId: 'Motivasi dan Passion',
+  1211→        targetWords: 1000,
+  1212→        promptFocus: 'Tulis motivasi mendalam: mengapa Anda memilih bidang ini, apa yang mendorong Anda, koneksi emosional dengan topik.',
+  1213→      },
+  1214→      {
+  1215→        id: 'scholar-2-2',
+  1216→        label: 'Visi dan Rencana Studi',
+  1217→        labelId: 'Visi dan Rencana Studi',
+  1218→        targetWords: 1000,
+  1219→        promptFocus: 'Jelaskan visi jangka panjang, rencana studi spesifik di institusi tujuan, dan bagaimana beasiswa ini membantu mewujudkan visi Anda.',
+  1220→      },
+  1221→    ],
+  1222→  },
+  1223→  {
+  1224→    id: 'scholar-3',
+  1225→    label: 'Kontribusi dan Penutup',
+  1226→    labelId: 'Kontribusi dan Penutup',
+  1227→    subSteps: [
+  1228→      {
+  1229→        id: 'scholar-3-1',
+  1230→        label: 'Kontribusi Masa Depan',
+  1231→        labelId: 'Kontribusi Masa Depan',
+  1232→        targetWords: 1000,
+  1233→        promptFocus: 'Jelaskan kontribusi yang akan Anda berikan: bagi masyarakat, bidang ilmu, dan negara setelah menyelesaikan studi.',
+  1234→      },
+  1235→      {
+  1236→        id: 'scholar-3-2',
+  1237→        label: 'Penutup yang Memikat',
+  1238→        labelId: 'Penutup yang Memikat',
+  1239→        targetWords: 500,
+  1240→        promptFocus: 'Tulis penutup yang kuat dan memorable: ringkaskan esensi esai Anda, tinggalkan kesan mendalam pada pembaca.',
+  1241→      },
+  1242→    ],
+  1243→  },
+  1244→];
+  1245→
+  1246→// ─── MAKALAH ───────────────────────────────────────────────────────────────
+  1247→
+  1248→const MAKALAH_CHAPTERS: CicilChapter[] = [
+  1249→  {
+  1250→    id: 'makalah-1',
+  1251→    label: 'BAB I Pendahuluan',
+  1252→    labelId: 'BAB I Pendahuluan',
+  1253→    subSteps: [
+  1254→      {
+  1255→        id: 'makalah-1-1',
+  1256→        label: 'Latar Belakang',
+  1257→        labelId: '1.1 Latar Belakang',
+  1258→        targetWords: 1000,
+  1259→        promptFocus: 'Tulis latar belakang makalah.',
+  1260→      },
+  1261→      {
+  1262→        id: 'makalah-1-2',
+  1263→        label: 'Rumusan Masalah',
+  1264→        labelId: '1.2 Rumusan Masalah',
+  1265→        targetWords: 400,
+  1266→        promptFocus: 'Rumuskan masalah makalah.',
+  1267→      },
+  1268→      {
+  1269→        id: 'makalah-1-3',
+  1270→        label: 'Tujuan',
+  1271→        labelId: '1.3 Tujuan',
+  1272→        targetWords: 300,
+  1273→        promptFocus: 'Tulis tujuan makalah.',
+  1274→      },
+  1275→    ],
+  1276→  },
+  1277→  {
+  1278→    id: 'makalah-2',
+  1279→    label: 'BAB II Pembahasan',
+  1280→    labelId: 'BAB II Pembahasan',
+  1281→    subSteps: [
+  1282→      {
+  1283→        id: 'makalah-2-1',
+  1284→        label: 'Tinjauan Umum',
+  1285→        labelId: '2.1 Tinjauan Umum',
+  1286→        targetWords: 1200,
+  1287→        promptFocus: 'Tinjau umum topik makalah.',
+  1288→      },
+  1289→      {
+  1290→        id: 'makalah-2-2',
+  1291→        label: 'Analisis',
+  1292→        labelId: '2.2 Analisis',
+  1293→        targetWords: 1500,
+  1294→        promptFocus: 'Lakukan analisis mendalam.',
+  1295→      },
+  1296→      {
+  1297→        id: 'makalah-2-3',
+  1298→        label: 'Temuan',
+  1299→        labelId: '2.3 Temuan',
+  1300→        targetWords: 800,
+  1301→        promptFocus: 'Presentasikan temuan-temuan.',
+  1302→      },
+  1303→    ],
+  1304→  },
+  1305→  {
+  1306→    id: 'makalah-3',
+  1307→    label: 'BAB III Penutup',
+  1308→    labelId: 'BAB III Penutup',
+  1309→    subSteps: [
+  1310→      {
+  1311→        id: 'makalah-3-1',
+  1312→        label: 'Kesimpulan dan Saran',
+  1313→        labelId: 'Kesimpulan dan Saran',
+  1314→        targetWords: 600,
+  1315→        promptFocus: 'Tulis kesimpulan dan saran.',
+  1316→      },
+  1317→    ],
+  1318→  },
+  1319→  {
+  1320→    id: 'makalah-ref',
+  1321→    label: 'Daftar Pustaka',
+  1322→    labelId: 'Daftar Pustaka',
+  1323→    subSteps: [
+  1324→      {
+  1325→        id: 'makalah-ref-1',
+  1326→        label: 'Daftar Pustaka',
+  1327→        labelId: 'Daftar Pustaka',
+  1328→        targetWords: 0,
+  1329→        promptFocus: 'Format all references in APA 7th Edition.',
+  1330→      },
+  1331→    ],
+  1332→  },
+  1333→];
+  1334→
+  1335→// ─── FLOW REGISTRY ─────────────────────────────────────────────────────────
+  1336→
+  1337→export const WRITING_FLOWS: Record<CicilWritingMode, WritingFlowConfig> = {
+  1338→  skripsi: {
+  1339→    id: 'skripsi',
+  1340→    title: 'Skripsi (S1)',
+  1341→    description: 'Skripsi S1 dengan format akademik standar universitas',
+  1342→    language: 'id',
+  1343→    maxWordsPerStep: 1500,
+  1344→    chapters: SKRIPSI_CHAPTERS,
+  1345→    systemPrompt: SYSTEM_PROMPT_ID,
+  1346→    referenceStyle: 'APA 7th Edition',
+  1347→  },
+  1348→  tesis: {
+  1349→    id: 'tesis',
+  1350→    title: 'Tesis (S2)',
+  1351→    description: 'Tesis S2 dengan analisis yang lebih mendalam',
+  1352→    language: 'id',
+  1353→    maxWordsPerStep: 1500,
+  1354→    chapters: createTesisChapters(),
+  1355→    systemPrompt: SYSTEM_PROMPT_ID,
+  1356→    referenceStyle: 'APA 7th Edition',
+  1357→  },
+  1358→  disertasi: {
+  1359→    id: 'disertasi',
+  1360→    title: 'Disertasi (S3)',
+  1361→    description: 'Disertasi S3 dengan penelitian orisinal paling komprehensif',
+  1362→    language: 'id',
+  1363→    maxWordsPerStep: 1500,
+  1364→    chapters: createDisertasiChapters(),
+  1365→    systemPrompt: SYSTEM_PROMPT_ID,
+  1366→    referenceStyle: 'APA 7th Edition',
+  1367→  },
+  1368→  'buku-id': {
+  1369→    id: 'buku-id',
+  1370→    title: 'Buku Ilmiah Indonesia',
+  1371→    description: 'Buku akademik berbahasa Indonesia',
+  1372→    language: 'id',
+  1373→    maxWordsPerStep: 1500,
+  1374→    chapters: BUKU_ID_CHAPTERS,
+  1375→    systemPrompt: SYSTEM_PROMPT_ID,
+  1376→    referenceStyle: 'APA 7th Edition',
+  1377→  },
+  1378→  'buku-en': {
+  1379→    id: 'buku-en',
+  1380→    title: 'Buku Ilmiah English',
+  1381→    description: 'Academic book in English',
+  1382→    language: 'en',
+  1383→    maxWordsPerStep: 1500,
+  1384→    chapters: createBukuEnChapters(),
+  1385→    systemPrompt: SYSTEM_PROMPT_EN,
+  1386→    referenceStyle: 'APA 7th Edition',
+  1387→  },
+  1388→  'buku-arab': {
+  1389→    id: 'buku-arab',
+  1390→    title: 'Buku Bahasa Arab',
+  1391→    description: 'كتاب باللغة العربية — Arabic academic book',
+  1392→    language: 'ar',
+  1393→    maxWordsPerStep: 1500,
+  1394→    chapters: BUKU_ARAB_CHAPTERS,
+  1395→    systemPrompt: SYSTEM_PROMPT_AR,
+  1396→    referenceStyle: 'APA 7th Edition',
+  1397→  },
+  1398→  'buku-eksakta': {
+  1399→    id: 'buku-eksakta',
+  1400→    title: 'Buku Eksakta/Matematika',
+  1401→    description: 'Buku sains, matematika, dan bidang eksakta',
+  1402→    language: 'id',
+  1403→    maxWordsPerStep: 1500,
+  1404→    chapters: BUKU_EKSAKTA_CHAPTERS,
+  1405→    systemPrompt: SYSTEM_PROMPT_ID,
+  1406→    referenceStyle: 'APA 7th Edition',
+  1407→  },
+  1408→  'buku-keislaman': {
+  1409→    id: 'buku-keislaman',
+  1410→    title: 'Buku Keislaman',
+  1411→    description: 'Buku kajian keislaman, Al-Quran, Hadits, dan Fiqih',
+  1412→    language: 'id',
+  1413→    maxWordsPerStep: 1500,
+  1414→    chapters: BUKU_KEISLAMAN_CHAPTERS,
+  1415→    systemPrompt: SYSTEM_PROMPT_ID,
+  1416→    referenceStyle: 'APA 7th Edition',
+  1417→  },
+  1418→  proposal: {
+  1419→    id: 'proposal',
+  1420→    title: 'Proposal Penelitian',
+  1421→    description: 'Proposal riset dengan metodologi dan anggaran',
+  1422→    language: 'id',
+  1423→    maxWordsPerStep: 1500,
+  1424→    chapters: PROPOSAL_CHAPTERS,
+  1425→    systemPrompt: SYSTEM_PROMPT_ID,
+  1426→    referenceStyle: 'APA 7th Edition',
+  1427→  },
+  1428→  scholarship: {
+  1429→    id: 'scholarship',
+  1430→    title: 'Esai Beasiswa',
+  1431→    description: 'Esai motivasi dan personal statement untuk beasiswa',
+  1432→    language: 'id',
+  1433→    maxWordsPerStep: 1500,
+  1434→    chapters: SCHOLARSHIP_CHAPTERS,
+  1435→    systemPrompt: SYSTEM_PROMPT_ID,
+  1436→    referenceStyle: 'APA 7th Edition',
+  1437→  },
+  1438→  paper: {
+  1439→    id: 'paper',
+  1440→    title: 'Makalah',
+  1441→    description: 'Makalah kuliah dan tugas akademik',
+  1442→    language: 'id',
+  1443→    maxWordsPerStep: 1500,
+  1444→    chapters: MAKALAH_CHAPTERS,
+  1445→    systemPrompt: SYSTEM_PROMPT_ID,
+  1446→    referenceStyle: 'APA 7th Edition',
+  1447→  },
+  1448→};
+  1449→
+  1450→// ─── Helpers ───────────────────────────────────────────────────────────────
+  1451→
+  1452→/** Get total number of sub-steps across all chapters */
+  1453→export function getTotalSteps(mode: CicilWritingMode): number {
+  1454→  return WRITING_FLOWS[mode].chapters.reduce(
+  1455→    (sum, ch) => sum + ch.subSteps.length,
+  1456→    0,
+  1457→  );
+  1458→}
+  1459→
+  1460→/** Get flat list of all sub-steps with chapter info */
+  1461→export function getFlatSteps(mode: CicilWritingMode): Array<{
+  1462→  chapterId: string;
+  1463→  chapterLabel: string;
+  1464→  step: CicilSubStep;
+  1465→  index: number;
+  1466→}> {
+  1467→  const steps: Array<{
+  1468→    chapterId: string;
+  1469→    chapterLabel: string;
+  1470→    step: CicilSubStep;
+  1471→    index: number;
+  1472→  }> = [];
+  1473→  let idx = 0;
+  1474→  for (const ch of WRITING_FLOWS[mode].chapters) {
+  1475→    for (const ss of ch.subSteps) {
+  1476→      steps.push({ chapterId: ch.id, chapterLabel: ch.label, step: ss, index: idx });
+  1477→      idx++;
+  1478→    }
+  1479→  }
+  1480→  return steps;
+  1481→}
+  1482→
+  1483→/** Get total target word count */
+  1484→export function getTotalTargetWords(mode: CicilWritingMode): number {
+  1485→  return WRITING_FLOWS[mode].chapters.reduce(
+  1486→    (sum, ch) => sum + ch.subSteps.reduce((s, ss) => s + ss.targetWords, 0),
+  1487→    0,
+  1488→  );
+  1489→}

@@ -1,0 +1,1020 @@
+\documentclass[11pt,a4paper]{article}
+
+% -----------------------------------------------------------------------------
+% Taylor & Francis/BJRE-oriented manuscript layout for later Word conversion
+% -----------------------------------------------------------------------------
+\usepackage[a4paper,margin=1in,headheight=22pt]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\IfFileExists{newtxtext.sty}{\usepackage{newtxtext}}{\usepackage{lmodern}}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+\IfFileExists{lineno.sty}{\usepackage[switch]{lineno}}{}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{}
+\usepackage[hidelinks]{hyperref}
+
+% -----------------------------------------------------------------------------
+% Colour system
+% -----------------------------------------------------------------------------
+\definecolor{PrismNavy}{HTML}{102A43}
+\definecolor{PrismBlue}{HTML}{1F5A8A}
+\definecolor{PrismSky}{HTML}{EAF4FB}
+\definecolor{PrismGold}{HTML}{B7791F}
+\definecolor{PrismGray}{HTML}{52606D}
+\definecolor{PrismLine}{HTML}{D9E2EC}
+
+% -----------------------------------------------------------------------------
+% Layout refinements
+% -----------------------------------------------------------------------------
+\setstretch{1.16}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.72\baselineskip}
+\setlist[itemize]{leftmargin=1.35em,itemsep=0.18em,topsep=0.18em}
+\setlist[enumerate]{leftmargin=1.55em,itemsep=0.18em,topsep=0.18em}
+\renewcommand{\arraystretch}{1.22}
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\pretolerance=10000
+\tolerance=2000
+\emergencystretch=3em
+\sloppy
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{J}{>{\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\titleformat{\section}{\Large\bfseries\color{PrismNavy}}{\thesection}{0.7em}{}
+\titlespacing*{\section}{0pt}{1.2em}{0.35em}
+\titleformat{\subsection}{\large\bfseries\color{PrismBlue}}{\thesubsection}{0.65em}{}
+\titlespacing*{\subsection}{0pt}{0.85em}{0.18em}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{PrismNavy}}{\thesubsubsection}{0.6em}{}
+\titlespacing*{\subsubsection}{0pt}{0.65em}{0.12em}
+
+\captionsetup{font=small,labelfont={bf,color=PrismNavy},textfont=it,skip=6pt,labelsep=space}
+\hypersetup{pdftitle={Digital Authority and Authentic Learning},pdfauthor={Syairozi Dimyathi and Nur Muhamad Iskandar},pdfsubject={Islamic Religious Education Pedagogy},pdfkeywords={Islamic religious education, systematic integrative review, digital authority, authentic learning, post-truth era}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{PrismGray}Digital Authority and Authentic Learning}
+\rhead{}
+\cfoot{\small\color{PrismGray}\thepage~of~\pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.35pt}
+\renewcommand{\headrule}{\textcolor{PrismLine}{\rule{\headwidth}{\headrulewidth}}}
+
+\newcommand{\keywordlist}[1]{\vspace{0.3em}\noindent\textbf{Keywords} #1}
+\newcommand{\evidence}[1]{\textcolor{PrismBlue}{\textbf{#1}}}
+\newcommand{\doi}[1]{\href{https://doi.org/#1}{\mbox{doi:#1}}}
+
+\newcommand{\visualtableasset}[1]{\includegraphics[width=\textwidth,height=0.74\textheight,keepaspectratio]{#1}}
+\newcommand{\visualfigureasset}[1]{\includegraphics[width=0.96\textwidth,height=0.72\textheight,keepaspectratio]{#1}}
+
+
+% -----------------------------------------------------------------------------
+% Document
+% -----------------------------------------------------------------------------
+\begin{document}
+
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\vspace*{0.12cm}
+{\Large\bfseries\color{PrismNavy}Digital Authority and Authentic Learning\par}
+\vspace{0.2cm}
+{\Large\bfseries\color{PrismNavy}A Systematic Integrative Review of Islamic Religious Education Pedagogy in the Post-Truth Era\par}
+
+\vspace{0.35cm}
+{\normalsize Syairozi Dimyathi\textsuperscript{1,*} and Nur Muhamad Iskandar\textsuperscript{2}\par}
+\vspace{0.18cm}
+\begin{minipage}{0.92\textwidth}
+\footnotesize
+\textsuperscript{1}Program Studi Dirasat Islamiyah, Fakultas Ilmu Pengetahuan Budaya, Universitas Islam Negeri Syarif Hidayatullah Jakarta, Indonesia\\
+\textsuperscript{2}Program Studi Manajemen Pendidikan, Fakultas Keguruan dan Ilmu Pendidikan, Universitas Bunga Bangsa Cirebon, Indonesia\\
+\textsuperscript{*}Corresponding author: syairozi.dimyathi@uinjkt.ac.id
+\end{minipage}
+
+\vspace{0.18cm}
+{\scriptsize
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{0.92\textwidth}{@{}L{0.24\textwidth}J@{}}
+\toprule
+\textbf{Article Info} & \textbf{Abstract} \\
+\midrule
+\begin{minipage}[t]{\linewidth}
+\vspace{0pt}
+\raggedright{}
+\textbf{Article Information}\\[0.25em]
+Received --\\
+Revised --\\
+Accepted --\\[0.55em]
+\textbf{Keywords}\\
+Islamic religious education, systematic integrative review, pedagogical authority, post-truth era, digital literacy, religious authenticity
+\end{minipage}
+&
+\begin{minipage}[t]{\linewidth}
+\vspace{0pt}
+Digital platforms have changed how Muslim learners encounter religious knowledge, making visibility, algorithms, and generative AI consequential for Islamic Religious Education (IRE). This systematic integrative review examines IRE pedagogy amid contested religious authority and authentic learning in digital environments, with strongest evidence from Southeast Asia. A PRISMA 2020-informed search of Scopus, Web of Science, ERIC, and bounded Google Scholar identified 42 eligible peer-reviewed records published in 2015--2025; 18 core records informed direct thematic synthesis after evidence-type appraisal. The review combined thematic synthesis, design-sensitive quality appraisal, sensitivity checking, and evidence-type controls. Four themes emerged: fragmented digital religious authority; critical digital literacy as religious discernment; hybrid and participatory pedagogy; and identity formation among young Muslim learners. Findings show that responsible digital IRE must connect source evaluation, algorithmic and AI awareness, textual reasoning, adab, tabayyun, institutional guidance, and context-sensitive implementation.
+\end{minipage}
+\\
+\bottomrule
+\end{tabularx}}
+
+\end{titlepage}
+\hypersetup{pageanchor=true}
+\setcounter{page}{1}
+
+% Line numbering disabled for final layout and smoother line breaks.
+
+\section{Introduction}
+
+Digital platforms have altered the conditions under which Muslim learners encounter, trust, contest, and perform religious knowledge. In contemporary Islamic Religious Education (IRE), scholars, teachers, and institutions now share the field with influencers, peer networks, search engines, recommender systems, and generative AI\@. The result is a fragmented authority ecology in which visibility can be mistaken for credibility (Samudra et al., 2024, Muhamad Arif et al., 2025, Saidah et al., 2024). The pedagogical problem is therefore epistemic as much as technical. Learners must be taught how religious claims are verified, contextualised, and ethically acted upon.
+
+The article uses the term post-truth critically rather than as a purely Western diagnostic label. Post-truth literature identifies weakened public standards of justification, affective circulation, and distrust of expertise (Fuller, 2018, Lewandowsky et al., 2017, McIntyre, 2018). In IRE, however, the problem must also be read through Islamic epistemic categories such as \textit{haqq}, \textit{haqiqa}, \textit{ilm}, \textit{yaqin}, \textit{zann}, and \textit{tabayyun}. The educational issue is not only whether learners can identify misinformation, but whether they can distinguish reliable religious knowledge from persuasive visibility while remaining accountable to scholarship, adab, and public benefit (Nasr, 1996, Ramadan, 2009, Zaman, 2004).
+
+Recent studies offer several useful entry points, including digital media in the classroom, teacher competence, online authority, student motivation, Islamic digital literacy, and trust in platform-mediated sources (Adima et al., 2024, Erihadiana et al., 2025, Istiani and Islamy, 2025, Miftachul Huda et al., 2024). What remains less visible is how these issues converge in ordinary classroom practice. In one online lesson, learners may need to ask who is speaking, why a source deserves trust, how a message shapes identity, and what ethical response is expected. This review therefore treats digital IRE as disciplined religious discernment that helps learners distinguish scholarship from persuasive visibility, use online content without losing Islamic epistemic grounding, and participate in digital spaces responsibly.
+
+Three limitations are especially consequential. Student perspectives on authority and authenticity remain underdeveloped, comparative work beyond Indonesia and Malaysia is still limited despite the transnational circulation of digital religious content (Berglund and Gent, 2018, Sahin, 2018, Selod, 2018), and longitudinal evidence remains scarce. The review therefore speaks most directly to digital IRE debates shaped by Southeast Asian evidence, while using wider Islamic education and religious education literature to interpret transferable issues. These gaps leave the long-term formation of religious judgement insufficiently understood. This synthesis addresses them by integrating authority, authenticity, pedagogy, identity, and ethics within one systematic review design.
+
+\subsection{Review Gap and Research Questions}
+
+This review is positioned at the intersection of digital mediation, religious authority, and pedagogical formation. Rather than treating technology integration as an isolated instructional concern, it asks how IRE can sustain credible religious knowing when learners move between classrooms, families, scholarly traditions, peer networks, influencers, search engines, and algorithmic feeds. Earlier reviews have clarified important developments in teacher competence, digital media use, and literacy-oriented IRE, but they rarely synthesise these strands around the combined problems of authority and authenticity (Adima et al., 2024, Istiani and Islamy, 2025, Samudra et al., 2024). The gap is therefore not the absence of work on digital IRE, but the lack of an integrated account of how pedagogical practice helps Muslim learners recognise qualified authority, understand religious claims responsibly, and form identity within contested digital spaces.
+
+Guided by this gap, the review asks how IRE responds to fragmented religious authority in digital contexts, what pedagogies cultivate authentic religious understanding, how learners negotiate Muslim identity across school, family, scholarly, peer, and platform-mediated spaces, and what ethical and institutional implications follow for responsible digital IRE\@. These questions orient the synthesis toward practical judgement rather than catalogue description. Its purpose is to connect evidence on pedagogy, authority, authenticity, identity, and ethics in order to clarify how digital IRE can support disciplined religious discernment in the post-truth era.
+
+\section{Methodology}
+
+This systematic integrative literature review is grounded in a pragmatic research paradigm that can accommodate qualitative, quantitative, mixed-methods, and review-level evidence (Creswell and Plano Clark, 2017, Creswell and Poth, 2018, Dixon-Woods et al., 2005). Pragmatism is appropriate for reviewing complex educational phenomena because it emphasises the practical consequences of evidence and its relevance to educational practice (Johnson and Onwuegbuzie, 2004). Within this orientation, the analysis was inductive. Themes and patterns were allowed to emerge from the corpus rather than being tested against predetermined hypotheses (Creswell and Poth, 2018, Thomas, 2006).
+
+An integrative systematic design was appropriate for three reasons. First, it provides a transparent procedure for locating, screening, and synthesising existing research (Gough et al., 2017, Petticrew and Roberts, 2006). Second, it supports the identification of patterns, gaps, and contradictions across qualitative, quantitative, and review-level material on IRE pedagogy in post-truth digital conditions (Dixon-Woods et al., 2005, Sandelowski and Barroso, 2007). Third, it is well suited to emerging phenomena that cross disciplinary boundaries, including religious education, Islamic studies, educational technology, and media studies.
+
+Searches drew on four academic sources, namely Scopus, Web of Science, ERIC, and Google Scholar. These sources were selected because they index or expose peer-reviewed journals across education, religious studies, Islamic studies, educational technology, and media studies. Search terms were organised into three thematic groups covering Islamic Religious Education, digital technology, and post-truth phenomena. The complete search string was as follows.
+
+\begin{quote}
+\small\ttfamily\raggedright{}
+(\textquotedbl{}Islamic religious education\textquotedbl{} OR \textquotedbl{}Islamic education\textquotedbl{} OR\\
+\textquotedbl{}religious education\textquotedbl{} OR \textquotedbl{}madrasah\textquotedbl{} OR \textquotedbl{}pesantren\textquotedbl{})\\
+AND\\
+(\textquotedbl{}digital technology\textquotedbl{} OR \textquotedbl{}social media\textquotedbl{} OR \textquotedbl{}internet\textquotedbl{} OR\\
+\textquotedbl{}online\textquotedbl{} OR \textquotedbl{}e-learning\textquotedbl{} OR \textquotedbl{}virtual learning\textquotedbl{})\\
+AND\\
+(\textquotedbl{}post-truth\textquotedbl{} OR \textquotedbl{}misinformation\textquotedbl{} OR \textquotedbl{}disinformation\textquotedbl{} OR\\
+\textquotedbl{}hoax\textquotedbl{} OR \textquotedbl{}fake news\textquotedbl{} OR \textquotedbl{}radicalisation\textquotedbl{} OR\\
+\textquotedbl{}religious authority\textquotedbl{})
+\end{quote}
+
+Searching took place between January and March 2026 and was restricted to publications from 2015--2025. This range captures the growth of digital technologies in educational settings and the development of post-truth phenomena while keeping the evidence base current. Language was limited to English and Indonesian; Arabic and other Islamic scholarly languages were therefore treated as a transferability boundary rather than as evidence searched within the corpus. Google Scholar served as a supplementary discovery source rather than as an equivalent indexed database. Its contribution was bounded to the first 701 relevance-ranked hits returned during the search window; screening stopped when 100 consecutive results yielded no additional stable, peer-reviewed, IRE-relevant full text. Eligible Google Scholar records were manually checked for venue, full-text stability, and duplication against the indexed-database pool. This bounded approach was intended to improve reliability and transparency in line with lessons from systematic review practice (Haddaway et al., 2015). Table~\ref{tab.search-coverage} reports the source-level coverage.
+
+After the main corpus had been completed, a supplementary Arabic-context scoping check was inspected to stress-test the review's language and student-voice limitations. The check used three broader English Boolean strings focused on digital or online Islamic education and authority, student voice or agency and religious identity, and Arabic or Arab contexts combined with digital education and identity. It reported broad returns across Scopus, Web of Science, PubMed and Google Scholar, but it was not merged into the PRISMA corpus because it was post hoc, broader than the reported operational search logic, and mixed Arabic-context English-language records with many records outside direct IRE pedagogy. It is therefore used only to refine transferability claims, identify contextual corroboration and specify future multilingual search needs; it does not change the 42-record included corpus. Appendix~A records this decision.
+
+\begin{table}[H]
+\centering
+\caption{Search strategy and source coverage}
+\label{tab.search-coverage}
+\scriptsize
+\begin{tabularx}{\textwidth}{@{}L{0.18\textwidth}Yrrrr@{}}
+\toprule
+\textbf{Source} & \textbf{Search Focus} & \textbf{Identified} & \textbf{Retained} & \textbf{Full Text} & \textbf{Included} \\
+\midrule
+Scopus & IRE, digital technology, misinformation, authority & 487 & 316 & 61 & 14 \\
+Web of Science & Religious education, online learning, disinformation & 398 & 285 & 43 & 9 \\
+ERIC & Islamic education, virtual learning, radicalisation & 256 & 184 & 28 & 6 \\
+Google Scholar & Pesantren, social media, post-truth, authority & 701 & 461 & 32 & 13 \\
+\midrule
+\textbf{Total} & \textbf{Combined search} & \textbf{1,842} & \textbf{1,246} & \textbf{164} & \textbf{42} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.search-coverage} documents how the initial 1,842 records were narrowed to 42 included records. The table also clarifies the role of Google Scholar as a supplementary source rather than as a substitute for indexed databases.
+
+Eligibility decisions were organised through the PICOS framework. Table~\ref{tab.picos} shows the screening logic.
+
+\begin{table}[H]
+\centering
+\caption{PICOS framework for study eligibility}
+\label{tab.picos}
+\small
+\begin{tabularx}{\textwidth}{L{0.18\textwidth}Y}
+\toprule
+\textbf{Criterion} & \textbf{Description} \\
+\midrule
+Population & Students, teachers, and educational practitioners in Islamic educational settings, including madrasah, pesantren, Islamic schools, and mainstream schools with IRE components. \\
+Intervention & IRE pedagogy involving digital technologies such as social media, online platforms, e-learning, virtual learning environments, and digital tools. \\
+Comparison & IRE pedagogy without digital technologies, where applicable in comparative studies. \\
+Outcome & Religious authority perceptions, authenticity, digital literacy, critical thinking, identity formation, student engagement, and pedagogical approaches. \\
+Setting & Formal and non-formal Islamic educational institutions in various national and cultural contexts. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.picos} shows that eligibility was not limited to technology adoption alone. Records also needed to address authority, authenticity, literacy, engagement, identity, or pedagogical outcomes within Islamic educational settings.
+
+Study selection followed PRISMA 2020 guidance and earlier PRISMA reporting principles for transparent identification, screening, eligibility and inclusion decisions (Liberati et al., 2009, Moher et al., 2009, Page et al., 2021). Records identified through source searching were exported to reference management software. Duplicates were removed first within each source and then across the pooled set, with each retained unique record assigned to the first source in which it appeared for audit purposes. Titles and abstracts were screened against the inclusion criteria, after which full texts of potentially relevant articles were assessed for eligibility. Reference lists of included articles were also hand-searched to identify additional relevant studies. Figure~\ref{fig.prisma} visualises the selection process. No prospective external protocol registration was completed for this review. To compensate for this limitation, the search string, eligibility criteria, extraction fields, appraisal logic, evidence-use protocol, and sensitivity checks are reported explicitly so that screening and synthesis decisions remain auditable.
+
+\begin{figure}[H]
+\centering
+\footnotesize
+\begin{tikzpicture}[
+  node distance=0.52cm,
+  box/.style={rectangle,rounded corners=2pt,draw=PrismBlue,fill=PrismSky,thick,text width=0.84\textwidth,align=center,inner sep=6pt},
+  exclude/.style={rectangle,rounded corners=2pt,draw=PrismGray,fill=white,text width=0.84\textwidth,align=left,inner sep=6pt},
+  arrow/.style={-{Latex[length=2.2mm]},thick,draw=PrismBlue}
+]
+\node[box] (id) {\textbf{Identification}\\Records identified through source searching (n = 1,842)\\Scopus = 487, Web of Science = 398, ERIC = 256, Google Scholar = 701};
+\node[box, below=of id] (dedup) {Records after duplicates removed (n = 1,246)};
+\node[box, below=of dedup] (screen) {\textbf{Screening}\\Records screened by title and abstract (n = 1,246)};
+\node[exclude, below=of screen] (ex1) {\textbf{Records excluded (n = 1,082).} Not focused on IRE (n = 438), not relevant to primary or review-level pedagogy evidence (n = 287), and not situated in digital contexts (n = 357).};
+\node[box, below=of ex1] (elig) {\textbf{Eligibility}\\Full-text articles assessed for eligibility (n = 164)};
+\node[exclude, below=of elig] (ex2) {\textbf{Full-text articles excluded (n = 122).} Non-educational focus (n = 38), insufficient primary or review-level evidence (n = 27), non-Islamic context (n = 25), outside the time frame (n = 17), and language restriction (n = 15).};
+\node[box, below=of ex2] (inc) {\textbf{Inclusion}\\Records included in integrative review (n = 42)};
+\draw[arrow] (id) -- (dedup);
+\draw[arrow] (dedup) -- (screen);
+\draw[arrow] (screen) -- (ex1);
+\draw[arrow] (ex1) -- (elig);
+\draw[arrow] (elig) -- (ex2);
+\draw[arrow] (ex2) -- (inc);
+\end{tikzpicture}
+\caption{PRISMA 2020 flow diagram for study selection}
+\label{fig.prisma}
+\end{figure}
+
+Figure~\ref{fig.prisma} demonstrates the screening logic from identification through inclusion. The diagram makes explicit that most exclusions occurred before full-text review because records were outside the digital IRE focus or lacked relevant pedagogy evidence.
+
+Inclusion and exclusion criteria were operationalised before the final title/abstract and full-text decisions to improve consistency and reduce selection bias. Table~\ref{tab.criteria} presents these criteria.
+
+\begin{table}[H]
+\centering
+\caption{Inclusion and exclusion criteria}
+\label{tab.criteria}
+\small
+\begin{tabularx}{\textwidth}{Y Y}
+\toprule
+\textbf{Inclusion Criteria} & \textbf{Exclusion Criteria} \\
+\midrule
+Studies or reviews focusing on Islamic Religious Education in formal or non-formal settings. & Studies not integrating IRE with digital elements. \\
+Studies examining digital technologies, social media, internet platforms, or digital environments in relation to IRE pedagogy. & Studies focused exclusively on non-Islamic religious education or general religious education without Islamic context. \\
+Studies addressing religious authority, authenticity, engagement, learning outcomes, critical thinking, identity formation, or pedagogy. & Studies presenting theory only without primary data, a transparent review corpus, or relevant evidence synthesis. \\
+Peer-reviewed primary empirical articles and review articles using transparent qualitative, quantitative, mixed-methods, experimental, quasi-experimental, observational, systematic review, or bibliometric designs. & Book chapters, conference proceedings, theses, dissertations, opinion pieces, unavailable full texts, and non-English or non-Indonesian studies. \\
+Studies published from 2015 to 2025 in English or Indonesian. & Studies published before 2015 or after 2025. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.criteria} sets the practical boundaries for the sources reviewed. The review includes primary empirical studies and transparent review-level work, while leaving out opinion pieces, inaccessible full texts, and studies beyond the digital IRE focus.
+
+\subsection{Analytical Lens for the Synthesis}
+
+After the review boundaries were set, the analysis needed a lens that could follow how religious knowledge moves across classrooms, institutions, communities, and digital platforms. Rather than forcing the material into one theory, the synthesis was organised around four connected lenses.
+
+First, the review reads digital IRE as part of a networked knowledge ecology. In this setting, institutional authority, peer circulation, platform visibility, and identity performance interact (Castells, 2010, Hefner, 2007, Zaman, 2004). Religious authority is therefore negotiated across social, technological, and epistemic settings, not simply passed down through formal institutions.
+
+Second, the pedagogical lens treats learning as a mediated process. Students interpret religious knowledge with teachers, texts, communities, platforms, and peers (Egan, 2010, Vygotsky, 1978, Schunk, 2012). Religious literacy is not simple information acquisition. It requires source interpretation, authority recognition, truth-claim evaluation, and ethical action in plural digital environments (Gilster, 1997, Goleman, 1995, Moore, 2013, van de Oudeweetering and Voogt, 2018).
+
+Third, the Islamic epistemic lens defines authenticity as disciplined religious discernment, not personal sincerity alone. Reliable knowledge in IRE is mediated through recognised scholarship, textual reasoning, ethical character, and communal responsibility. Its classroom equivalents include \textit{tabayyun}, or verification before accepting and circulating claims, \textit{adab al-`ilm}, or proper conduct in seeking and sharing knowledge, attention to chains and contexts of authority, and moral orientation toward public benefit. These principles do not reject digital tools. Instead, they provide criteria for evaluating, contextualising, and ethically using digital religious content (Hefner, 2007, Nasr, 1996, Ramadan, 2009, Zaman, 2004).
+
+Fourth, the applied lens connects digital IRE with teacher knowledge, instructional design, authentic assessment, ethical implementation, and educational change. Teacher expertise is pedagogical, theological, technological, and contextual, not merely technical (Fullan, 2007, Shulman, 1987). Strong digital IRE therefore connects digital affordances with Islamic epistemic discipline, moral formation, and authentic assessment (Keller, 2010, Mayer, 2020, Wiggins, 1998). Table~\ref{tab.conceptual-architecture} summarises these four lenses.
+
+\begin{table}[H]
+\centering
+\caption{Four analytical lenses guiding the review}
+\label{tab.conceptual-architecture}
+\footnotesize
+\begin{tabularx}{\textwidth}{L{0.20\textwidth}L{0.28\textwidth}Y}
+\toprule
+\textbf{Lens} & \textbf{What It Clarifies} & \textbf{Use in This Review} \\
+\midrule
+Knowledge ecology & Where authority is formed within networked religious and educational settings. & Frames the shift from institution-centred authority to distributed, platform-mediated authority. \\
+Pedagogical mediation & How learning is shaped through teachers, texts, peers, communities, and technologies. & Interprets digital literacy, participatory learning, and identity negotiation as educational processes. \\
+Islamic epistemic discipline & How authenticity depends on verification, scholarly authority, adab, contextual interpretation and ethical responsibility. & Prevents digital literacy from becoming generic media literacy detached from Islamic knowledge traditions. \\
+Applied educational design & How theory connects with teacher practice, curriculum, assessment, and institutional policy. & Guides practical implications for digital religious pedagogy, ethical engagement, and authentic assessment. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.conceptual-architecture} keeps the synthesis from becoming a simple review of technology use. It places digital IRE within the wider task of forming learners who can verify claims, recognise qualified authority, interpret religious knowledge responsibly, and act ethically online.
+
+Because authenticity can mean different things in religious education, the review uses a controlled terminology. Doctrinal reliability refers to whether a claim is grounded in qualified scholarship and responsible textual reasoning. Pedagogical authenticity refers to whether learning tasks require meaningful religious judgement rather than superficial digital activity. Identity expression refers to how learners perform, narrate, and negotiate Muslim belonging online. Practice authenticity refers to whether institutional and classroom practices remain ethically responsible, context-sensitive, and accountable to public benefit. This distinction prevents the synthesis from treating doctrinal correctness, educational genuineness, identity performance, and institutional practice as the same construct.
+
+Data extraction used a standardised form developed for this review. Extracted variables included author and year, country context, educational level, study design, evidence type, digital technologies examined, pedagogical approaches, key findings related to authority and authenticity, limitations and recommendations. The extracted material was organised in comparison matrices to support transparent coding, memoing, and iterative interpretation, consistent with qualitative data management principles (Bazeley and Jackson, 2013, Creswell and Poth, 2018). Extraction and checking were conducted through author-team review and audit memoing; uncertain classifications were resolved through documented discussion. Because the corpus combined primary studies and review-level evidence, no pooled reliability statistic is reported and no claim is made that an externally registered dual-screening protocol was completed.
+
+An audit trail recorded four decision points for each included record, covering eligibility, evidence type, quality appraisal and theme use. This made it possible to distinguish records that shaped a theme from records that only contextualised a theme. Table~\ref{tab.audit-trail} summarises the audit logic.
+
+\begin{table}[H]
+\centering
+\caption{Audit trail for screening, appraisal and synthesis decisions}
+\label{tab.audit-trail}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.19\textwidth}Y Y}
+\toprule
+\textbf{Decision Point} & \textbf{Recorded Information} & \textbf{Purpose for Review Rigour} \\
+\midrule
+Eligibility decision & Inclusion or exclusion outcome, reason for exclusion where applicable, and source in which the record was first identified. & Supports PRISMA transparency and prevents undocumented post-hoc selection. \\
+Evidence-type classification & Primary empirical, review-level, bibliometric, critical/conceptual, or methodological/background classification. & Prevents review-level findings from being treated as direct primary outcome evidence. \\
+Quality-appraisal judgement & Design-appropriate appraisal notes on aims, sampling or corpus, method alignment, analysis, limitations and reproducibility. & Allows high-confidence, moderate-confidence and contextual evidence to be used differently. \\
+Theme-use decision & Whether the record was theme-shaping, corroborating, contextual, or excluded from thematic claims. & Makes the movement from records to themes traceable and reduces confirmation bias. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Quality appraisal was guided by design-appropriate domains drawn from Joanna Briggs Institute critical appraisal guidance rather than by applying a single checklist to all records (Joanna Briggs Institute, 2017). Qualitative studies, quantitative observational studies, quasi-experimental studies, mixed-methods studies, bibliometric studies, and systematic reviews were appraised against domains appropriate to their design. The appraisal considered clarity of aims, methodological congruence, sampling or corpus transparency, data collection, analysis, findings, ethical considerations, limitations, and review reproducibility where applicable. This approach reflects wider calls for reviews that are explicit, reproducible, and resistant to selection bias (Haddaway et al., 2015, Petticrew and Roberts, 2006). Lower-confidence records were retained only for contextual interpretation and were not allowed to determine a theme unless corroborated by higher-confidence evidence.
+
+Because the corpus combines primary empirical studies, systematic reviews, bibliometric studies, critical reviews and conceptual sources, evidence was not treated as interchangeable. The synthesis applied an evidence-use protocol to prevent review-level sources from being counted as primary outcome evidence and to prevent conceptual sources from being used as direct empirical support. Table~\ref{tab.evidence-use-protocol} summarises how each evidence type was used.
+
+\begin{table}[H]
+\centering
+\caption{Evidence-use protocol for the mixed review corpus}
+\label{tab.evidence-use-protocol}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.19\textwidth}Y Y Y}
+\toprule
+\textbf{Evidence Type} & \textbf{Permitted Use} & \textbf{Restriction Applied} & \textbf{Confidence Logic} \\
+\midrule
+Primary empirical studies & Support claims about observed teaching, learning, engagement, identity negotiation, or institutional practice. & Not pooled statistically because designs, measures and contexts differ. & Highest weight when aims, sampling, data collection, analysis and limitations are explicit. \\
+Systematic or integrative reviews & Confirm recurring patterns across bodies of IRE research and identify gaps or contradictions. & Not double-counted as independent primary effect evidence when reporting outcomes. & High or moderate weight when search, eligibility, corpus and synthesis procedures are transparent. \\
+Bibliometric studies & Map publication trends, authority clusters, keyword patterns and research concentration. & Not used to infer classroom effectiveness or student outcomes. & Moderate weight for field mapping, lower weight for pedagogical causality. \\
+Critical or conceptual reviews & Interpret authority, AI, ethics, post-truth dynamics and theoretical implications. & Used for conceptual framing, not for estimating prevalence or intervention effects. & Contextual weight unless connected to corroborating empirical or review-level evidence. \\
+Classical theory and methodology sources & Frame religious education, literacy, learning theory, educational change and review methods. & Not counted among the 42 eligible evidence records unless they met inclusion criteria. & Background authority only, never theme-determining by itself. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+To reduce double-counting, a theme was treated as robust only when it appeared across more than one evidence stream or when one high-confidence evidence stream was corroborated by independent conceptual, methodological or contextual support. Quantitative indicators from individual sources were therefore not pooled and were not used as prevalence estimates or meta-analytic effects.
+
+A qualitative sensitivity check was then conducted in three ways. First, theme claims were re-read using only high- and moderate-confidence evidence to ensure that contextual sources did not determine a finding. Second, review-level records were used as corroborating evidence rather than as primary outcome evidence. Third, claims were checked against the geographic concentration of the corpus; when evidence outside Southeast Asia was thin, findings were framed as transferable questions rather than global conclusions. This sensitivity check retained Themes 1, 2 and 4 as strongly convergent, while treating Theme 3 as important but less empirically secure because student voice and longitudinal identity evidence remain limited.
+
+Data analysis followed a thematic approach for synthesising mixed qualitative, quantitative, and review-level literature (Dixon-Woods et al., 2005, Sandelowski and Barroso, 2007, Thomas and Harden, 2008). The analytical framework was developed iteratively, beginning with broad coding of extracted data to identify preliminary patterns. Codes were refined through matrix comparison and analytic memoing into categories that remained close to the corpus (Bazeley and Jackson, 2013). The process followed Braun and Clarke's (2006) six phases, moving from familiarisation and initial coding to theme searching, theme review, theme definition, naming, and report production. Initial codes included authority fragmentation, digital literacy, hybrid pedagogy, identity negotiation, algorithmic influence, and teacher competence. These were grouped into interpretative categories and refined into four overarching themes. To enhance rigour and transparency, an audit trail recorded the evolution of codes and themes, decisions about theme development, and revisions to disputed codes and evidence-use decisions. The final synthesis was narrative, allowing findings to be interpreted across diverse methodologies and educational settings (Petticrew and Roberts, 2006).
+
+\section{Results}
+
+Source searching yielded 1,842 records. After duplicate removal, 1,246 unique records remained for screening. Title and abstract screening eliminated 1,082 records that did not meet the inclusion criteria, primarily because they focused on non-digital contexts of Islamic Religious Education or did not provide primary or review-level evidence relevant to pedagogy. This left 164 records for full-text assessment. During full-text review, 122 articles were excluded. These consisted of 38 articles with a non-educational focus, 27 with insufficient primary or review-level evidence, 25 in non-Islamic religious education contexts, 17 outside the 2015--2025 timeframe, and 15 outside the English or Indonesian language criteria. Ultimately, 42 records met all inclusion criteria and were included in the integrative review.
+
+\subsection{Characteristics of Included Records}
+
+Included records varied in methodology, focus, and geographic context, while sharing a common concern with digital dimensions of Islamic Religious Education. Table~\ref{tab.characteristics} summarises their main characteristics.
+
+\begin{table}[H]
+\centering
+\caption{Characteristics of included records}
+\label{tab.characteristics}
+\small
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}L{0.25\textwidth}Y}
+\toprule
+\textbf{Dimension} & \textbf{Distribution} & \textbf{Interpretive Note} \\
+\midrule
+Temporal distribution & Evidence is concentrated in the 2020--2025 period, with fewer earlier records. & Research interest accelerated after the pandemic-era expansion of digital learning. \\
+Geographic distribution & Indonesia and Malaysia are most visible, with additional evidence from Middle Eastern, European and North American contexts. & Southeast Asia dominates the evidence base, suggesting both strength and geographic limitation. \\
+Methodological distribution & The evidence corpus combines primary empirical studies, systematic reviews and bibliometric reviews. & The mixed corpus supports integrative synthesis but does not permit pooled effect estimation. \\
+Educational contexts & Pesantren, madrasah, Islamic schools, mainstream schools with IRE components and higher education are represented unevenly. & The review captures formal and non-formal Islamic educational traditions while indicating the need for more comparative work. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.characteristics} shows that the corpus is strongest for recent Southeast Asian scholarship and more limited for comparative geographic coverage. This pattern supports the review's interpretative, rather than meta-analytic, synthesis strategy. It also explains why the review gives priority to convergence across evidence streams rather than to numerical aggregation.
+
+Temporal and geographic patterns are reported in Figures~\ref{fig.temporal-records} and~\ref{fig.geographic-distribution}. These descriptive figures belong in the results section because they characterise the evidence base rather than establish the article's conceptual problem. The figures are drawn directly in LaTeX as vector graphics so that labels remain readable in print and digital PDF formats.
+
+Figure~\ref{fig.temporal-records} displays the grouped temporal distribution of the included records. The available extraction record supports period-level reporting, so the figure is labelled as a temporal rather than year-by-year distribution.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=2.05cm,y=0.42cm]
+\draw[->,thick,draw=PrismGray] (0,0) -- (4.35,0) node[right]{\small Period};
+\draw[->,thick,draw=PrismGray] (0,0) -- (0,23.2) node[above]{\small Records};
+\foreach \y in {0,5,10,15,20}{\draw[draw=PrismLine] (0,\y) -- (3.75,\y); \node[left] at (0,\y) {\small \y};}
+\foreach \x/\label in {0.75/{2015--2017},1.95/{2018--2020},3.15/{2021--2025}}{\draw (\x,0) -- (\x,-0.25); \node[anchor=north] at (\x,-0.42) {\small \label};}
+\foreach \x/\h/\txt in {0.75/8/8,1.95/14/14,3.15/20/20}{\fill[PrismBlue!82] (\x-0.34,0) rectangle (\x+0.34,\h); \node[above] at (\x,\h) {\small \textbf{\txt}};}
+\end{tikzpicture}
+\caption{Grouped temporal distribution of included records, 2015--2025}
+\label{fig.temporal-records}
+\end{figure}
+
+Figure~\ref{fig.temporal-records} indicates that publication activity increased after 2020 and peaked in the most recent part of the review window. This pattern supports the decision to treat digital IRE as an emerging and rapidly developing research area rather than as a settled pedagogical field.
+
+Figure~\ref{fig.geographic-distribution} displays the geographic composition of the evidence base.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.155cm,y=0.72cm]
+\draw[->,thick,draw=PrismGray] (0,0) -- (49,0) node[right]{\small Share};
+\draw[->,thick,draw=PrismGray] (0,0) -- (0,6.7);
+\foreach \x in {0,10,20,30,40}{\draw[draw=PrismLine] (\x,0) -- (\x,6.25); \node[below] at (\x,0) {\small \x\%};}
+\node[anchor=east] at (-1.2,5.55) {\small Indonesia};
+\fill[PrismBlue] (0,5.25) rectangle (43,5.85); \draw[PrismGray!45] (0,5.25) rectangle (43,5.85); \node[anchor=west] at (44,5.55) {\small \textbf{43\%}};
+\node[anchor=east] at (-1.2,4.65) {\small Malaysia};
+\fill[PrismGold] (0,4.35) rectangle (21,4.95); \draw[PrismGray!45] (0,4.35) rectangle (21,4.95); \node[anchor=west] at (22,4.65) {\small \textbf{21\%}};
+\node[anchor=east] at (-1.2,3.75) {\small Middle East};
+\fill[PrismSky] (0,3.45) rectangle (14,4.05); \draw[PrismGray!45] (0,3.45) rectangle (14,4.05); \node[anchor=west] at (15,3.75) {\small \textbf{14\%}};
+\node[anchor=east] at (-1.2,2.85) {\small Europe};
+\fill[PrismGray] (0,2.55) rectangle (10,3.15); \draw[PrismGray!45] (0,2.55) rectangle (10,3.15); \node[anchor=west] at (11,2.85) {\small \textbf{10\%}};
+\node[anchor=east] at (-1.2,1.95) {\small North America};
+\fill[PrismLine] (0,1.65) rectangle (7,2.25); \draw[PrismGray!45] (0,1.65) rectangle (7,2.25); \node[anchor=west] at (8,1.95) {\small \textbf{7\%}};
+\node[anchor=east] at (-1.2,1.05) {\small Others};
+\fill[PrismGold!45] (0,0.75) rectangle (5,1.35); \draw[PrismGray!45] (0,0.75) rectangle (5,1.35); \node[anchor=west] at (6,1.05) {\small \textbf{5\%}};
+\end{tikzpicture}
+\caption{Geographic distribution of included records}
+\label{fig.geographic-distribution}
+\end{figure}
+
+Figure~\ref{fig.geographic-distribution} shows that Indonesia and Malaysia dominate the evidence base. The smaller proportions assigned to Middle Eastern, European, and North American contexts underline the need for comparative studies beyond Southeast Asia.
+
+Design-sensitive appraisal produced three confidence bands. These bands determined how strongly each record could contribute to theme development. Table~\ref{tab.quality-appraisal} reports the appraisal summary.
+
+\begin{table}[H]
+\centering
+\caption{Quality appraisal and confidence use across the included corpus}
+\label{tab.quality-appraisal}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.18\textwidth}L{0.14\textwidth}Y Y}
+\toprule
+\textbf{Confidence Band} & \textbf{Corpus Role} & \textbf{Typical Appraisal Characteristics} & \textbf{Use in Synthesis} \\
+\midrule
+High confidence & Theme-shaping evidence & Clear aims, transparent corpus or sample, coherent method-design alignment, explicit analysis, traceable findings and acknowledged limitations. & Could support a theme when corroborated by at least one additional evidence stream or by repeated convergence across comparable records. \\
+Moderate confidence & Corroborating evidence & Relevant focus and usable findings, but weaker reporting of search detail, sampling, analytic procedure, limitations or reproducibility. & Used to strengthen, nuance or qualify a theme, not sufficient alone to determine a major claim. \\
+Contextual confidence & Background or interpretive evidence & Conceptual, theoretical, bibliometric or critical-review contribution with limited direct classroom or learner outcome evidence. & Used for framing, interpretation and future-research justification, not counted as primary empirical support. \\
+Excluded after appraisal & Not used in synthesis & Insufficient evidence transparency, unavailable full text, unclear Islamic education relevance or no digital-pedagogical connection. & Removed during full-text assessment or retained only as non-corpus background where appropriate. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.quality-appraisal} clarifies that methodological diversity was managed through graded evidence use rather than by treating all records as equivalent. This procedure is especially important because several highly relevant IRE publications are themselves reviews or bibliometric analyses.
+
+Because the reference list contains both evidence records and conceptual or methodological sources, the core evidence records cited directly in the thematic synthesis are identified and appraised in Table~\ref{tab.core-evidence-records}.
+
+\begin{table}[H]
+\centering
+\caption{Core evidence record appraisal and theme use}
+\label{tab.core-evidence-records}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.13\textwidth}>{\raggedright\arraybackslash}p{0.24\textwidth}>{\raggedright\arraybackslash}p{0.17\textwidth}>{\raggedright\arraybackslash}p{0.22\textwidth}}
+\toprule
+\textbf{Record} & \textbf{Evidence Type} & \textbf{Appraisal Signal} & \textbf{Confidence and Use} & \textbf{Theme Contribution} \\
+\midrule
+Muhamad Arif and Mohd Kasturi Nor Abd Aziz (2023) & Review & 21st-century IRE learning models, used mainly for background patterns. & Moderate, corroborating. & Background for authority and pedagogy shifts. \\
+Muhamad Arif et al. (2025) & Review & Teacher competence, digital pedagogy and source evaluation. & High, theme-shaping with corroboration. & Themes 1, 2 and 4. \\
+Miftachul Huda et al. (2024) & Review & Technology-era IRE learning media and platform mediation. & Moderate, corroborating. & Themes 1 and 2. \\
+Saidah et al. (2024) & Review & Digital media, motivation and online religious information. & Moderate, corroborating. & Themes 1, 2 and 3. \\
+Erihadiana et al. (2025) & Review & Technology use in high-school IRE curriculum and teacher digital literacy. & Moderate, corroborating. & Themes 2 and 4. \\
+Sapitri et al. (2025) & Review & IRE, character formation, spirituality and value development. & Moderate, corroborating. & Themes 2, 3 and 4. \\
+Sarbini et al. (2025) & Review & Inclusive curriculum, institutional responsibility and assessment implications. & Moderate, corroborating. & Themes 2 and 4. \\
+Muksin and Afandi (2025) & Review & Digital ethics, privacy and responsible engagement in IRE\@. & Moderate, corroborating. & Themes 2 and 4. \\
+Wa Ode Kurniati (2025) & Review & Problem-based learning, participatory pedagogy and authentic assessment. & Moderate, corroborating. & Themes 2 and 4. \\
+Firdaus and Fauziyah (2025) & Review & Religious literacy, scholarly character and authenticity. & Moderate, corroborating. & Themes 2 and 3. \\
+Fitriani et al. (2025) & Review & Inclusive strategies and learner participation for special-needs contexts. & Moderate, corroborating. & Themes 2 and 3. \\
+Efendi et al. (2025) & Review and bibliometric & IRE and SDG-oriented institutional concerns. & Moderate, corroborating and mapping. & Themes 3 and 4. \\
+Hasanah and Permana (2025) & Review & Meaningful learning and generational needs in junior-secondary IRE\@. & Moderate, corroborating. & Themes 1, 2 and 3. \\
+Arif et al. (2025) & Review & Inclusive IRE implementation and policy implications. & Moderate, corroborating. & Themes 2 and 4. \\
+Adima et al. (2024) & Bibliometric review & Islamic digital literacy trends in higher education. & Contextual mapping. & Theme 2. \\
+Samudra et al. (2024) & Bibliometric analysis & YouTube recommendation, public trust and Islamic authority. & Contextual mapping. & Theme 1. \\
+Murdianto et al. (2025) & Qualitative case study & Hybrid Islamic pedagogy and digital-adaptive character education in pesantren. & Contextual support with empirical fieldwork. & Themes 2, 3 and 4. \\
+Istiani and Islamy (2025) & Critical review & Generative AI and Islamic scientific authority. & Contextual, theoretical support. & Themes 1 and 4. \\
+\bottomrule
+\end{tabular}%
+}
+
+\vspace{0.35em}
+\begin{minipage}{0.96\textwidth}
+\footnotesize
+Note. This table reports the core records cited directly in the thematic synthesis. The full screening and extraction audit covered all 42 included records, but only the 18 records most visible in theme construction are displayed here. No theme-determining claim rests solely on an undisplayed record; the wider 42-record audit supports screening transparency, corpus characterisation and sensitivity checking.
+\end{minipage}
+\end{table}
+
+Table~\ref{tab.core-evidence-records} makes the thematic synthesis more auditable by separating core evidence records from background theory and methodology sources, while also reporting appraisal confidence and theme use. It shows that many frequently cited IRE records are review-level syntheses, which is why the article is framed as an integrative review. The evidence corpus follows the stated 2015--2025 eligibility window.
+
+To make the thematic synthesis traceable, Table~\ref{tab.evidence-theme-map} maps the principal evidence streams to the four review themes. This matrix does not claim statistical representativeness. It documents how each type of evidence was mobilised in the synthesis.
+
+\begin{table}[H]
+\centering
+\caption{Evidence-to-theme traceability matrix}
+\label{tab.evidence-theme-map}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.21\textwidth}Y Y Y Y}
+\toprule
+\textbf{Evidence Stream} & \textbf{Theme 1 Authority} & \textbf{Theme 2 Literacy and Pedagogy} & \textbf{Theme 3 Identity} & \textbf{Theme 4 Practice and Policy} \\
+\midrule
+IRE pedagogy and teacher competence reviews & Teacher and institutional authority are challenged by digital knowledge circulation. & Digital competence, hybrid learning and source evaluation are recurring pedagogical requirements. & Teacher mediation shapes how learners interpret competing religious claims. & Professional development and curriculum redesign are strongly represented. \\
+Digital media, platform and AI authority studies & Algorithmic recommendation, generated answers and AI-mediated search reshape visibility and trust. & Platform and AI literacy become part of religious literacy, including prompt evaluation, hallucination checking and source tracing. & Algorithmic exposure can narrow, fragment or automate religious self-understanding. & Policy needs include approved resources, privacy, misinformation response, AI-use boundaries and teacher mediation. \\
+Religious literacy and character-formation records & Authority is linked to scholarly character and disciplined interpretation. & Authentic literacy requires textual understanding, ethical judgement and guided inquiry. & Authenticity appears through practice, belonging and religious self-presentation. & Curriculum should integrate religious reasoning, digital ethics and assessment. \\
+Inclusive and institutional IRE records & Authority must remain credible while addressing diverse learner needs. & Participation and authentic assessment support inclusive engagement. & Learner agency varies across ability, context and access. & Institutional guidance, accessibility and teacher support are central. \\
+Conceptual and methodological sources & Explain networked authority, post-truth conditions and review transparency. & Frame digital literacy, learning mediation and authentic assessment. & Interpret youth identity, networked participation and moral-affective formation. & Support implications for change leadership, ethics and policy design. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.evidence-theme-map} strengthens auditability by showing where the main claims come from and where the evidence is more interpretive. The strongest convergence appears in Themes 1, 2 and 4, while Theme 3 is substantively important but more dependent on indirect and youth-focused evidence.
+
+\subsection{Thematic Analysis Results}
+
+Thematic analysis produced four interlocking themes, namely fragmented religious authority, critical digital literacy, Generation Z identity formation, and the pedagogical, ethical, and institutional conditions required for responsible IRE practice.
+
+\subsubsection{Theme 1. Fragmentation of Religious Authority in Digital Contexts}
+
+Theme 1 concerns IRE's response to fragmented religious authority. Across the corpus, digital environments are depicted as loosening older hierarchies of religious knowledge. Learners encounter teachers and scholars alongside online preachers, influencers, peers, and algorithmic systems. Credibility is therefore negotiated through visibility, repetition, and social endorsement as well as formal qualification (Samudra et al., 2024, Muhamad Arif et al., 2025).
+
+A related shift is the rise of algorithmic authority. Recommendation systems shape which religious content becomes visible, repeated, and normalised (Miftachul Huda et al., 2024, Saidah et al., 2024). Several studies suggest that learners may prioritise accessible or recommended content over scholarly sources, creating opaque pathways to religious understanding (Istiani and Islamy, 2025). The corpus also records active contestation, as scholars and teachers challenge unreliable online claims while also entering the same digital spaces to reassert credible guidance (Efendi et al., 2025, Firdaus and Fauziyah, 2025, Hasanah and Permana, 2025). The supplementary Arabic-context scoping check pointed in the same direction by identifying virtual religious authority and micro-celebrity da'i as contextual examples of how visibility and platform circulation can reshape perceived religious legitimacy (Baidawi, 2025). Because this record was identified through supplementary scoping rather than the core PRISMA pool, it is treated as contextual corroboration only. Table~\ref{tab.theme1} summarises this evidence pattern.
+
+\begin{table}[H]
+\centering
+\caption{Evidence pattern for Theme 1}
+\label{tab.theme1}
+\small
+\begin{tabularx}{\textwidth}{L{0.25\textwidth}Y Y}
+\toprule
+\textbf{Theme Element} & \textbf{Pattern} & \textbf{Representative Evidence} \\
+\midrule
+Traditional authority fragmentation & Multiple digital actors challenge institutional authority. & Muhamad Arif et al. (2025) report decentralised knowledge production, Saidah et al. (2024) report student reliance on multiple online sources, Berglund and Gent (2018) show that Islamic learning also interacts with mainstream schooling contexts, Samudra et al. (2024) map algorithmic trust and authority. \\
+Algorithmic authority & Recommendation systems shape religious content visibility. & Miftachul Huda et al. (2024) and Saidah et al. (2024) highlight platform-mediated authority and filter-bubble dynamics, Istiani and Islamy (2025) extend this concern to generative AI and Islamic scientific authority, and Baidawi (2025) offers supplementary contextual corroboration on virtual religious authority. \\
+Authority contestation & Traditional and digital authorities compete for legitimacy. & Firdaus and Fauziyah (2025), Efendi et al. (2025), Hasanah and Permana (2025), and McIntyre (2018) identify generational, institutional and post-truth contestation. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.theme1} indicates that authority fragmentation is a cluster of institutional, platform, and generational processes. For IRE, the implication is clear. Authority must be taught as discernment rather than assumed as a stable hierarchy.
+
+Source-specific indicators related to this theme are consolidated with the other theme indicators in Table~\ref{tab.source-specific-indicators}. These values are interpreted as descriptive signals rather than pooled estimates.
+
+\subsubsection{Theme 2. Critical Digital Literacy as a Pedagogical Imperative}
+
+Theme 2 shows that disciplined religious understanding depends on critical digital literacy rather than access to digital resources alone. Across the corpus, effective frameworks combine source evaluation, algorithmic awareness, contextual understanding, cross-verification, and ethical online engagement (Adima et al., 2024, Muhamad Arif et al., 2025). Students trained in these competencies were described as better able to identify reliable religious sources and resist uncritical acceptance of online claims (Saidah et al., 2024).
+
+Hybrid models were most persuasive when they avoided both technological determinism and rigid traditionalism. Examples include digital \textit{tadabbur}, problem-based digital learning, and classroom designs that connect digital tools with classical scholarship (Hasanah and Permana, 2025, Sapitri et al., 2025, Wa Ode Kurniati, 2025). Participatory approaches also support pedagogical authenticity by moving learners from teacher-centred reception toward collaborative meaning-making, structured digital \textit{majlis}, student-led projects, and guided peer inquiry (Efendi et al., 2025, Firdaus and Fauziyah, 2025, Fitriani et al., 2025). Several records further call for assessment that evaluates digital religious competence alongside content knowledge (Arif et al., 2025, Muksin and Afandi, 2025, Sarbini et al., 2025). Table~\ref{tab.theme2} summarises the evidence pattern.
+
+\begin{table}[H]
+\centering
+\caption{Evidence pattern for Theme 2}
+\label{tab.theme2}
+\small
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}Y Y}
+\toprule
+\textbf{Theme Element} & \textbf{Pedagogical Contribution} & \textbf{Representative Evidence} \\
+\midrule
+Critical digital literacy & Develops source evaluation, algorithmic awareness, and cross-verification. & Muhamad Arif et al. (2025), Saidah et al. (2024), Miftachul Huda et al. (2024), and Adima et al. (2024). \\
+Hybrid pedagogy & Integrates classical Islamic learning with digital tools. & Sapitri et al. (2025), Wa Ode Kurniati (2025), Hasanah and Permana (2025), and Murdianto et al. (2025). \\
+Participatory knowledge construction & Moves learners from passive reception toward guided collaborative inquiry. & Firdaus and Fauziyah (2025), Efendi et al. (2025), Fitriani et al. (2025), and Erihadiana et al. (2025). \\
+Authentic assessment & Measures digital religious competence alongside traditional knowledge. & Sarbini et al. (2025), Arif et al. (2025), Muksin and Afandi (2025), and Wiggins (1998). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.theme2} identifies a pedagogy of authenticity in which literacy supplies evaluative tools, hybrid design gives those tools instructional form, participation deepens ownership, and assessment makes digital religious judgement visible.
+
+Source-specific indicators related to digital literacy, hybrid pedagogy, participation and assessment are consolidated in Table~\ref{tab.source-specific-indicators}. They are not treated as comparable effect sizes because the underlying records differ in design, measurement and educational setting.
+
+\subsubsection{Theme 3. Identity Formation Challenges among Generation Z}
+
+Theme 3 shifts from sources of knowledge to the formation of the learner. The evidence suggests that Muslim students negotiate religious identity by integrating, separating, or prioritising family, school, scholarly, peer, and digital influences (Efendi et al., 2025, Hasanah and Permana, 2025, Sapitri et al., 2025). These negotiations often produce hybrid religious identities rather than a simple transfer of institutional norms (boyd, 2014, Prensky, 2001).
+
+Algorithmic environments complicate this process. Echo chambers can reinforce particular self-understandings through content curation (Miftachul Huda et al., 2024, Muhamad Arif et al., 2025, Saidah et al., 2024), while stronger critical digital literacy appears to help students resist identity narrowing (Adima et al., 2024, Muhamad Arif et al., 2025). The corpus also identifies emerging forms of digital religious expression, including visible practice, connective belonging through online community, and educational sharing of religious knowledge (Firdaus and Fauziyah, 2025, Fitriani et al., 2025, Sapitri et al., 2025). Table~\ref{tab.theme3} summarises this pattern.
+
+\begin{table}[H]
+\centering
+\caption{Evidence pattern for Theme 3}
+\label{tab.theme3}
+\small
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}Y Y}
+\toprule
+\textbf{Theme Element} & \textbf{Identity Dynamic} & \textbf{Representative Evidence} \\
+\midrule
+Digital-traditional negotiation & Learners combine, separate, or prioritise religious sources. & Sapitri et al. (2025), Efendi et al. (2025), Hasanah and Permana (2025), and Prensky (2001). \\
+Algorithmic identity formation & Platform curation shapes religious self-concept and belonging. & Saidah et al. (2024), Miftachul Huda et al. (2024), Muhamad Arif et al. (2025), and boyd (2014). \\
+Digital religious expression & Learners express religious identity through visible practice, connective belonging, and educational sharing. & Firdaus and Fauziyah (2025), Fitriani et al. (2025), Sapitri et al. (2025), boyd (2014), and Kubow (2023) as supplementary contextual evidence for Arab-Islamic student voice and identity. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.theme3} shows identity formation as relational and mediated. Learners negotiate identity expression across family, school, scholarly, peer, and platform-based spaces, with educational guidance shaping how those influences are interpreted. The supplementary Arabic-context scoping check sharpens this point by pointing to Arab-Islamic student voice and identity work in Jordan, where identity formation is discussed through student voice, citizenship, gender and Arab-Islamic ontologies (Kubow, 2023). This source does not convert Theme 3 into a longitudinal IRE finding, but it strengthens the rationale for treating student voice and Arabic-context identity formation as priority directions for future research.
+
+Source-specific identity indicators are consolidated in Table~\ref{tab.source-specific-indicators}. They are interpreted as descriptive signals of identity negotiation rather than as generalisable estimates for all Generation Z Muslim learners.
+
+To avoid overstating this weaker evidence stream, Theme 3 is used through a graded claim structure. The review treats learner exposure to multiple identity-forming environments as a supported pedagogical concern, treats algorithmic influence on belonging and self-presentation as an interpretive pattern, and treats long-term identity transformation as a research agenda rather than as an established finding. This distinction preserves the theme's educational importance while preventing indirect and youth-focused evidence from being converted into broad prevalence claims.
+
+\subsubsection{Theme 4. Pedagogical, Ethical, and Institutional Implications for IRE Practice}
+
+Theme 4 extends the synthesis to practice and governance. The corpus repeatedly emphasises teacher professional development for the digital dimensions of IRE, including source evaluation, algorithmic awareness, online facilitation, ethical guidance, and the judicious use of technology (Erihadiana et al., 2025, Muhamad Arif et al., 2025, Wa Ode Kurniati, 2025). Teachers therefore need professional learning that moves beyond technical training toward pedagogical and theological discernment (Muhamad Arif et al., 2025, Shulman, 1987).
+
+At curriculum level, hybrid designs should connect traditional Islamic knowledge with digital literacy, critical thinking, source verification, digital ethics, and guided engagement with online religious materials (Firdaus and Fauziyah, 2025, Muksin and Afandi, 2025, Sapitri et al., 2025). Such integration can increase engagement while preserving educational rigour (Erihadiana et al., 2025). At institutional level, the literature calls for protocols on technology integration, approved resources, misinformation response, inclusive access, privacy, ethical platform use, and digital-traditional balance (Arif et al., 2025, Hasanah and Permana, 2025, Pananrangi et al., 2025, Sarbini et al., 2025). Table~\ref{tab.theme4} summarises this evidence pattern.
+
+\begin{table}[H]
+\centering
+\caption{Evidence pattern for Theme 4}
+\label{tab.theme4}
+\small
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}Y Y}
+\toprule
+\textbf{Theme Element} & \textbf{Practice Implication} & \textbf{Representative Evidence} \\
+\midrule
+Teacher professional development & Teachers need digital religious pedagogy, not only technical skills. & Muhamad Arif et al. (2025), Erihadiana et al. (2025), Wa Ode Kurniati (2025), and Floridi (2023). \\
+Curriculum development & Curricula should combine Islamic knowledge, digital literacy, and digital ethics. & Sapitri et al. (2025), Firdaus and Fauziyah (2025), Muksin and Afandi (2025), and Murdianto et al. (2025). \\
+Institutional policy & Institutions need guidelines for authenticity, misinformation, access, and algorithmic bias. & Sarbini et al. (2025), Arif et al. (2025), Hasanah and Permana (2025), Pananrangi et al. (2025), and McIntyre (2018). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.theme4} shows that responsible digital IRE requires teacher development, curriculum design, and institutional policy to work together. Pedagogy, ethics, and governance are therefore inseparable rather than sequential concerns.
+
+Source-specific indicators across the four themes are consolidated in Table~\ref{tab.source-specific-indicators}. The table improves traceability while avoiding the impression that heterogeneous outcomes have been meta-analytically pooled.
+
+
+\begin{table}[H]
+\centering
+\caption{Consolidated source-specific qualitative indicators across themes}
+\label{tab.source-specific-indicators}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.14\textwidth}Y Y}
+\toprule
+\textbf{Theme} & \textbf{Qualitative Indicator Used in Synthesis} & \textbf{Source and Use Restriction} \\
+\midrule
+Theme 1 & Learners consult multiple online sources, while algorithmically recommended content competes with scholarly and institutional guidance. & Saidah et al. (2024), Miftachul Huda et al. (2024), and Samudra et al. (2024), used as source-specific and bibliometric indicators, not pooled prevalence. \\
+Theme 1 & Evidence records describe conflicts between traditional authority, influencer visibility, peer circulation, and platform ranking. & Firdaus and Fauziyah (2025), Efendi et al. (2025), Hasanah and Permana (2025), and Istiani and Islamy (2025), used to interpret authority contestation. \\
+Theme 2 & Digital religious literacy is repeatedly linked to source evaluation, cross-verification, algorithmic awareness, and guided use of online materials. & Muhamad Arif et al. (2025), Adima et al. (2024), Saidah et al. (2024), and van de Oudeweetering and Voogt (2018), used as convergent pedagogical evidence. \\
+Theme 2 & Hybrid, participatory, and problem-based designs are presented as stronger when they remain tied to textual understanding and moral formation. & Sapitri et al. (2025), Wa Ode Kurniati (2025), Firdaus and Fauziyah (2025), and Murdianto et al. (2025), used as design-oriented evidence. \\
+Theme 3 & Learners negotiate Muslim identity by combining family, school, scholarly, peer, and platform-mediated influences. & Efendi et al. (2025), Hasanah and Permana (2025), Sapitri et al. (2025), boyd (2014), and Prensky (2001), used cautiously because direct student-voice evidence is limited. \\
+Theme 3 & Algorithmic exposure and digital participation appear to shape belonging, self-presentation, and perceived credibility. & Saidah et al. (2024), Miftachul Huda et al. (2024), and Muhamad Arif et al. (2025), used as interpretive indicators rather than generalisable youth-prevalence claims. \\
+Theme 4 & Teacher development, curriculum redesign, institutional policy, privacy guidance, misinformation response, and AI-use boundaries are recurring implementation needs. & Muhamad Arif et al. (2025), Sarbini et al. (2025), Arif et al. (2025), Muksin and Afandi (2025), and Istiani and Islamy (2025), used for practice-oriented implications. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.source-specific-indicators} is used only to document qualitative source-specific indicators within cited sources or within the review's descriptive coding matrix. The indicators justify cautious practice-oriented interpretation, but they do not establish causal effects or prevalence across all IRE settings without further primary research.
+
+\subsection{Debates and Contradictions in the Literature}
+
+Several debates are central to digital IRE\@. One debate concerns authority and asks whether IRE should preserve hierarchical scholarly structures or respond to a more distributed religious field. Preservation-oriented studies emphasise the continuing importance of scholarly authority for doctrinal integrity and protection against misinterpretation (Berglund and Gent, 2018, Muhamad Arif et al., 2025). Studies of social media and algorithmic authority, however, suggest that the field has already changed. Students now need guidance for navigating multiple and competing sources, not simply reminders to trust inherited hierarchies (Samudra et al., 2024, Saidah et al., 2024).
+
+A second debate concerns the balance between critical digital literacy and traditional content knowledge. Digital literacy-oriented studies argue that students cannot navigate online religious landscapes without explicit instruction in source evaluation, algorithmic awareness, and ethical engagement (Adima et al., 2024, Muhamad Arif et al., 2025, van de Oudeweetering and Voogt, 2018). Content-focused studies caution that media competence without religious depth may produce learners who can evaluate formats but lack Qur'anic, hadith, fiqh, akhlaq, and historical reasoning (Firdaus and Fauziyah, 2025, Sarbini et al., 2025). The synthesis supports integration rather than substitution.
+
+A third debate concerns generational difference. Younger learners often show greater comfort with digital sources, while teachers and older community members may retain stronger allegiance to institutional authority (Efendi et al., 2025, Hasanah and Permana, 2025). Classroom tension emerges when these groups hold different assumptions about legitimate religious knowledge. Yet the evidence also suggests that age is not the sole explanation. Digital literacy, family and community context, and prior educational experience mediate how learners judge credibility.
+
+A fourth debate concerns algorithms. Some evidence frames recommendation systems as a threat because they privilege visibility, attention, and engagement over scholarly credibility (Miftachul Huda et al., 2024, Saidah et al., 2024). Other evidence suggests that algorithms amplify existing patterns of content consumption, making student formation and critical evaluation central to any educational response (Samudra et al., 2024, Muhamad Arif et al., 2025). In either interpretation, algorithmic literacy becomes necessary for religious education.
+
+A fifth debate concerns whether post-truth should be understood mainly as epistemic decline, democratisation of expertise, or a crisis of disciplined verification. McIntyre (2018) and Lewandowsky et al. (2017) emphasise misinformation, motivated reasoning and weakened public standards of evidence, while Fuller (2018) treats post-truth as a struggle over who has power to define knowledge. IRE cannot simply import either position. Islamic education requires a stronger normative account of truth, knowledge, certainty and responsibility, so post-truth is interpreted here through \textit{haqq}, \textit{haqiqa}, \textit{ilm}, \textit{yaqin}, \textit{zann}, \textit{tabayyun}, and adab. This reframes the issue from generic media scepticism to disciplined religious verification.
+
+Taken together, these debates point to a balanced pedagogical position. Effective IRE must acknowledge fragmented authority while remaining connected to scholarship, teach digital literacy without weakening content knowledge, recognise generational difference without reducing it to age, and pair algorithmic awareness with source evaluation and ethical judgement. Figure~\ref{fig.integrated-framework} visualises this synthesis.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=0.96cm,
+  main/.style={rectangle,rounded corners=3pt,draw=PrismBlue,fill=PrismSky,thick,text width=0.84\textwidth,align=center,inner sep=7pt},
+  med/.style={rectangle,rounded corners=3pt,draw=PrismGold,fill=PrismGold!12,thick,text width=0.23\textwidth,align=center,inner sep=5.5pt,minimum height=0.84cm},
+  arrow/.style={-{Latex[length=2.2mm]},thick,draw=PrismBlue}
+]
+\node[main] (authority) {\textbf{Authority Fragmentation}. traditional scholars, institutions, influencers, peers, and algorithms};
+\node[main, below=of authority] (literacy) {\textbf{Critical Digital Literacy}. source evaluation, algorithmic awareness, contextual interpretation, and ethical judgement};
+\node[main, below=of literacy] (identity) {\textbf{Identity Formation}. hybrid religious identity, authenticity negotiation, and learner agency};
+\node[main, below=of identity] (implications) {\textbf{Pedagogical, Ethical, and Institutional Implications}. teacher development, curriculum redesign, assessment, policy, and community engagement};
+\draw[arrow] (authority) -- (literacy);
+\draw[arrow] (literacy) -- (identity);
+\draw[arrow] (identity) -- (implications);
+\node[med, below=0.9cm of implications] (curriculum) {Curriculum Design};
+\node[med, left=0.34cm of curriculum] (teacher) {Teacher Competence};
+\node[med, right=0.34cm of curriculum] (policy) {Institutional Policy};
+\draw[arrow] (implications) -- (teacher);
+\draw[arrow] (implications) -- (curriculum);
+\draw[arrow] (implications) -- (policy);
+\end{tikzpicture}
+\caption{Integrated framework for digital IRE pedagogy in the post-truth era}
+\label{fig.integrated-framework}
+\end{figure}
+
+\section{Discussion}
+
+\subsection{Synthesis of the Evidence}
+
+Evidence indicates that digital transformation has altered IRE at three connected levels, namely the circulation of religious authority, the pedagogical mediation of knowledge, and the formation of Muslim learner identity. Traditional authority has not disappeared. It now works within a crowded ecology where scholars, teachers, peers, influencers, search engines, recommender systems, generative AI, and platform metrics all shape what learners encounter as religious knowledge (Istiani and Islamy, 2025, Samudra et al., 2024, van de Oudeweetering and Voogt, 2018). Table~\ref{tab.theme-summary} consolidates the thematic findings.
+
+\begin{table}[H]
+\centering
+\caption{Summary of thematic analysis findings}
+\label{tab.theme-summary}
+\small
+\begin{tabularx}{\textwidth}{L{0.23\textwidth}L{0.18\textwidth}Y Y}
+\toprule
+\textbf{Theme} & \textbf{Evidence Pattern} & \textbf{Key Findings} & \textbf{Descriptive Support} \\
+\midrule
+Authority fragmentation & Strong convergence & Traditional authority is contested by online influencers, peer networks, algorithmic visibility, and AI-mediated search. & Supported across IRE pedagogy reviews, platform studies, and authority-mapping records. \\
+Critical digital literacy & Strong convergence & Source evaluation, algorithmic awareness, AI-output checking, hybrid pedagogy, and participatory learning are central to disciplined digital IRE\@. & Supported across teacher-competence, digital-literacy, religious-literacy, and learning-media records. \\
+Identity formation & Moderate convergence & Muslim learners negotiate hybrid religious identities shaped by traditional institutions and digital media ecologies. & Supported by youth-focused and indirect identity evidence; interpreted cautiously because student voice remains limited. \\
+Pedagogical, ethical and institutional implications & Strong convergence & Teacher development, curriculum redesign, authentic assessment, digital ethics, AI guidance and institutional policies are required. & Supported across curriculum, inclusion, ethics, teacher-development, and policy-oriented records. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Together, the four themes are mutually reinforcing. Fragmented authority creates the need for critical digital literacy, digital literacy supports identity negotiation, and all three require institutional and pedagogical responses.
+
+Authority fragmentation is the most consistently convergent finding across the reviewed evidence streams. Scholars and educational institutions remain important, but learners increasingly encounter them alongside algorithmically amplified content and online personalities (Samudra et al., 2024, Muhamad Arif et al., 2025). This extends earlier accounts of Islamic educational authority and modern educational challenge (Hefner, 2007, Nasr, 1996, Zaman, 2004) by showing that the contemporary problem is not only ideological plurality but also platform-mediated visibility (Berglund and Gent, 2018, Sahin, 2018). Authority is now a question not only of who is qualified to speak, but also of which voices become visible, repeatable, and socially persuasive (Istiani and Islamy, 2025).
+
+Critical digital literacy is also necessary for religious learning in post-truth conditions. It links source evaluation, cross-verification, contextual interpretation, algorithmic awareness, and ethical engagement (Adima et al., 2024, Muhamad Arif et al., 2025, van de Oudeweetering and Voogt, 2018). This supports a view of religious literacy as interpretative judgement rather than information recall (Moore, 2013). Digital literacy in IRE must therefore be grounded in Islamic epistemic discipline, because the ability to identify misinformation is inseparable from the ability to recognise reliable religious reasoning (Lewandowsky et al., 2017, Nasr, 1996, Ramadan, 2009). In this sense, digital literacy becomes a contemporary pedagogical expression of \textit{tabayyun}. Learners pause, verify source credibility, examine context, compare interpretations, and consider the ethical consequences of sharing religious claims.
+
+Hybrid pedagogy offers a route beyond the false opposition between traditionalism and technological enthusiasm. Digital tools improve engagement when subordinated to clear religious, pedagogical, and ethical aims (Sapitri et al., 2025, Wa Ode Kurniati, 2025). Technology is educationally valuable when it supports textual encounter, guided inquiry, collaborative reflection, and authentic assessment. It is pedagogically weak when it merely accelerates access to uncurated content (Erihadiana et al., 2025). Such designs resonate with accounts of cognitive tools and educational change because they organise digital resources around disciplined inquiry and sustainable institutional practice (Egan, 2010, Fullan, 2007).
+
+Finally, identity formation is neither simple institutional transmission nor passive absorption of digital content. Generation Z Muslim learners negotiate identity across family, school, mosque, peer networks, and platforms (boyd, 2014, Prensky, 2001). The strongest defensible claim is pedagogical rather than predictive: IRE should help learners interpret these competing influences responsibly. A more cautious interpretive claim is that algorithmic exposure may shape belonging, self-presentation, and credibility judgements when digital participation is detached from scholarship and ethical reflection. The review does not claim to establish long-term identity effects. Because the process involves imagination, judgement, and affective self-regulation, IRE should treat identity formation as a guided educational concern rather than a private psychological process (Egan, 2010, Goleman, 1995).
+
+\subsection{Theoretical Contribution}
+
+This review offers a layered theoretical account of IRE in post-truth digital conditions. At the broadest level, it positions IRE within a networked knowledge ecology (Castells, 2010, Hefner, 2007), showing that authority challenges are structural rather than incidental. They arise from interactions among platforms, social circulation, institutional trust, and learner agency (Istiani and Islamy, 2025, Samudra et al., 2024). At the middle level, it advances the concept of digital religious authority to capture the interplay of scholarly legitimacy, institutional trust, influencer visibility, peer endorsement, and algorithmic amplification (Berglund and Gent, 2018, Sahin, 2018). At the Islamic pedagogical level, it defines authenticity through disciplined verification, adab, contextual reasoning, and ethical responsibility rather than popularity, immediacy, or performative online piety. At the applied level, it links source evaluation, algorithmic and generative-AI awareness, contextual interpretation, ethical engagement, and traditional religious literacy into a pedagogical account of digital religious discernment (Adima et al., 2024, van de Oudeweetering and Voogt, 2018). Table~\ref{tab.theoretical-contribution} summarises these contributions.
+
+\begin{table}[H]
+\centering
+\caption{Integrated theoretical contribution of the review}
+\label{tab.theoretical-contribution}
+\footnotesize
+\begin{tabularx}{\textwidth}{L{0.23\textwidth}Y Y}
+\toprule
+\textbf{Conceptual Focus} & \textbf{Contribution} & \textbf{Implication for IRE} \\
+\midrule
+Networked religious learning & Positions IRE within a wider ecology of institutional, peer, and platform-mediated knowledge. & Authority must be taught as a discernment process rather than assumed as a stable hierarchy. \\
+Digital religious authority & Explains how scholarly legitimacy interacts with influencer visibility, algorithmic amplification, and generative-AI mediation. & Students need explicit guidance on credibility, qualification, context, platform effects, prompt provenance, and AI-output verification. \\
+Islamic epistemic authenticity & Defines authenticity through \textit{tabayyun}, adab, scholarly mediation, contextual reasoning and ethical responsibility. & Digital IRE should evaluate not only whether content is engaging, but whether it is religiously disciplined and morally responsible. \\
+Digital religious literacy & Integrates digital evaluation with Islamic epistemic discipline and ethical engagement. & Curriculum should combine source verification, religious reasoning, and responsible digital participation. \\
+Hybrid pedagogy & Clarifies how digital tools can serve traditional educational aims without displacing them. & Digital activities should be aligned with textual understanding, moral formation, and authentic assessment. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab.theoretical-contribution} underscores the review's central claim. Digital IRE is a matter of authority, literacy, pedagogy, and institutional responsibility, not simply the addition of tools to existing instruction.
+
+\subsection{Implications for Practice, Curriculum and Policy}
+
+Teachers need professional competence that extends beyond technical familiarity with platforms. IRE teachers need pedagogical content knowledge that includes source evaluation, algorithmic awareness, online facilitation, and ethical guidance (Floridi, 2023, Shulman, 1987). Teacher development should include supervised practice in evaluating online religious claims, designing hybrid learning sequences, assessing digital religious judgement, and guiding students as they negotiate traditional and digital influences (Muhamad Arif et al., 2025). Sustainable implementation also requires professional learning cultures and change leadership, not one-off technology training (Fullan, 2007).
+
+Curriculum developers should embed digital literacy across IRE rather than add it as a separate technology unit. Qur'anic studies, hadith, fiqh, akhlaq, Islamic history, and contemporary issues can each include tasks that ask students to evaluate sources, compare interpretations, identify misinformation, and articulate ethical responses (Adima et al., 2024, Muksin and Afandi, 2025, Sapitri et al., 2025). This integration preserves the integrity of Islamic knowledge while preparing students for digital religious life (Erihadiana et al., 2025). It also frames curriculum design as cognitive, ethical, and affective formation, requiring tasks that cultivate disciplined understanding, empathy, and responsible moral action (Egan, 2010, Goleman, 1995, Ramadan, 2009).
+
+Operationally, curriculum tasks should build five Islamic epistemic safeguards into learning activities. These safeguards are \textit{tabayyun} for verification of source and claim, authority qualification for asking who is speaking or generating an answer and with what scholarly competence, contextual interpretation for reading texts with attention to genre, audience, and legal-ethical scope, \textit{adab} in disagreement and online sharing, and public-benefit reasoning for judging whether digital circulation serves learning, harm reduction, and moral responsibility. Together, they translate classical concerns for reliable knowledge and ethical reform into assessable digital learning behaviours (Nasr, 1996, Ramadan, 2009, Zaman, 2004).
+
+Educational institutions, including schools, madrasah, and pesantren, should establish clear policies for digital IRE\@. These policies should address resource selection, classroom platform use, privacy, online discussion ethics, responses to misinformation, and responsible AI use (Arif et al., 2025, Pananrangi et al., 2025, Sarbini et al., 2025). They should not function as prohibition alone, but as positive frameworks for guided, responsible, and authentic engagement (Pananrangi et al., 2025, Sarbini et al., 2025). Because educational change is social and organisational, policy should be accompanied by shared leadership, teacher collaboration, and periodic implementation review (Fullan, 2007).
+
+Implementation also requires attention to barriers that are often invisible in conceptual recommendations. In resource-limited pesantren or madrasah, the five safeguards can be introduced through low-bandwidth or offline activities, such as printed source-comparison tasks, teacher-curated screenshots, and classroom verification exercises before platform-based assignments. Teacher resistance should be addressed through co-designed professional learning rather than one-off technical training. Parental concerns about online religious content can be addressed through transparent platform rules, home-school communication, and community-based digital literacy sessions. Assessment validity requires rubrics that evaluate evidence of verification, contextual reasoning, ethical sharing, and reflection, not merely the ability to use a device. Digital divide issues require institutional plans for shared access, inclusive materials, and alternatives for learners with limited connectivity.
+
+Policymakers and Muslim communities should treat digital IRE as a shared educational responsibility. Formal institutions cannot address fragmented authority alone because students encounter religious content across homes, mosques, peer groups, and social media (boyd, 2014, Selod, 2018). Community-based digital literacy, intergenerational dialogue, and partnerships with credible religious educators are therefore necessary complements to school-based reform (Berglund and Gent, 2018, Sahin, 2018). Policymakers should develop standards for digital IRE, update teacher certification requirements, and support further research into effective approaches (Lewandowsky et al., 2017).
+
+\subsection{Limitations and Future Research}
+
+Several limitations should be noted. First, the evidence base is geographically concentrated, with strong representation from Indonesia and Malaysia. This reflects important research productivity in Southeast Asia, but it means that the findings should be read as Southeast Asia-weighted rather than globally representative of all Muslim educational contexts (Berglund and Gent, 2018, Selod, 2018). Second, the primary review corpus is limited to English and Indonesian publications. A supplementary Arabic-context scoping check was inspected after the main synthesis and helped identify relevant English-language Arabic or Arab-context debates on student voice, identity and virtual religious authority (Baidawi, 2025, Kubow, 2023). However, it does not remove the main language limitation: Arabic-language scholarship and Arabic databases were not systematically searched, and Turkish, Persian, Urdu, Malay, French and other work may also address similar questions through different epistemic vocabularies. This language boundary is therefore handled as a transferability constraint rather than hidden as a minor search decision. Third, methodological diversity supports rich synthesis but limits causal inference. Fourth, Theme 3 on identity formation is theoretically and pedagogically important, but it remains the least secure theme because direct student-voice and longitudinal IRE evidence are thinner than the evidence for authority, literacy and institutional practice. The supplementary Arabic-context scoping check strengthens the rationale for this research agenda but does not convert identity claims into stable prevalence claims about all Muslim learners. Fifth, no prospective external protocol registration was completed. This cannot be corrected after screening and synthesis have already occurred; Appendix~A therefore reconstructs the operational protocol and audit fields used in the completed review, without representing this as prospective registration. Sixth, rapid technological change means that findings about specific platforms may require frequent updating, especially as artificial intelligence reshapes how learners search for and evaluate religious knowledge (Floridi, 2023, Istiani and Islamy, 2025).
+
+Future research should prioritise longitudinal studies of religious identity formation, comparative research across Islamic educational traditions, and empirical testing of digital religious literacy frameworks (Adima et al., 2024, Miftachul Huda et al., 2024). Further work is needed on artificial intelligence in IRE, algorithmic recommendation effects, teacher professional development, assessment validity, and policy implementation in resource-limited settings (Istiani and Islamy, 2025, Muhamad Arif et al., 2025). Student voice should be foregrounded through interviews, classroom ethnographies, learner diaries, participatory design studies and longitudinal follow-up, especially in relation to how learners judge authority, doctrinal reliability, pedagogical authenticity, identity expression and ethical responsibility online. Future multilingual reviews should add Arabic search strings and Arabic databases or repositories, then extend the protocol to Turkish, Persian, Urdu, Malay, French and other relevant languages where Islamic education scholarship is active. Future systematic reviews should also register a protocol before screening begins, preferably through an open repository or review registry appropriate to education research. Cross-cultural and multilingual studies across Southeast Asian, Middle Eastern, European, African, and North American contexts would strengthen global understanding of digital IRE challenges and responses, especially if they include Arabic and other Islamic scholarly languages (Berglund and Gent, 2018, Sahin, 2018).
+
+\section{Conclusion}
+
+This systematic integrative review shows that Islamic Religious Education in the post-truth digital era operates within a fragmented authority landscape shaped by scholars, institutions, influencers, peer communities, algorithms, generative AI, and platform visibility. Its central task is not to choose between tradition and technology, but to form learners who can recognise qualified authority, evaluate digital religious claims, read texts contextually, practise \textit{adab} online, and act with ethical responsibility. The review contributes an integrated account of digital religious authority, distinguishes doctrinal reliability, pedagogical authenticity, identity expression and practice authenticity, and shows that hybrid pedagogy is educationally valuable when digital tools serve textual understanding, character formation, and authentic assessment. Practice therefore requires teacher development, curriculum redesign, institutional policy, and community engagement that support source verification, algorithmic and AI awareness, digital ethics, guided participation, and context-sensitive implementation. Because the evidence base is Southeast Asia-weighted, the framework should be transferred carefully and tested comparatively in other Muslim educational contexts. In this sense, digital IRE is not a compromise with digital culture. It is a necessary educational response to the conditions in which Muslim learners now encounter, contest, and live religious knowledge.
+
+\section*{Acknowledgment}
+
+We thank the Faculty of Tarbiyah and Teacher Training, UIN Syarif Hidayatullah Jakarta, and the Faculty of Teacher Training and Education, Universitas Bunga Bangsa Cirebon, for their institutional support. We also gratefully acknowledge the constructive feedback from colleagues during the manuscript preparation process. All remaining errors are the authors' own.
+
+\section*{Funding}
+
+No specific external funding was reported for this study.
+
+\section*{Conflict of Interest}
+
+The authors declare no conflict of interest.
+
+
+\section*{Review Registration and Data Availability}
+
+No prospective external protocol registration was completed for this review. To strengthen reproducibility despite that limitation, the operational protocol, audit fields, evidence-use rules and sensitivity checks are reported in the main text and Appendix~A. No primary human-participant data were generated. The evidence base consists of published literature, and the core records used for direct thematic synthesis are identified in Table~\ref{tab.core-evidence-records}.
+
+\section*{Appendix A. Reproducibility and Audit Addendum}
+
+This appendix reconstructs the protocol actually used in the completed review. It does not claim prospective registration. Its purpose is to make the review more auditable by separating documented operational decisions from limitations that cannot be corrected after completion.
+
+\begin{table}[H]
+\centering
+\caption{Operational protocol reconstructed for audit}
+\label{tab.appendix-protocol}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}Y}
+\toprule
+\textbf{Protocol Element} & \textbf{Operational Decision Reported for Reproducibility} \\
+\midrule
+Review design & Systematic integrative review using PRISMA 2020-informed reporting and pragmatic mixed-evidence synthesis. \\
+Review focus & Digital authority, authentic learning, digital religious literacy, identity formation and institutional implications in IRE\@. \\
+Information sources & Scopus, Web of Science, ERIC and bounded Google Scholar supplementary searching. \\
+Search window & January--March 2026, limited to publications from 2015--2025. \\
+Language boundary & English and Indonesian publications only; Arabic and other Islamic scholarly languages are treated as transferability limits. \\
+Eligibility logic & PICOS-based criteria requiring Islamic education relevance, digital or post-truth context, and usable empirical, review-level, bibliometric or conceptual evidence. \\
+Google Scholar rule & First 701 relevance-ranked hits screened; screening stopped after 100 consecutive non-eligible stable records. \\
+Data extraction & Bibliographic details, context, evidence type, method or corpus, key findings, appraisal notes, theme relevance and limitation notes. \\
+Quality appraisal & Design-sensitive JBI-informed appraisal translated into high, moderate, contextual or excluded use categories. \\
+Evidence-use controls & Primary, review-level, bibliometric and conceptual records were not treated as interchangeable evidence. \\
+Synthesis method & Thematic synthesis with memoing, matrix comparison, confidence-banded interpretation and source-specific qualitative indicators. \\
+Sensitivity check & Themes were re-read using higher-confidence evidence, review-level evidence was demoted to corroborating use, and Southeast Asia-weighted claims were separated from transferable implications. \\
+Supplementary Arabic-context scoping & A post-hoc Arabic-context and student-voice scoping file was inspected only for transferability, limitation and future-search refinement; it was not merged into the 42-record corpus. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Supplementary Arabic-context scoping check}
+\label{tab.appendix-arabic-scoping}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}Y Y}
+\toprule
+\textbf{Scoping Element} & \textbf{Operational Detail} & \textbf{Use in This Review} \\
+\midrule
+Purpose & Stress-tested the language, Arabic-context and student-voice limitations after the main corpus had been completed. & Refined transferability claims and future research priorities. \\
+Search logic & Three broad English Boolean strings combined digital or online Islamic education with authority, student voice or agency with religious identity, and Arabic or Arab contexts with digital education and identity. & Recorded as supplementary context rather than as a new PRISMA search. \\
+Database coverage & The scoping file reported gross returns across Scopus, Web of Science, PubMed and Google Scholar. & Counts were not merged with the core screening flow because the search was post hoc and broader than the operational protocol. \\
+Evidence-use rule & Relevant signals on virtual religious authority and Arab-Islamic student voice were treated as contextual corroboration only. & The 42-record corpus, confidence bands and theme-strength judgements remain unchanged. \\
+Full-text follow-up & Fifteen selected records from the Arabic-context scoping output were checked where full text, image, or PDF material was supplied. & The follow-up found book-review-level Arab-Islamic student-voice material and several non-Arab Indonesian empirical or digital IRE records; none were merged into the core PRISMA corpus. \\
+Residual limitation & The check targeted Arabic or Arab contexts through English-language terms and did not systematically search Arabic-language databases or Arabic-script scholarship. & The Arabic-language limitation remains explicit and becomes a priority for future multilingual review work. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Minimum audit fields for the 42-record extraction file}
+\label{tab.appendix-audit-fields}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.24\textwidth}Y Y}
+\toprule
+\textbf{Audit Field} & \textbf{Reason for Inclusion} & \textbf{How It Controls Overclaiming} \\
+\midrule
+Record ID and source & Preserves the route from database hit to included record. & Prevents duplicate counting across search sources. \\
+Eligibility decision & Records inclusion or exclusion reason at title/abstract and full-text stages. & Makes screening decisions auditable. \\
+Evidence type & Classifies primary empirical, review-level, bibliometric, critical/conceptual or methodological/background evidence. & Prevents review-level or conceptual work from being used as direct empirical evidence. \\
+Context and language & Records country, educational setting, language and learner or teacher focus where available, with supplementary Arabic-context scoping noted separately where relevant. & Keeps Southeast Asia-weighted and English/Indonesian-language boundaries visible while preventing post-hoc scoping from being counted as core evidence. \\
+Appraisal signal & Notes clarity of aims, sample or corpus transparency, method alignment, analysis and limitations. & Links confidence level to evidence quality rather than citation frequency. \\
+Theme-use role & Distinguishes theme-shaping, corroborating, contextual and non-theme-determining use. & Ensures no major theme rests on a weak or undisplayed source alone. \\
+Sensitivity note & Records whether a claim remains stable when lower-confidence or indirect sources are removed. & Identifies weaker claims, especially identity-formation claims. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Supplementary files prepared for submission audit}
+\label{tab.appendix-supplementary-files}
+\scriptsize
+\begin{tabularx}{\textwidth}{L{0.25\textwidth}Y Y}
+\toprule
+\textbf{File} & \textbf{Content} & \textbf{Audit Function} \\
+\midrule
+\path{S0_critical_audit_summary.csv} & Action log for the main methodological risks identified during audit. & Shows which overclaim risks were corrected, which files contain the correction, and what limitations remain. \\
+\path{S1_search_and_screening_log.csv} & Source-level search coverage for Scopus, Web of Science, ERIC and bounded Google Scholar. & Documents the route from 1,842 identified records to 42 included records without altering the PRISMA count. \\
+\path{S1b_prisma_stage_log.csv} & PRISMA stage counts and exclusion reasons. & Makes identification, duplicate removal, screening, full-text exclusion and inclusion decisions easier to audit. \\
+\path{S2_core_evidence_extraction.csv} & Extraction and appraisal rows for the 18 displayed core evidence records. & Links evidence type, appraisal signal, confidence use and theme contribution for the records most visible in synthesis. \\
+\path{S3_doi_metadata_audit.csv} & DOI and metadata verification worksheet for the 18 core records. & Flags bibliographic entries requiring final publisher-page verification because automated resolver access remained blocked during audit. \\
+\path{S4_arabic_context_scoping_log.csv} & Search strings and counts reported in the supplied Arabic-context scoping file. & Keeps post-hoc Arabic-context information separate from the 42-record corpus while preserving its transferability value. \\
+\path{S5_full_text_screening_15_selected.csv} & Full-text screening decisions for the 15 selected records from the uploaded Arabic-context files. & Separates book reviews, non-Arab empirical IRE records, digital curriculum records and excluded items so that no unsuitable source becomes theme-determining evidence. \\
+\path{S6_selected_record_summary_counts.csv} & Count summary derived from the 15 selected-record screening worksheet. & Makes explicit that the supplied selected records contain no primary empirical Arab-context digital-authority study and no longitudinal identity evidence. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The appendix strengthens transparency but does not remove the need for a prospective protocol in future reviews. These supplementary files are audit documents rather than an expanded evidence corpus. For journal submission, the 42-record extraction spreadsheet should be supplied as supplementary material if the target journal accepts supplementary files.
+
+\section*{References}
+
+\small
+\sloppy
+\raggedright{}
+\setlength{\parindent}{-0.35in}
+\setlength{\leftskip}{0.35in}
+\setlength{\parskip}{0.45em}
+
+Adima, M. F., Baharudin, B., and Susilawati, B. (2024). Digital literacy trends in Islamic perspective in higher education: A bibliometric review. \textit{Jurnal Penelitian Pendidikan IPA, 10} (12), 10691--10702.\ \doi{10.29303/jppipa.v10i12.9847}
+
+Arif, M., Hassan, H. B., Sakdiyah, N. H., and Umah, F. (2025). Implementation of Islamic Religious Education for children with special needs: A systematic literature review 2020--2025. \textit{Urwatul Wutsqo: Jurnal Studi Kependidikan dan Keislaman, 14} (2), 540--566.\ \doi{10.54437/urwatulwutsqo.v14i2.2060}
+
+Bazeley, P., and Jackson, K. (2013). \textit{Qualitative data analysis with NVivo} (2nd ed.). SAGE Publications.
+
+Baidawi, B. (2025). Shaping virtual religious authority: The power of digital media on micro-celebrity da'i. \textit{Journal of Asian Wisdom and Islamic Behavior, 3} (1).\ \doi{10.59371/jawab.v3i1.93}
+
+Berglund, J., and Gent, B. (2018). Memorization and focus: Important transferables between supplementary Islamic education and mainstream schooling. \textit{Journal of Religious Education, 66} (2), 125--138.\ \doi{10.1007/s40839-018-0060-1}
+
+boyd, d. (2014). \textit{It's complicated: The social lives of networked teens}. Yale University Press.
+
+Braun, V., and Clarke, V. (2006). Using thematic analysis in psychology. \textit{Qualitative Research in Psychology, 3} (2), 77--101.\ \doi{10.1191/1478088706qp063oa}
+
+Castells, M. (2010). \textit{The rise of the network society} (2nd ed.). Wiley-Blackwell.
+
+Creswell, J. W., and Plano Clark, V. L. (2017). \textit{Designing and conducting mixed methods research} (3rd ed.). SAGE Publications.
+
+Creswell, J. W., and Poth, C. N. (2018). \textit{Qualitative inquiry and research design: Choosing among five approaches} (4th ed.). SAGE Publications.
+
+Dixon-Woods, M., Agarwal, S., Jones, D., Young, B., and Sutton, A. (2005). Synthesising qualitative and quantitative evidence: A review of possible methods. \textit{Journal of Health Services Research \& Policy, 10} (1), 45--53.\ \doi{10.1177/135581960501000110}
+
+Efendi, B., Susanto, H., Nuraini, N., Basri, M. B., and Samsuri, M. (2025). Integrating Islamic Religious Education for SDGs: A systematic literature review and bibliometric study. \textit{Profetika: Jurnal Studi Islam, 26} (02), 407--420.\ \doi{10.23917/profetika.v26i02.11522}
+
+Egan, K. (2010). \textit{The educated mind: How cognitive tools shape our understanding}. University of Chicago Press.
+
+Erihadiana, M., Fauzi, I., Syarfiah, M. F. U., and Azizah, Z. N. (2025). Systematic literature review (SLR): Application of technology to the education curriculum in Islamic Religious Education subjects in high schools. \textit{JMKSP (Jurnal Manajemen, Kepemimpinan, dan Supervisi Pendidikan), 10} (2), 1380--1391.\ \doi{10.31851/jmksp.v10i2.20631}
+
+Firdaus, M., and Fauziyah, U. (2025). A systematic literature review on the urgency of Iml\={a}' learning in Islamic Religious Education: Implications for religious literacy and scholarly character. \textit{Itqan: Jurnal Ilmu-ilmu Kependidikan, 16} (2), 197--215.\ \doi{10.47766/itqan.v16i2.5063}
+
+Fitriani, E., Ariyani, D., Kholis, N., Asrohah, H., Rahmania, E. W., and Bachtiyar, M{.} (2025). Innovative strategies for learning Islamic Religious Education for children with special needs: A systematic literature review\@. \textit{QALAMUNA: Jurnal Pendidikan, Sosial, dan Agama, 17} (2), 1061--1076.\ \doi{10.37680/qalamuna.v17i2.5353} % chktex 13
+
+Floridi, L. (2023). \textit{The ethics of artificial intelligence: Principles, challenges, and opportunities}. Oxford University Press.
+
+Fuller, S. (2018). \textit{Post-Truth: Knowledge as a Power Game}. Anthem Press.
+
+Fullan, M. (2007). \textit{The new meaning of educational change} (4th ed.). Teachers College Press.
+
+Gilster, P. (1997). \textit{Digital literacy}. Wiley.
+
+Goleman, D. (1995). \textit{Emotional intelligence}. Bantam Books.
+
+Gough, D., Oliver, S., and Thomas, J. (2017). \textit{An introduction to systematic reviews} (2nd ed.). SAGE Publications.
+
+Haddaway, N. R., Woodcock, P., Macura, B., and Collins, A. (2015). Making literature reviews more reliable through application of lessons from systematic reviews. \textit{Conservation Biology, 29} (6), 1596--1605.\ \doi{10.1111/cobi.12541}
+
+Hasanah, N. A., and Permana, I. S. (2025). Revitalizing Islamic Religious Education at the junior secondary level through meaningful learning: A systematic literature review. \textit{Sinthop: Media Kajian Pendidikan, Agama, Sosial dan Budaya, 4} (2), 280--289.\ \doi{10.69548/sinthop.v4.i2.60.280-289}
+
+Hefner, R. W. (2007). \textit{Schooling Islam: The culture and politics of modern Muslim education}. Princeton University Press.
+
+Istiani, N., and Islamy, A. (2025). Generative AI and Islamic scientific authority: A critical review of modern literature. \textit{Tadris: Jurnal Keguruan dan Ilmu Tarbiyah, 10} (1), 137--152.\ \doi{10.24042/tadris.v10i1.26484}
+
+Joanna Briggs Institute. (2017). \textit{JBI checklist for systematic reviews and research syntheses}. JBI Global.
+
+Johnson, R. B., and Onwuegbuzie, A. J. (2004). Mixed methods research: A research paradigm whose time has come. \textit{Educational Researcher, 33} (7), 14--26.\ \doi{10.3102/0013189X033007014} % chktex 29
+
+Keller, J. M. (2010). \textit{Motivational design for learning and performance: The ARCS model approach}. Springer.\ \doi{10.1007/978-1-4419-1250-3}
+
+Samudra, I., Laini, Z. W., Yanti, J., and Pakpahan, F. N. (2024). Algorithmic authority and public trust: A bibliometric analysis of YouTube's recommendation system in shaping Islamic religious authority (2013--2023). \textit{Cognoscere: Jurnal Komunikasi dan Media Pendidikan, 2} (3), 35--50.\ \doi{10.61292/cognoscere.286}
+
+Kubow, P. K. (2023). \textit{Citizen identity formation of domestic students and Syrian refugee youth in Jordan: Centering student voice and Arab-Islamic ontologies}. Routledge.\ \doi{10.4324/9781003143215}
+
+Lewandowsky, S., Ecker, U. K. H., and Cook, J. (2017). Beyond misinformation: Understanding and coping with the post-truth era. \textit{Journal of Applied Research in Memory and Cognition, 6} (4), 353--369.\ \doi{10.1016/j.jarmac.2017.07.008}
+
+Liberati, A., Altman, D. G., Tetzlaff, J., Mulrow, C., G{\o}tzsche, P. C., Ioannidis, J. P. A., Clarke, M., Devereaux, P. J., Kleijnen, J., and Moher, D. (2009). The PRISMA statement for reporting systematic reviews and meta-analyses of studies that evaluate health care interventions: Explanation and elaboration. \textit{PLoS Medicine, 6} (7), e1000100.\ \doi{10.1371/journal.pmed.1000100}
+
+Murdianto, M., Yorman, Y., and Che Mat, A. (2025). A hybrid Islamic pedagogy model for Generation Alpha character education in the digital era\@. \textit{TARBIYA: Journal of Education in Muslim Society, 12} (2), 193--212.\ \doi{10.15408/tjems.v12i2.51267} % chktex 13
+
+Mayer, R. E. (2020). \textit{Multimedia learning} (3rd ed.). Cambridge University Press.\ \doi{10.1017/9781108894333}
+
+McIntyre, L. (2018). \textit{Post-truth}. MIT Press.
+
+Miftachul Huda, Muhamad Arif, Rahim, M. M. A., and Anshari, M. (2024). Islamic Religious Education learning media in the technology era: A systematic literature review. \textit{At-Tadzkir Islamic Education Journal, 3} (2), 83--102.\ \doi{10.59373/attadzkir.v3i2.62}
+
+Moher, D., Liberati, A., Tetzlaff, J., Altman, D. G., and PRISMA Group. (2009). Preferred reporting items for systematic reviews and meta-analyses: The PRISMA statement. \textit{PLoS Medicine, 6} (7), e1000097.\ \doi{10.1371/journal.pmed.1000097}
+
+Moore, D. L. (2013). \textit{Overcoming religious illiteracy: A cultural studies approach to the study of religion in secondary education}. Palgrave Macmillan.
+
+Muhamad Arif, and Mohd Kasturi Nor Abd Aziz. (2023). Islamic Religious Education learning model in the 21st century: Systematic literature review. \textit{Indonesian Journal of Islamic Education Studies (IJIES), 6} (2), 237--262.\ \doi{10.33367/ijies.v6i2.4417}
+
+Muhamad Arif, Mohd Kasturi Nor Abd Aziz, and Ma'arif, M. A. (2024). A recent study on Islamic religious education teachers' competencies in the digital age: A systematic literature review. \textit{Journal of Education and Learning (EduLearn), 19} (2), 587--596.\ \doi{10.11591/edulearn.v19i2.21311}
+
+Muksin, M., and Afandi, A. (2025). Digital ethics in Islamic Religious Education: Systematic literature review. \textit{Maharot: Journal of Islamic Education, 9} (2), 133.\ \doi{10.28944/maharot.v9i2.2225}
+
+Nasr, S. H. (1996). \textit{Islamic education and the challenges of the modern world}. Islamic Educational, Scientific and Cultural Organization.
+
+Page, M. J., McKenzie, J. E., Bossuyt, P. M., Boutron, I., Hoffmann, T. C., Mulrow, C. D., Shamseer, L., Tetzlaff, J. M., Akl, E. A., Brennan, S. E., Chou, R., Glanville, J., Grimshaw, J. M., Hr\'{o}bjartsson, A., Lalu, M. M., Li, T., Loder, E. W., Mayo-Wilson, E., McDonald, S., McGuinness, L. A., Stewart, L. A., Thomas, J., Tricco, A. C., Welch, V. A., Whiting, P., and Moher, D. (2021). The PRISMA 2020 statement: An updated guideline for reporting systematic reviews. \textit{BMJ, 372}, n71.\ \doi{10.1136/bmj.n71}
+
+Pananrangi, A. R., Ismail, I., Hamid, W., Maidin, A. M. R., Mustapa, Z., and Rizal, A. (2025). The impact of the post-truth era on transparency and accountability in public administration: Systematic literature review. \textit{Journal of Posthumanism, 5} (5), 3767--3789.\ \doi{10.63332/joph.v5i5.1817}
+
+Petticrew, M., and Roberts, H. (2006). \textit{Systematic reviews in the social sciences: A practical guide}. Blackwell Publishing.
+
+Prensky, M. (2001). Digital natives, digital immigrants. \textit{On the Horizon, 9} (5), 1--6.\ \doi{10.1108/10748120110424816}
+
+Ramadan, T. (2009). \textit{Radical reform: Islamic ethics and liberation}. Oxford University Press.
+
+Sahin, A. (2018). Critical issues in Islamic education studies: Rethinking Islamic and Western liberal secular values of education. \textit{Religions, 9} (11), 335.\ \doi{10.3390/rel9110335}
+
+Saidah, S., Baili, B., Hidayatullah, M. P., Medianto, G., and Muttaqin, M. (2024). Digital media in Islamic Religious Education: A systematic literature review of its influence on student learning motivation. \textit{Jurnal Ilmu Sosial dan Humaniora, 2} (4), 191--199.\ \doi{10.58540/isihumor.v2i4.1604}
+
+Sandelowski, M., and Barroso, J. (2007). \textit{Handbook for Synthesizing Qualitative Research}. Springer Publishing Company.
+
+Sapitri, E. Y., Hamami, T., and Muttakin, K{.} (2025). Integrating ecotheology into Islamic Religious Education: A systematic literature review on students' spiritual, social, and cognitive character development\@. \textit{DAYAH: Journal of Islamic Education, 8} (2), 178--201.\ \doi{10.22373/jie.v8i2.34136} % chktex 13
+
+Sarbini, S., Suhendi, S., Azzahra, F. N., Hoerotunnisa, H., and Yuliawanti, H. (2025). The values of inclusive education in Islamic Religious Education: A systematic literature review. \textit{Tadrib: Jurnal Pendidikan Agama Islam, 11} (2), 352--360.\ \doi{10.19109/tadrib.v11i2.31733}
+
+Schunk, D. H. (2012). \textit{Learning theories: An educational perspective} (6th ed.). Pearson Education.
+
+Selod, S. (2018). \textit{Forever suspect: Racialized surveillance of Muslim Americans in the war on terror}. Rutgers University Press.
+
+Shulman, L. S. (1987). Knowledge and teaching: Foundations of the new reform. \textit{Harvard Educational Review, 57} (1), 1--22.\ \doi{10.17763/haer.57.1.j463w79r56455411}
+
+Thomas, D. R. (2006). A general inductive approach for analysing qualitative evaluation data. \textit{American Journal of Evaluation, 27} (2), 237--246.\ \doi{10.1177/1098214005283748}
+
+Thomas, J., and Harden, A. (2008). Methods for the thematic synthesis of qualitative research in systematic reviews. \textit{BMC Medical Research Methodology, 8}, 45.\ \doi{10.1186/1471-2288-8-45}
+
+van de Oudeweetering, K., and Voogt, J. (2018). Teachers' conceptualisation of digital literacy in education: A systematic review. \textit{Educational Research Review, 24}, 207--224.\ \doi{10.1016/j.edurev.2018.04.002}
+
+Vygotsky, L. S. (1978). \textit{Mind in society: The development of higher psychological processes}. Harvard University Press.
+
+Wa Ode Kurniati. (2025). Implementation of problem-based learning in Islamic Religious Education: A systematic literature review study. \textit{International Journal of Educational and Life Sciences, 3} (11), 2977--2988.\ \doi{10.59890/ijels.v3i11.196}
+
+Wiggins, G. (1998). \textit{Educative assessment: Designing assessments to inform and improve student performance}. Jossey-Bass.
+
+Zaman, M. Q. (2004). \textit{The ulama in contemporary Islam: Custodians of change}. Princeton University Press.
+
+\end{document}

@@ -1,0 +1,1995 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+     4→import {
+     5→  motion,
+     6→  AnimatePresence,
+     7→} from 'framer-motion';
+     8→import {
+     9→  Wand2,
+    10→  Sparkles,
+    11→  CheckCircle2,
+    12→  ArrowLeft,
+    13→  Download,
+    14→  Copy,
+    15→  RefreshCw,
+    16→  Star,
+    17→  Award,
+    18→  FileCheck,
+    19→  Loader2,
+    20→  GitCompare,
+    21→  Layers,
+    22→  BookOpen,
+    23→  Quote,
+    24→  GitBranch,
+    25→  Eye,
+    26→  Lightbulb,
+    27→  SpellCheck,
+    28→  AlignLeft,
+    29→  ChevronRight,
+    30→  Zap,
+    31→  PartyPopper,
+    32→  FileText,
+    33→  Columns,
+    34→  Crown,
+    35→  AlertTriangle,
+    36→} from 'lucide-react';
+    37→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+    38→import { Button } from '@/components/ui/button';
+    39→import { Badge } from '@/components/ui/badge';
+    40→import { Switch } from '@/components/ui/switch';
+    41→import { Progress } from '@/components/ui/progress';
+    42→import { Separator } from '@/components/ui/separator';
+    43→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    44→import { ScrollArea } from '@/components/ui/scroll-area';
+    45→import { useArticleStore, type GeneratedArticle, type ArticleSection } from '@/store/article-store';
+    46→import { toast } from 'sonner';
+    47→import { exportToMarkdown } from '@/lib/export-markdown';
+    48→import { exportToPdf } from '@/lib/export-pdf';
+    49→import { useArticleSearch } from '@/hooks/use-article-search';
+    50→import ArticleSearchBar from '@/components/article-search-bar';
+    51→import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+    52→import {
+    53→  Dialog,
+    54→  DialogContent,
+    55→  DialogDescription,
+    56→  DialogFooter,
+    57→  DialogHeader,
+    58→  DialogTitle,
+    59→} from '@/components/ui/dialog';
+    60→
+    61→// ── Types ────────────────────────────────────────────────────────────────────
+    62→
+    63→interface PolishOption {
+    64→  id: string;
+    65→  label: string;
+    66→  description: string;
+    67→  icon: React.ElementType;
+    68→  enabled: boolean;
+    69→}
+    70→
+    71→interface ChangeSummary {
+    72→  structuralChanges: number;
+    73→  toneImprovements: number;
+    74→  citationFixes: number;
+    75→  coherenceEdits: number;
+    76→  clarityEdits: number;
+    77→  vocabularyUpgrades: number;
+    78→  grammarFixes: number;
+    79→  formattingFixes: number;
+    80→  totalChanges: number;
+    81→  qualityBefore: number;
+    82→  qualityAfter: number;
+    83→  details: string[];
+    84→}
+    85→
+    86→interface PolishStep {
+    87→  id: string;
+    88→  label: string;
+    89→  status: 'pending' | 'active' | 'completed';
+    90→}
+    91→
+    92→// ── Constants ────────────────────────────────────────────────────────────────
+    93→
+    94→const DEFAULT_POLISH_OPTIONS: PolishOption[] = [
+    95→  { id: 'structural', label: 'Structural Polish', description: 'Reorganise paragraphs for logical flow', icon: Layers, enabled: true },
+    96→  { id: 'tone', label: 'Academic Tone', description: 'Enhance formal British English academic language', icon: BookOpen, enabled: true },
+    97→  { id: 'citations', label: 'Citation Polish', description: 'Verify and enhance APA 7 citations', icon: Quote, enabled: true },
+    98→  { id: 'coherence', label: 'Coherence Enhancement', description: 'Improve transitions between sections', icon: GitBranch, enabled: true },
+    99→  { id: 'clarity', label: 'Clarity Enhancement', description: 'Simplify complex sentences', icon: Eye, enabled: true },
+   100→  { id: 'vocabulary', label: 'Vocabulary Enhancement', description: 'Upgrade academic vocabulary', icon: Lightbulb, enabled: true },
+   101→  { id: 'grammar', label: 'Grammar & Syntax', description: 'Fix grammar and syntax issues', icon: SpellCheck, enabled: true },
+   102→  { id: 'formatting', label: 'Formatting', description: 'Ensure consistent formatting throughout', icon: AlignLeft, enabled: true },
+   103→];
+   104→
+   105→const SECTION_LABELS: Record<string, string> = {
+   106→  abstract: 'Abstract',
+   107→  introduction: 'Introduction',
+   108→  literature_review: 'Literature Review',
+   109→  method: 'Methodology',
+   110→  results: 'Results',
+   111→  discussion: 'Discussion',
+   112→  conclusion: 'Conclusion',
+   113→  bibliography: 'References',
+   114→};
+   115→
+   116→// Map each section type to relevant ChangeSummary fields for computing per-section change counts
+   117→const SECTION_CHANGE_KEYS: Record<string, (keyof ChangeSummary)[]> = {
+   118→  abstract: ['coherenceEdits', 'clarityEdits', 'grammarFixes', 'toneImprovements', 'vocabularyUpgrades'],
+   119→  introduction: ['structuralChanges', 'coherenceEdits', 'toneImprovements', 'clarityEdits', 'vocabularyUpgrades'],
+   120→  literature_review: ['structuralChanges', 'coherenceEdits', 'toneImprovements', 'clarityEdits', 'vocabularyUpgrades', 'citationFixes'],
+   121→  method: ['structuralChanges', 'clarityEdits', 'formattingFixes', 'grammarFixes'],
+   122→  results: ['clarityEdits', 'vocabularyUpgrades', 'toneImprovements', 'citationFixes'],
+   123→  discussion: ['coherenceEdits', 'clarityEdits', 'vocabularyUpgrades', 'toneImprovements', 'citationFixes'],
+   124→  conclusion: ['coherenceEdits', 'toneImprovements', 'clarityEdits', 'vocabularyUpgrades'],
+   125→  bibliography: ['citationFixes', 'formattingFixes'],
+   126→};
+   127→
+   128→/** Compute total change count for a section based on relevant ChangeSummary fields */
+   129→function getSectionChangeCount(sectionType: string, summary: ChangeSummary | null): number {
+   130→  if (!summary) return 0;
+   131→  const keys = SECTION_CHANGE_KEYS[sectionType] ?? [];
+   132→  return keys.reduce((sum, key) => sum + (summary[key] as number ?? 0), 0);
+   133→}
+   134→
+   135→// ── Polish Option Card ─────────────────────────────────────────────────────────
+   136→
+   137→function PolishOptionCard({
+   138→  option,
+   139→  isPolishing,
+   140→  onToggle,
+   141→}: {
+   142→  option: PolishOption;
+   143→  isPolishing: boolean;
+   144→  onToggle: (id: string) => void;
+   145→}) {
+   146→  const [shimmerKey, setShimmerKey] = useState(0);
+   147→  const wasEnabledRef = useRef(option.enabled);
+   148→
+   149→  useEffect(() => {
+   150→    if (option.enabled && !wasEnabledRef.current) {
+   151→      const id = requestAnimationFrame(() => setShimmerKey((k) => k + 1));
+   152→      return () => cancelAnimationFrame(id);
+   153→    }
+   154→    wasEnabledRef.current = option.enabled;
+   155→  }, [option.enabled]);
+   156→
+   157→  return (
+   158→    <Tooltip>
+   159→      <TooltipTrigger asChild>
+   160→        <motion.div
+   161→          animate={{ scale: option.enabled ? 1.02 : 1 }}
+   162→          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+   163→          className="relative"
+   164→        >
+   165→          {/* Shimmer sweep overlay on first enable */}
+   166→          <AnimatePresence>
+   167→            {option.enabled && shimmerKey > 0 && (
+   168→              <motion.div
+   169→                key={`shimmer-${shimmerKey}`}
+   170→                className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none z-10"
+   171→                initial={{ opacity: 1 }}
+   172→                animate={{ opacity: 0 }}
+   173→                transition={{ duration: 0.8 }}
+   174→              >
+   175→                <motion.div
+   176→                  className="absolute inset-y-0 w-1/2"
+   177→                  style={{
+   178→                    background:
+   179→                      'linear-gradient(90deg, transparent, rgba(16,185,129,0.1), rgba(20,184,166,0.06), transparent)',
+   180→                  }}
+   181→                  initial={{ x: '-100%' }}
+   182→                  animate={{ x: '200%' }}
+   183→                  transition={{ duration: 0.8, ease: 'easeOut' as const }}
+   184→                />
+   185→              </motion.div>
+   186→            )}
+   187→          </AnimatePresence>
+   188→
+   189→          <Card
+   190→            className={`cursor-pointer transition-all hover:shadow-md relative overflow-hidden ${
+   191→              option.enabled
+   192→                ? 'border-emerald-500/40 bg-emerald-500/[0.03] shadow-sm'
+   193→                : 'opacity-60'
+   194→            } ${isPolishing ? 'pointer-events-none' : ''}`}
+   195→            onClick={() => onToggle(option.id)}
+   196→          >
+   197→            {/* Colored left accent bar (3px) */}
+   198→            <div
+   199→              className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg transition-colors ${
+   200→                option.enabled ? 'bg-emerald-500' : 'bg-muted-foreground/20'
+   201→              }`}
+   202→            />
+   203→
+   204→            <CardContent className="p-4 flex items-start justify-between gap-3">
+   205→              <div className="flex items-start gap-3 min-w-0">
+   206→                <div
+   207→                  className={`size-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+   208→                    option.enabled
+   209→                      ? 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 text-emerald-600'
+   210→                      : 'bg-muted text-muted-foreground'
+   211→                  }`}
+   212→                >
+   213→                  <option.icon className="size-4.5" />
+   214→                </div>
+   215→                <div className="min-w-0 space-y-0.5">
+   216→                  <p className="text-sm font-medium leading-tight truncate">{option.label}</p>
+   217→                  <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
+   218→                    {option.description}
+   219→                  </p>
+   220→                </div>
+   221→              </div>
+   222→              <Switch
+   223→                checked={option.enabled}
+   224→                onCheckedChange={() => onToggle(option.id)}
+   225→                onClick={(e) => e.stopPropagation()}
+   226→                className="shrink-0"
+   227→              />
+   228→            </CardContent>
+   229→          </Card>
+   230→        </motion.div>
+   231→      </TooltipTrigger>
+   232→      <TooltipContent side="bottom" className="max-w-xs">
+   233→        <p className="font-medium">{option.label}</p>
+   234→        <p className="opacity-80">{option.description}</p>
+   235→      </TooltipContent>
+   236→    </Tooltip>
+   237→  );
+   238→}
+   239→
+   240→// ── Confetti Particle Component ──────────────────────────────────────────────
+   241→
+   242→interface ConfettiParticle {
+   243→  id: number;
+   244→  x: number;
+   245→  y: number;
+   246→  color: string;
+   247→  size: number;
+   248→  delay: number;
+   249→  duration: number;
+   250→  angle: number;
+   251→  distance: number;
+   252→}
+   253→
+   254→function ConfettiCelebration({ show }: { show: boolean }) {
+   255→  const [particles, setParticles] = useState<ConfettiParticle[]>([]);
+   256→
+   257→  useEffect(() => {
+   258→    if (show) {
+   259→      const colors = [
+   260→        'bg-emerald-500',
+   261→        'bg-emerald-400',
+   262→        'bg-amber-400',
+   263→        'bg-teal-500',
+   264→        'bg-cyan-400',
+   265→        'bg-lime-400',
+   266→        'bg-emerald-300',
+   267→        'bg-amber-300',
+   268→      ];
+   269→
+   270→      const newParticles: ConfettiParticle[] = Array.from({ length: 40 }, (_, i) => ({
+   271→        id: i,
+   272→        x: 50 + (Math.random() - 0.5) * 20,
+   273→        y: 50,
+   274→        color: colors[Math.floor(Math.random() * colors.length)],
+   275→        size: Math.random() * 6 + 4,
+   276→        delay: Math.random() * 0.3,
+   277→        duration: Math.random() * 1 + 1.5,
+   278→        angle: Math.random() * 360,
+   279→        distance: Math.random() * 200 + 100,
+   280→      }));
+   281→
+   282→      setParticles(newParticles);
+   283→
+   284→      const timer = setTimeout(() => {
+   285→        setParticles([]);
+   286→      }, 3000);
+   287→
+   288→      return () => clearTimeout(timer);
+   289→    } else {
+   290→      setParticles([]);
+   291→    }
+   292→  }, [show]);
+   293→
+   294→  if (particles.length === 0) return null;
+   295→
+   296→  return (
+   297→    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
+   298→      {particles.map((p) => (
+   299→        <motion.div
+   300→          key={p.id}
+   301→          className={`absolute rounded-full ${p.color}`}
+   302→          style={{ width: p.size, height: p.size }}
+   303→          initial={{
+   304→            left: `${p.x}%`,
+   305→            top: `${p.y}%`,
+   306→            scale: 0,
+   307→            opacity: 1,
+   308→          }}
+   309→          animate={{
+   310→            y: [0, -p.distance * 0.6, p.distance],
+   311→            x: [0, (Math.random() - 0.5) * p.distance, (Math.random() - 0.5) * p.distance * 0.5],
+   312→            scale: [0, 1.2, 0.5],
+   313→            opacity: [1, 1, 0],
+   314→            rotate: [0, p.angle, p.angle * 2],
+   315→          }}
+   316→          transition={{
+   317→            duration: p.duration,
+   318→            delay: p.delay,
+   319→            ease: 'easeOut',
+   320→          }}
+   321→        />
+   322→      ))}
+   323→    </div>
+   324→  );
+   325→}
+   326→
+   327→// ── Animated Counter Hook ────────────────────────────────────────────────────
+   328→
+   329→function useAnimatedCounter(target: number, duration: number = 1000, shouldAnimate: boolean = true) {
+   330→  const [count, setCount] = useState(target);
+   331→  const frameRef = useRef<number>(0);
+   332→  const startTimeRef = useRef<number>(0);
+   333→
+   334→  useEffect(() => {
+   335→    if (!shouldAnimate || target === 0) {
+   336→      // Use rAF to avoid synchronous setState warning
+   337→      const id = requestAnimationFrame(() => setCount(target));
+   338→      return () => cancelAnimationFrame(id);
+   339→    }
+   340→
+   341→    startTimeRef.current = 0;
+   342→
+   343→    const animate = (timestamp: number) => {
+   344→      if (!startTimeRef.current) startTimeRef.current = timestamp;
+   345→      const elapsed = timestamp - startTimeRef.current;
+   346→      const progress = Math.min(elapsed / duration, 1);
+   347→
+   348→      // Ease out cubic
+   349→      const eased = 1 - Math.pow(1 - progress, 3);
+   350→      setCount(Math.round(eased * target));
+   351→
+   352→      if (progress < 1) {
+   353→        frameRef.current = requestAnimationFrame(animate);
+   354→      }
+   355→    };
+   356→
+   357→    frameRef.current = requestAnimationFrame(animate);
+   358→
+   359→    return () => {
+   360→      if (frameRef.current) {
+   361→        cancelAnimationFrame(frameRef.current);
+   362→      }
+   363→    };
+   364→  }, [target, duration, shouldAnimate]);
+   365→
+   366→  return count;
+   367→}
+   368→
+   369→// ── Search Highlight Helpers ─────────────────────────────────────────────
+   370→
+   371→/** Escape special regex characters */
+   372→function escapeSearchRegex(str: string): string {
+   373→  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+   374→}
+   375→
+   376→/** Split text by query matches and wrap in highlight spans */
+   377→function highlightTextNode(text: string, query: string): React.ReactNode[] {
+   378→  if (!query.trim() || typeof text !== 'string') return [text];
+   379→  const escaped = escapeSearchRegex(query);
+   380→  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+   381→  return parts.map((part, i) => {
+   382→    if (part.toLowerCase() === query.toLowerCase()) {
+   383→      return <mark key={i} className="article-search-highlight">{part}</mark>;
+   384→    }
+   385→    return part;
+   386→  });
+   387→}
+   388→
+   389→/** Render text with optional search highlighting */
+   390→function renderTextWithHighlight(text: string, searchQuery?: string) {
+   391→  if (!searchQuery?.trim()) return text;
+   392→  return <>{highlightTextNode(text, searchQuery)}</>;
+   393→}
+   394→
+   395→// ── Helper: Diff Highlight ──────────────────────────────────────────────────
+   396→
+   397→function DiffView({ original, polished }: { original: string; polished: string }) {
+   398→  const paragraphs = useMemo(() => {
+   399→    const origParts = original.split('\n');
+   400→    const poliParts = polished.split('\n');
+   401→    const maxLen = Math.max(origParts.length, poliParts.length);
+   402→    const result: { type: 'same' | 'added' | 'removed' | 'modified'; original: string; polished: string }[] = [];
+   403→
+   404→    for (let i = 0; i < maxLen; i++) {
+   405→      const o = origParts[i] ?? '';
+   406→      const p = poliParts[i] ?? '';
+   407→      if (o === p) {
+   408→        result.push({ type: 'same', original: o, polished: p });
+   409→      } else if (!o && p) {
+   410→        result.push({ type: 'added', original: '', polished: p });
+   411→      } else if (o && !p) {
+   412→        result.push({ type: 'removed', original: o, polished: '' });
+   413→      } else {
+   414→        result.push({ type: 'modified', original: o, polished: p });
+   415→      }
+   416→    }
+   417→    return result;
+   418→  }, [original, polished]);
+   419→
+   420→  if (!original && !polished) {
+   421→    return <p className="text-muted-foreground text-sm italic">No content to display.</p>;
+   422→  }
+   423→
+   424→  return (
+   425→    <div className="space-y-1.5">
+   426→      {paragraphs.map((para, idx) => (
+   427→        <div
+   428→          key={idx}
+   429→          className={`rounded-md px-3 py-1.5 text-sm leading-relaxed transition-colors ${
+   430→            para.type === 'same'
+   431→              ? 'bg-transparent'
+   432→              : para.type === 'added'
+   433→                ? 'bg-emerald-500/10 border-l-2 border-emerald-500'
+   434→                : para.type === 'removed'
+   435→                  ? 'bg-red-500/10 border-l-2 border-red-500 line-through opacity-60'
+   436→                  : 'bg-amber-500/10 border-l-2 border-amber-500'
+   437→          }`}
+   438→        >
+   439→          {para.polished || para.original || '\u00A0'}
+   440→        </div>
+   441→      ))}
+   442→    </div>
+   443→  );
+   444→}
+   445→
+   446→// ── Helper: Animated Quality Score Ring ──────────────────────────────────────
+   447→
+   448→function QualityScoreRing({ score, label, size = 72, animate = false }: { score: number; label: string; size?: number; animate?: boolean }) {
+   449→  const radius = (size - 8) / 2;
+   450→  const circumference = 2 * Math.PI * radius;
+   451→  const safeScore = Number(score) || 0;
+   452→  const clampedScore = Math.max(0, Math.min(100, safeScore));
+   453→  const offset = circumference - (clampedScore / 100) * circumference;
+   454→
+   455→  const color =
+   456→    clampedScore >= 85 ? 'text-emerald-500' : clampedScore >= 70 ? 'text-amber-500' : 'text-red-500';
+   457→  const strokeColor =
+   458→    clampedScore >= 85 ? 'stroke-emerald-500' : clampedScore >= 70 ? 'stroke-amber-500' : 'stroke-red-500';
+   459→
+   460→  const animatedCount = useAnimatedCounter(clampedScore, 1200, animate);
+   461→  const displayScore = animate ? animatedCount : clampedScore;
+   462→  const displayOffset = circumference - (displayScore / 100) * circumference;
+   463→
+   464→  return (
+   465→    <div className="flex flex-col items-center gap-1.5">
+   466→      <div className="relative" style={{ width: size, height: size }}>
+   467→        <svg className="transform -rotate-90" width={size} height={size}>
+   468→          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" className="stroke-muted" strokeWidth={4} />
+   469→          <motion.circle
+   470→            cx={size / 2}
+   471→            cy={size / 2}
+   472→            r={radius}
+   473→            fill="none"
+   474→            className={strokeColor}
+   475→            strokeWidth={4}
+   476→            strokeLinecap="round"
+   477→            strokeDasharray={circumference}
+   478→            initial={animate ? { strokeDashoffset: circumference } : { strokeDashoffset: offset }}
+   479→            animate={{ strokeDashoffset: displayOffset }}
+   480→            transition={{ duration: 1.2, ease: 'easeOut' }}
+   481→          />
+   482→        </svg>
+   483→        <div className="absolute inset-0 flex items-center justify-center">
+   484→          <span className={`text-lg font-bold ${color}`}>{displayScore}</span>
+   485→        </div>
+   486→      </div>
+   487→      <span className="text-xs text-muted-foreground font-medium">{label}</span>
+   488→    </div>
+   489→  );
+   490→}
+   491→
+   492→// ── Helper: Section comparison panel ────────────────────────────────────────
+   493→
+   494→type ComparisonViewMode = 'split' | 'original' | 'polished';
+   495→
+   496→function SectionComparison({
+   497→  sectionType,
+   498→  originalSection,
+   499→  polishedSection,
+   500→  changeCount,
+   501→  searchQuery,
+   502→  viewMode,
+   503→}: {
+   504→  sectionType: string;
+   505→  originalSection: ArticleSection | undefined;
+   506→  polishedSection: ArticleSection | undefined;
+   507→  changeCount?: number;
+   508→  searchQuery?: string;
+   509→  viewMode: ComparisonViewMode;
+   510→}) {
+   511→  const originalContent = originalSection?.content ?? '';
+   512→  const polishedContent = polishedSection?.content ?? '';
+   513→
+   514→  if (!originalContent && !polishedContent) return null;
+   515→
+   516→  const hasChanges = changeCount !== undefined && changeCount > 0;
+   517→
+   518→  return (
+   519→    <div className="space-y-3">
+   520→      <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+   521→        <ChevronRight className="size-3.5 text-emerald-500" />
+   522→        {SECTION_LABELS[sectionType] ?? sectionType}
+   523→        {/* Section-level improvement badge */}
+   524→        {hasChanges && (
+   525→          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 text-[10px] px-1.5 py-0">
+   526→            <Sparkles className="size-2.5 mr-0.5" />
+   527→            {changeCount} {changeCount === 1 ? 'improvement' : 'improvements'}
+   528→          </Badge>
+   529→        )}
+   530→      </h4>
+   531→
+   532→      {viewMode === 'split' ? (
+   533→        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   534→          <div className="rounded-lg border bg-muted/30 p-3 min-h-[200px] overflow-y-auto">
+   535→            <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+   536→              <span className="size-1.5 rounded-full bg-muted-foreground/40" />
+   537→              Original
+   538→            </p>
+   539→            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/80">
+   540→              {renderTextWithHighlight(originalContent, searchQuery)}
+   541→            </p>
+   542→          </div>
+   543→          <div className={`rounded-lg border p-3 min-h-[200px] overflow-y-auto ${hasChanges ? 'border-l-[2px] border-l-emerald-500 border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+   544→            <p className="text-xs font-medium text-emerald-600 mb-2 flex items-center gap-1.5">
+   545→              <span className={`size-1.5 rounded-full ${hasChanges ? 'bg-emerald-500' : 'bg-emerald-500/40'}`} />
+   546→              Polished
+   547→            </p>
+   548→            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+   549→              {renderTextWithHighlight(polishedContent, searchQuery)}
+   550→            </p>
+   551→          </div>
+   552→        </div>
+   553→      ) : viewMode === 'original' ? (
+   554→        <div className="rounded-lg border bg-muted/30 p-3">
+   555→          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+   556→            <Badge variant="outline" className="text-[10px] py-0 px-1.5">Viewing Original</Badge>
+   557→          </p>
+   558→          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/80">
+   559→            {renderTextWithHighlight(originalContent, searchQuery)}
+   560→          </p>
+   561→        </div>
+   562→      ) : (
+   563→        <div className={`rounded-lg border p-3 ${hasChanges ? 'border-l-[2px] border-l-emerald-500 border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+   564→          <p className="text-xs font-medium text-emerald-600 mb-2 flex items-center gap-1.5">
+   565→            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-600">Viewing Polished</Badge>
+   566→          </p>
+   567→          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+   568→            {renderTextWithHighlight(polishedContent, searchQuery)}
+   569→          </p>
+   570→        </div>
+   571→      )}
+   572→
+   573→      <Separator />
+   574→    </div>
+   575→  );
+   576→}
+   577→
+   578→// ── Polish Progress Overlay ─────────────────────────────────────────────────
+   579→
+   580→function PolishProgressOverlay({
+   581→  steps,
+   582→  currentStepIndex,
+   583→  estimatedSeconds,
+   584→}: {
+   585→  steps: PolishStep[];
+   586→  currentStepIndex: number;
+   587→  estimatedSeconds: number;
+   588→}) {
+   589→  const progressPercent = steps.length > 0 ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
+   590→
+   591→  return (
+   592→    <div className="space-y-6">
+   593→      <div className="flex items-center gap-3">
+   594→        <div className="relative">
+   595→          <Loader2 className="size-8 text-emerald-500 animate-spin" />
+   596→          <Sparkles className="size-3 text-amber-400 absolute -top-0.5 -right-0.5" />
+   597→        </div>
+   598→        <div>
+   599→          <p className="text-sm font-semibold text-foreground">Polishing in progress...</p>
+   600→          <p className="text-xs text-muted-foreground">
+   601→            Processing: {steps[currentStepIndex]?.label ?? 'Preparing...'}
+   602→          </p>
+   603→        </div>
+   604→      </div>
+   605→
+   606→      <Progress value={progressPercent} className="h-2" />
+   607→
+   608→      <div className="space-y-2">
+   609→        {steps.map((step, idx) => (
+   610→          <div
+   611→            key={step.id}
+   612→            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
+   613→              step.status === 'active'
+   614→                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium'
+   615→                : step.status === 'completed'
+   616→                  ? 'text-muted-foreground'
+   617→                  : 'text-muted-foreground/50'
+   618→            }`}
+   619→          >
+   620→            {step.status === 'completed' ? (
+   621→              <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+   622→            ) : step.status === 'active' ? (
+   623→              <Loader2 className="size-4 text-emerald-500 shrink-0 animate-spin" />
+   624→            ) : (
+   625→              <div className="size-4 rounded-full border border-muted shrink-0" />
+   626→            )}
+   627→            <span className="truncate">{step.label}</span>
+   628→            {step.status === 'completed' && (
+   629→              <Badge variant="secondary" className="ml-auto text-[10px] shrink-0">
+   630→                Done
+   631→              </Badge>
+   632→            )}
+   633→          </div>
+   634→        ))}
+   635→      </div>
+   636→
+   637→      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   638→        <ClockIcon />
+   639→        <span>Estimated time remaining: ~{estimatedSeconds}s</span>
+   640→      </div>
+   641→    </div>
+   642→  );
+   643→}
+   644→
+   645→function ClockIcon() {
+   646→  return (
+   647→    <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   648→      <circle cx="12" cy="12" r="10" />
+   649→      <polyline points="12 6 12 12 16 14" />
+   650→    </svg>
+   651→  );
+   652→}
+   653→
+   654→// ── Change Summary Panel ────────────────────────────────────────────────────
+   655→
+   656→function ChangeSummaryPanel({ summary, animateScores = false }: { summary: ChangeSummary; animateScores?: boolean }) {
+   657→  const categories = [
+   658→    { label: 'Structural', count: summary.structuralChanges, icon: Layers },
+   659→    { label: 'Tone', count: summary.toneImprovements, icon: BookOpen },
+   660→    { label: 'Citations', count: summary.citationFixes, icon: Quote },
+   661→    { label: 'Coherence', count: summary.coherenceEdits, icon: GitBranch },
+   662→    { label: 'Clarity', count: summary.clarityEdits, icon: Eye },
+   663→    { label: 'Vocabulary', count: summary.vocabularyUpgrades, icon: Lightbulb },
+   664→    { label: 'Grammar', count: summary.grammarFixes, icon: SpellCheck },
+   665→    { label: 'Formatting', count: summary.formattingFixes, icon: AlignLeft },
+   666→  ];
+   667→
+   668→  const safeTotal = Number(summary.totalChanges) || 0;
+   669→  const maxCount = Math.max(...categories.map((c) => c.count), 1);
+   670→  const animatedTotal = useAnimatedCounter(safeTotal, 1200, animateScores);
+   671→  const activeCategories = categories.filter((c) => c.count > 0).length;
+   672→
+   673→  return (
+   674→    <Card className="border-emerald-500/20 bg-emerald-500/[0.02]">
+   675→      <CardHeader className="pb-3">
+   676→        <CardTitle className="text-base flex items-center gap-2">
+   677→          <Award className="size-5 text-emerald-500" />
+   678→          Polish Summary
+   679→        </CardTitle>
+   680→        <CardDescription>
+   681→          <span className="text-emerald-600 font-semibold">{animatedTotal}</span> improvements applied across{' '}
+   682→          {activeCategories} categories
+   683→        </CardDescription>
+   684→      </CardHeader>
+   685→      <CardContent className="space-y-4">
+   686→        {/* Quality Score Rings */}
+   687→        <div className="flex items-center justify-center gap-4">
+   688→          <QualityScoreRing score={summary.qualityBefore} label="Before" size={80} animate={animateScores} />
+   689→          <div className="flex flex-col items-center gap-1">
+   690→            <div className="flex items-center gap-1 text-emerald-500">
+   691→              <ChevronRight className="size-5" />
+   692→            </div>
+   693→            <span className="text-xs text-muted-foreground">+{summary.qualityAfter - summary.qualityBefore} pts</span>
+   694→          </div>
+   695→          <QualityScoreRing score={summary.qualityAfter} label="After" size={80} animate={animateScores} />
+   696→        </div>
+   697→
+   698→        <Separator />
+   699→
+   700→        {/* Mini Bar Chart: changes per category */}
+   701→        <div className="space-y-2.5">
+   702→          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+   703→            <Sparkles className="size-3" />
+   704→            Changes by category
+   705→          </p>
+   706→          <div className="space-y-1.5">
+   707→            {categories.map((cat) => {
+   708→              const barWidth = maxCount > 0 ? (cat.count / maxCount) * 100 : 0;
+   709→              const barColor =
+   710→                cat.count >= 10
+   711→                  ? 'bg-emerald-500'
+   712→                  : cat.count >= 5
+   713→                    ? 'bg-teal-500'
+   714→                    : cat.count > 0
+   715→                      ? 'bg-muted-foreground/30'
+   716→                      : 'bg-muted';
+   717→
+   718→              return (
+   719→                <div key={cat.label} className="flex items-center gap-2">
+   720→                  <cat.icon className={`size-3 shrink-0 ${cat.count > 0 ? 'text-emerald-500' : 'text-muted-foreground/30'}`} />
+   721→                  <span className="text-xs text-muted-foreground w-[70px] shrink-0 truncate">{cat.label}</span>
+   722→                  <div className="flex-1 h-2 rounded-full bg-muted/50 overflow-hidden">
+   723→                    <motion.div
+   724→                      className={`h-full rounded-full ${barColor}`}
+   725→                      initial={animateScores ? { width: 0 } : { width: `${barWidth}%` }}
+   726→                      animate={{ width: `${barWidth}%` }}
+   727→                      transition={{ duration: 0.8, ease: 'easeOut' as const, delay: 0.2 }}
+   728→                    />
+   729→                  </div>
+   730→                  <span className={`text-xs font-mono w-6 text-right shrink-0 ${cat.count > 0 ? 'text-emerald-600' : 'text-muted-foreground/40'}`}>
+   731→                    {cat.count}
+   732→                  </span>
+   733→                </div>
+   734→              );
+   735→            })}
+   736→          </div>
+   737→        </div>
+   738→
+   739→        {/* Category grid (compact) */}
+   740→        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   741→          {categories.map((cat) => (
+   742→            <div key={cat.label} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+   743→              <cat.icon className={`size-3.5 shrink-0 ${cat.count > 0 ? 'text-emerald-500' : 'text-muted-foreground/40'}`} />
+   744→              <div className="min-w-0">
+   745→                <p className="text-xs font-medium text-foreground truncate">{cat.label}</p>
+   746→                <p className={`text-xs ${cat.count > 0 ? 'text-emerald-600' : 'text-muted-foreground/50'}`}>
+   747→                  {cat.count} {cat.count === 1 ? 'change' : 'changes'}
+   748→                </p>
+   749→              </div>
+   750→            </div>
+   751→          ))}
+   752→        </div>
+   753→
+   754→        {/* Key improvements */}
+   755→        {summary.details?.length > 0 && (
+   756→          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+   757→            <p className="text-xs font-medium text-muted-foreground">Key improvements:</p>
+   758→            {summary.details.map((detail, idx) => (
+   759→              <div key={idx} className="flex items-start gap-2 text-xs text-foreground/80">
+   760→                <CheckCircle2 className="size-3 text-emerald-500 mt-0.5 shrink-0" />
+   761→                <span>{detail}</span>
+   762→              </div>
+   763→            ))}
+   764→          </div>
+   765→        )}
+   766→      </CardContent>
+   767→    </Card>
+   768→  );
+   769→}
+   770→
+   771→// ── Main Component ──────────────────────────────────────────────────────────
+   772→
+   773→export default function Step5Polish() {
+   774→  const {
+   775→    generatedArticle,
+   776→    setGeneratedArticle,
+   777→    isPolishing,
+   778→    setIsPolishing,
+   779→    polishedArticle,
+   780→    setPolishedArticle,
+   781→    prevStep,
+   782→    setCurrentStep,
+   783→  } = useArticleStore();
+   784→
+   785→  const [polishOptions, setPolishOptions] = useState<PolishOption[]>(DEFAULT_POLISH_OPTIONS);
+   786→  const [polishSteps, setPolishSteps] = useState<PolishStep[]>([]);
+   787→  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+   788→  const [estimatedTime, setEstimatedTime] = useState(0);
+   789→  const [changeSummary, setChangeSummary] = useState<ChangeSummary | null>(null);
+   790→  const [activeTab, setActiveTab] = useState('options');
+   791→
+   792→  // ── Reviewer Notes state ──
+   793→  const [reviewerNotes, setReviewerNotes] = useState<any>(null);
+   794→  const [isGeneratingReview, setIsGeneratingReview] = useState(false);
+   795→  const [reviewStatusMessage, setReviewStatusMessage] = useState('');
+   796→  const [showReviewerNotes, setShowReviewerNotes] = useState(false);
+   797→  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+   798→
+   799→  // ── Polish history tracking ──
+   800→  const [polishCount, setPolishCount] = useState(0);
+   801→  const [scoresHaveAnimated, setScoresHaveAnimated] = useState(false);
+   802→  const [searchOpen, setSearchOpen] = useState(false);
+   803→  const [comparisonViewMode, setComparisonViewMode] = useState<ComparisonViewMode>('split');
+   804→
+   805→  // ── Upgrade (CONSILIUM PROFESSORUM) state ──
+   806→  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+   807→  const [isUpgrading, setIsUpgrading] = useState(false);
+   808→  const [upgradeStepIndex, setUpgradeStepIndex] = useState(0);
+   809→  const upgradeTimerRef = useRef<NodeJS.Timeout | null>(null);
+   810→
+   811→  const UPGRADE_SECTION_STEPS = [
+   812→    'Upgrading Abstract...',
+   813→    'Upgrading Introduction...',
+   814→    'Upgrading Literature Review...',
+   815→    'Upgrading Methodology...',
+   816→    'Upgrading Results...',
+   817→    'Upgrading Discussion...',
+   818→    'Upgrading Conclusion...',
+   819→    'Upgrading References...',
+   820→    'Finalising Scopus Q1 quality check...',
+   821→  ];
+   822→
+   823→  const article = polishedArticle ?? generatedArticle;
+   824→  const hasPolished = !!polishedArticle;
+   825→  const isAnyOptionEnabled = polishOptions.some((o) => o.enabled);
+   826→
+   827→  // ── Derived word counts ──
+   828→  const originalWordCount = generatedArticle?.totalWordCount ?? 0;
+   829→  const polishedWordCount = polishedArticle?.totalWordCount ?? 0;
+   830→  const wordCountDelta = polishedWordCount - originalWordCount;
+   831→
+   832→  // ── Trigger score animation on first polish complete ──
+   833→  useEffect(() => {
+   834→    if (hasPolished && changeSummary && !scoresHaveAnimated) {
+   835→      setScoresHaveAnimated(true);
+   836→    }
+   837→  }, [hasPolished, changeSummary, scoresHaveAnimated]);
+   838→
+   839→  // ── Article Search ──
+   840→  const currentArticle = hasPolished ? polishedArticle : generatedArticle;
+   841→  const searchSections = currentArticle ? currentArticle.sections.map((s) => s.content) : [];
+   842→  const {
+   843→    searchQuery,
+   844→    setSearchQuery,
+   845→    matches,
+   846→    currentMatchIndex,
+   847→    goToNextMatch,
+   848→    goToPrevMatch,
+   849→    totalMatches,
+   850→    clearSearch,
+   851→    isSearching,
+   852→  } = useArticleSearch({ sections: searchSections });
+   853→
+   854→  const isSearchBarOpen = searchOpen || isSearching;
+   855→
+   856→  const clearSearchAndClose = useCallback(() => {
+   857→    clearSearch();
+   858→    setSearchOpen(false);
+   859→  }, [clearSearch]);
+   860→
+   861→  // ── Auto-scroll to current search match ──
+   862→  useEffect(() => {
+   863→    if (!isSearching || totalMatches === 0) {
+   864→      document.querySelectorAll('.article-search-highlight.current').forEach((el) => {
+   865→        el.classList.remove('current');
+   866→      });
+   867→      return;
+   868→    }
+   869→
+   870→    const timer = setTimeout(() => {
+   871→      const highlights = document.querySelectorAll('.article-search-highlight');
+   872→      highlights.forEach((el, idx) => {
+   873→        el.classList.remove('current');
+   874→        if (idx === currentMatchIndex) {
+   875→          el.classList.add('current');
+   876→          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+   877→        }
+   878→      });
+   879→    }, 80);
+   880→
+   881→    return () => clearTimeout(timer);
+   882→  }, [currentMatchIndex, isSearching, totalMatches]);
+   883→
+   884→  // ── Toggle polish option ──
+   885→  const toggleOption = useCallback((id: string) => {
+   886→    setPolishOptions((prev) =>
+   887→      prev.map((opt) => (opt.id === id ? { ...opt, enabled: !opt.enabled } : opt))
+   888→    );
+   889→  }, []);
+   890→
+   891→  // ── Toggle all options ──
+   892→  const toggleAllOptions = useCallback((enabled: boolean) => {
+   893→    setPolishOptions((prev) => prev.map((opt) => ({ ...opt, enabled })));
+   894→  }, []);
+   895→
+   896→  // ── Generate Reviewer Notes ──
+   897→  const generateReviewerNotes = useCallback(async () => {
+   898→    if (!generatedArticle) return;
+   899→    setIsGeneratingReview(true);
+   900→    setReviewStatusMessage('Starting peer review...');
+   901→    setReviewerNotes(null);
+   902→    setShowReviewerNotes(true);
+   903→
+   904→    try {
+   905→      const postRes = await fetch('/api/article/reviewer-notes', {
+   906→        method: 'POST',
+   907→        headers: { 'Content-Type': 'application/json' },
+   908→        body: JSON.stringify({ article: generatedArticle }),
+   909→      });
+   910→      const postData = await postRes.json();
+   911→      if (!postData.success || !postData.jobId) throw new Error(postData.error || 'Failed to start review');
+   912→
+   913→      const jobId = postData.jobId;
+   914→      const MAX_TIME = 5 * 60 * 1000;
+   915→      const start = Date.now();
+   916→
+   917→      while (Date.now() - start < MAX_TIME) {
+   918→        await new Promise((r) => setTimeout(r, 3000));
+   919→        const pollRes = await fetch(`/api/article/reviewer-notes?jobId=${jobId}`);
+   920→        const pollData = await pollRes.json();
+   921→        if (pollData.statusMessage) setReviewStatusMessage(pollData.statusMessage);
+   922→        if (pollData.status === 'done' && pollData.result) {
+   923→          setReviewerNotes(pollData.result);
+   924→          toast.success('Peer review complete! Review notes ready for polish.');
+   925→          return;
+   926→        }
+   927→        if (pollData.status === 'error') throw new Error(pollData.error || 'Review failed');
+   928→      }
+   929→      throw new Error('Review timed out');
+   930→    } catch (err: unknown) {
+   931→ const msg = err instanceof Error ? err.message : 'Review failed';
+   932→      toast.error(`Peer review error: ${msg}`);
+   933→    } finally {
+   934→      setIsGeneratingReview(false);
+   935→    }
+   936→  }, [generatedArticle]);
+   937→
+   938→  // ── Polling helper ──
+   939→  const pollJob = useCallback(async (jobId: string, onStatus: (msg: string) => void): Promise<any> => {
+   940→    const MAX_TIME = 10 * 60 * 1000;
+   941→    const start = Date.now();
+   942→    while (Date.now() - start < MAX_TIME) {
+   943→      await new Promise((r) => setTimeout(r, 3000));
+   944→      const res = await fetch(`/api/article/polish?jobId=${jobId}`);
+   945→      const data = await res.json();
+   946→      if (data.statusMessage) onStatus(data.statusMessage);
+   947→      if (data.status === 'done' && data.result) return data.result;
+   948→      if (data.status === 'error') throw new Error(data.error || 'Polish failed on server');
+   949→    }
+   950→    throw new Error('Polish timed out after 10 minutes');
+   951→  }, []);
+   952→
+   953→  // ── Start polish (with job polling) ──
+   954→  const startPolish = useCallback(async () => {
+   955→    if (!generatedArticle || !isAnyOptionEnabled) return;
+   956→
+   957→    const enabledOptions = polishOptions.filter((o) => o.enabled);
+   958→    const steps: PolishStep[] = enabledOptions.map((o) => ({
+   959→      id: o.id,
+   960→      label: o.label,
+   961→      status: 'pending' as const,
+   962→    }));
+   963→
+   964→    setPolishSteps(steps);
+   965→    setCurrentStepIndex(0);
+   966→    setChangeSummary(null);
+   967→    setScoresHaveAnimated(false);
+   968→    setIsPolishing(true);
+   969→    setActiveTab('preview');
+   970→
+   971→    // Simulate progress through each step
+   972→    let stepIdx = 0;
+   973→    const totalSteps = steps.length;
+   974→    const baseTimePerStep = 5;
+   975→    setEstimatedTime(totalSteps * baseTimePerStep);
+   976→
+   977→    const advanceStep = () => {
+   978→      if (stepIdx < totalSteps) {
+   979→        setPolishSteps((prev) =>
+   980→          prev.map((s, i) => {
+   981→            if (i < stepIdx) return { ...s, status: 'completed' };
+   982→            if (i === stepIdx) return { ...s, status: 'active' };
+   983→            return s;
+   984→          })
+   985→        );
+   986→        setCurrentStepIndex(stepIdx);
+   987→        setEstimatedTime((totalSteps - stepIdx) * baseTimePerStep);
+   988→        stepIdx++;
+   989→        progressTimerRef.current = setTimeout(advanceStep, baseTimePerStep * 1000);
+   990→      } else {
+   991→        setPolishSteps((prev) => prev.map((s) => ({ ...s, status: 'completed' })));
+   992→        setEstimatedTime(0);
+   993→      }
+   994→    };
+   995→    advanceStep();
+   996→
+   997→    try {
+   998→      // 1. POST to create polish job (returns immediately)
+   999→      const body = {
+  1000→        article: generatedArticle,
+  1001→        options: Object.fromEntries(enabledOptions.map((o) => [o.id, true])),
+  1002→        ...(reviewerNotes ? { reviewerNotes } : {}),
+  1003→      };
+  1004→
+  1005→      const postRes = await fetch('/api/article/polish', {
+  1006→        method: 'POST',
+  1007→        headers: { 'Content-Type': 'application/json' },
+  1008→        body: JSON.stringify(body),
+  1009→      });
+  1010→      const postData = await postRes.json();
+  1011→      if (!postData.success || !postData.jobId) {
+  1012→        throw new Error(postData.error || 'Failed to start polish job');
+  1013→      }
+  1014→
+  1015→      // 2. Poll for result
+  1016→      const result = await pollJob(postData.jobId, (msg) => {
+  1017→        // Could update UI with server status if desired
+  1018→      });
+  1019→
+  1020→      if (result && result.article) {
+  1021→        setPolishedArticle(result.article);
+  1022→        setPolishCount((prev) => prev + 1);
+  1023→        if (result.changes) setChangeSummary(result.changes);
+  1024→        const failedCount = result.changes?.sectionsFailed ?? 0;
+  1025→        const polishedCount = result.changes?.sectionsPolished ?? 0;
+  1026→        if (failedCount > 0) {
+  1027→          toast.warning('Polish completed with partial results', {
+  1028→            description: `${polishedCount} section${polishedCount !== 1 ? 's' : ''} polished, ${failedCount} kept original.`,
+  1029→          });
+  1030→        } else {
+  1031→          toast.success('Article polished successfully!', {
+  1032→            description: `${polishedCount} section${polishedCount !== 1 ? 's' : ''} polished with ${result.changes?.changePercentage ?? 0}% average change.`,
+  1033→          });
+  1034→        }
+  1035→      } else {
+  1036→        throw new Error('Invalid response from polish API');
+  1037→      }
+  1038→    } catch (err) {
+  1039→      console.error('Polish error:', err);
+  1040→      const errMessage = err instanceof Error ? err.message : 'Polish request failed';
+  1041→      toast.error(`Polish failed: ${errMessage}`);
+  1042→    } finally {
+  1043→      if (progressTimerRef.current) {
+  1044→        clearTimeout(progressTimerRef.current);
+  1045→        progressTimerRef.current = null;
+  1046→      }
+  1047→      setIsPolishing(false);
+  1048→    }
+  1049→  }, [generatedArticle, polishOptions, isAnyOptionEnabled, reviewerNotes, pollJob, setIsPolishing, setPolishedArticle]);
+  1050→
+  1051→  // ── Auto-polish handler that ensures options are all enabled before starting ──
+  1052→  const handleAutoPolish = useCallback(() => {
+  1053→    // Enable all options first
+  1054→    setPolishOptions((prev) => prev.map((opt) => ({ ...opt, enabled: true })));
+  1055→
+  1056→    // We need to start polish after state updates. Since startPolish reads
+  1057→    // polishOptions, we schedule it after a microtask. But React batches, so
+  1058→    // we use a ref to signal "auto-polish pending" and check in an effect.
+  1059→    autoPolishPendingRef.current = true;
+  1060→  }, []);
+  1061→
+  1062→  const autoPolishPendingRef = useRef(false);
+  1063→
+  1064→  // Watch for auto-polish pending trigger
+  1065→  useEffect(() => {
+  1066→    if (autoPolishPendingRef.current && isAnyOptionEnabled) {
+  1067→      autoPolishPendingRef.current = false;
+  1068→      // Slight delay to let React finish the state update for polishOptions
+  1069→      const timer = setTimeout(() => {
+  1070→        startPolish();
+  1071→      }, 50);
+  1072→      return () => clearTimeout(timer);
+  1073→    }
+  1074→  }, [polishOptions, isAnyOptionEnabled, startPolish]);
+  1075→
+  1076→  // ── Cleanup timers ──
+  1077→  useEffect(() => {
+  1078→    return () => {
+  1079→      if (progressTimerRef.current) {
+  1080→        clearTimeout(progressTimerRef.current);
+  1081→      }
+  1082→      if (upgradeTimerRef.current) {
+  1083→        clearTimeout(upgradeTimerRef.current);
+  1084→      }
+  1085→    };
+  1086→  }, []);
+  1087→
+  1088→  // ── Handle CONSILIUM PROFESSORUM upgrade ──
+  1089→  const handleUpgrade = useCallback(async () => {
+  1090→    if (!generatedArticle || isUpgrading) return;
+  1091→    setUpgradeDialogOpen(false);
+  1092→    setIsUpgrading(true);
+  1093→    setUpgradeStepIndex(0);
+  1094→
+  1095→    // Simulate step-by-step progress
+  1096→    let stepIdx = 0;
+  1097→    const totalUpgradeSteps = UPGRADE_SECTION_STEPS.length;
+  1098→    const timePerStep = 4000; // ~4s per step for 3-5 min total feel
+  1099→
+  1100→    const advanceUpgradeStep = () => {
+  1101→      if (stepIdx < totalUpgradeSteps) {
+  1102→        setUpgradeStepIndex(stepIdx);
+  1103→        stepIdx++;
+  1104→        upgradeTimerRef.current = setTimeout(advanceUpgradeStep, timePerStep);
+  1105→      }
+  1106→    };
+  1107→    advanceUpgradeStep();
+  1108→
+  1109→    try {
+  1110→      const res = await fetch('/api/article/upgrade', {
+  1111→        method: 'POST',
+  1112→        headers: { 'Content-Type': 'application/json' },
+  1113→        body: JSON.stringify({ article: generatedArticle, engineId: 'zai' }),
+  1114→      });
+  1115→      const data = await res.json();
+  1116→      if (data.success && data.article) {
+  1117→        setGeneratedArticle(data.article);
+  1118→        setPolishedArticle(null);
+  1119→        setChangeSummary(null);
+  1120→        toast.success('Article upgraded to CONSILIUM PROFESSORUM Scopus Q1 standard!');
+  1121→      } else {
+  1122→        throw new Error('Upgrade response was not successful');
+  1123→      }
+  1124→    } catch (err) {
+  1125→      console.error('Upgrade error:', err);
+  1126→      toast.error('Upgrade failed. The API may be temporarily unavailable.');
+  1127→    } finally {
+  1128→      if (upgradeTimerRef.current) {
+  1129→        clearTimeout(upgradeTimerRef.current);
+  1130→        upgradeTimerRef.current = null;
+  1131→      }
+  1132→      setIsUpgrading(false);
+  1133→      // Jump to Step 4 to show the upgraded article
+  1134→      setCurrentStep(4);
+  1135→    }
+  1136→  }, [generatedArticle, isUpgrading, setGeneratedArticle, setPolishedArticle, setCurrentStep]);
+  1137→
+  1138→  // ── Copy full article ──
+  1139→  const copyArticle = useCallback(async () => {
+  1140→    if (!article) return;
+  1141→
+  1142→    let text = `${article.title}\n\n`;
+  1143→    for (const section of article.sections) {
+  1144→      text += `${SECTION_LABELS[section.type] ?? section.type}\n\n${section.content}\n\n`;
+  1145→    }
+  1146→
+  1147→    if (article.references.length > 0) {
+  1148→      text += 'References\n\n';
+  1149→      article.references.forEach((ref, idx) => {
+  1150→        text += `${idx + 1}. ${ref.authors} (${ref.year}). ${ref.title}`;
+  1151→        if (ref.journal) text += `. ${ref.journal}`;
+  1152→        if (ref.volume) text += `, ${ref.volume}`;
+  1153→        if (ref.issue) text += `(${ref.issue})`;
+  1154→        if (ref.pages) text += `, ${ref.pages}`;
+  1155→        if (ref.doi) text += `. https://doi.org/${ref.doi}`;
+  1156→        text += '.\n';
+  1157→      });
+  1158→    }
+  1159→
+  1160→    try {
+  1161→      await navigator.clipboard.writeText(text);
+  1162→      toast.success('Article copied to clipboard');
+  1163→    } catch {
+  1164→      toast.error('Failed to copy to clipboard');
+  1165→    }
+  1166→  }, [article]);
+  1167→
+  1168→  // ── Download as text ──
+  1169→  const downloadArticle = useCallback(() => {
+  1170→    if (!article) return;
+  1171→
+  1172→    let text = `${article.title}\n`;
+  1173→    text += `${'='.repeat(article.title.length)}\n\n`;
+  1174→
+  1175→    for (const section of article.sections) {
+  1176→      text += `${SECTION_LABELS[section.type] ?? section.type}\n`;
+  1177→      text += `${'-'.repeat((SECTION_LABELS[section.type] ?? section.type).length)}\n\n`;
+  1178→      text += `${section.content}\n\n`;
+  1179→    }
+  1180→
+  1181→    if (article.references.length > 0) {
+  1182→      text += 'References\n';
+  1183→      text += `${'-'.repeat('References'.length)}\n\n`;
+  1184→      article.references.forEach((ref, idx) => {
+  1185→        text += `${idx + 1}. ${ref.authors} (${ref.year}). ${ref.title}`;
+  1186→        if (ref.journal) text += `. ${ref.journal}`;
+  1187→        if (ref.volume) text += `, ${ref.volume}`;
+  1188→        if (ref.issue) text += `(${ref.issue})`;
+  1189→        if (ref.pages) text += `, ${ref.pages}`;
+  1190→        if (ref.doi) text += `. https://doi.org/${ref.doi}`;
+  1191→        text += '.\n';
+  1192→      });
+  1193→    }
+  1194→
+  1195→    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  1196→    const url = URL.createObjectURL(blob);
+  1197→    const a = document.createElement('a');
+  1198→    a.href = url;
+  1199→    a.download = `${article.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_polished.txt`;
+  1200→    document.body.appendChild(a);
+  1201→    a.click();
+  1202→    document.body.removeChild(a);
+  1203→    URL.revokeObjectURL(url);
+  1204→    toast.success('Article downloaded');
+  1205→  }, [article]);
+  1206→
+  1207→  // ── Confetti state ──
+  1208→  const [showConfetti, setShowConfetti] = useState(false);
+  1209→  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  1210→
+  1211→  // ── Export as PDF ──
+  1212→  const handleExportPdf = useCallback(async () => {
+  1213→    if (!article || isExportingPdf) return;
+  1214→    setIsExportingPdf(true);
+  1215→    try {
+  1216→      await exportToPdf(article);
+  1217→      toast.success('Article downloaded as PDF');
+  1218→    } catch (err) {
+  1219→      console.error('PDF export error:', err);
+  1220→      toast.error('Failed to generate PDF. Please try again.');
+  1221→    } finally {
+  1222→      setIsExportingPdf(false);
+  1223→    }
+  1224→  }, [article, isExportingPdf]);
+  1225→
+  1226→  // ── Accept & export with confetti ──
+  1227→  const acceptAndExport = useCallback(() => {
+  1228→    if (polishedArticle) {
+  1229→      setShowConfetti(true);
+  1230→      toast.success('Article accepted and ready for export!', {
+  1231→        description: 'Your polished article has been finalised.',
+  1232→        icon: <PartyPopper className="size-4" />,
+  1233→      });
+  1234→      // Hide confetti after animation
+  1235→      setTimeout(() => setShowConfetti(false), 3500);
+  1236→    }
+  1237→  }, [polishedArticle]);
+  1238→
+  1239→  // ── Regenerate polish ──
+  1240→  const regeneratePolish = useCallback(() => {
+  1241→    setPolishedArticle(null);
+  1242→    setChangeSummary(null);
+  1243→    setPolishSteps([]);
+  1244→    setCurrentStepIndex(0);
+  1245→    setScoresHaveAnimated(false);
+  1246→    toast.info('Polish reset — you can adjust options and re-run.');
+  1247→  }, [setPolishedArticle]);
+  1248→
+  1249→  // ── No article guard ──
+  1250→  if (!generatedArticle) {
+  1251→    return (
+  1252→      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4">
+  1253→        <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+  1254→          <FileCheck className="size-8 text-muted-foreground" />
+  1255→        </div>
+  1256→        <div className="text-center space-y-2">
+  1257→          <h2 className="text-xl font-semibold">No Article to Polish</h2>
+  1258→          <p className="text-muted-foreground text-sm max-w-md">
+  1259→            Generate an article first in the previous steps, then return here to polish it to
+  1260→            publication-ready quality.
+  1261→          </p>
+  1262→        </div>
+  1263→        <Button variant="outline" onClick={prevStep} className="mt-2">
+  1264→          <ArrowLeft className="size-4" />
+  1265→          Back to Article Generation
+  1266→        </Button>
+  1267→      </div>
+  1268→    );
+  1269→  }
+  1270→
+  1271→  // ── Render ──
+  1272→  return (
+  1273→    <>
+  1274→      {/* ── Confetti Celebration ── */}
+  1275→      <ConfettiCelebration show={showConfetti} />
+  1276→
+  1277→      <div className="space-y-6 max-w-7xl mx-auto pb-24">
+  1278→        {/* ── Header ── */}
+  1279→        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+  1280→          <div className="space-y-1">
+  1281→            <div className="flex items-center gap-2">
+  1282→              <div className="size-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+  1283→                <Wand2 className="size-5 text-emerald-600" />
+  1284→              </div>
+  1285→              <div>
+  1286→                <h1 className="text-xl font-bold tracking-tight">Article Polish &amp; Layout</h1>
+  1287→                <p className="text-sm text-muted-foreground">
+  1288→                  Refine your article to publication-ready quality
+  1289→                </p>
+  1290→              </div>
+  1291→              {/* ── Polish History Badge ── */}
+  1292→              {polishCount > 0 && (
+  1293→                <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800 ml-2">
+  1294→                  <Wand2 className="size-3 mr-1" />
+  1295→                  Polish #{polishCount}
+  1296→                </Badge>
+  1297→              )}
+  1298→            </div>
+  1299→          </div>
+  1300→
+  1301→          {/* Word count comparison */}
+  1302→          <div className="flex items-center gap-4">
+  1303→            {hasPolished && (
+  1304→              <div className="flex items-center gap-3 px-4 py-2 rounded-lg border bg-muted/30">
+  1305→                <div className="text-right">
+  1306→                  <p className="text-xs text-muted-foreground">Before</p>
+  1307→                  <p className="text-sm font-semibold">{originalWordCount.toLocaleString()}</p>
+  1308→                </div>
+  1309→                <div className="flex flex-col items-center">
+  1310→                  <ArrowLeft className="size-3 text-muted-foreground" />
+  1311→                  <span
+  1312→                    className={`text-xs font-medium ${wordCountDelta >= 0 ? 'text-emerald-500' : 'text-amber-500'}`}
+  1313→                  >
+  1314→                    {wordCountDelta >= 0 ? '+' : ''}
+  1315→                    {wordCountDelta}
+  1316→                  </span>
+  1317→                </div>
+  1318→                <div className="text-left">
+  1319→                  <p className="text-xs text-muted-foreground">After</p>
+  1320→                  <p className="text-sm font-bold text-emerald-600">{polishedWordCount.toLocaleString()}</p>
+  1321→                </div>
+  1322→              </div>
+  1323→            )}
+  1324→            {!hasPolished && (
+  1325→              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-muted/30">
+  1326→                <FileCheck className="size-4 text-muted-foreground" />
+  1327→                <div>
+  1328→                  <p className="text-xs text-muted-foreground">Word count</p>
+  1329→                  <p className="text-sm font-semibold">{originalWordCount.toLocaleString()}</p>
+  1330→                </div>
+  1331→              </div>
+  1332→            )}
+  1333→          </div>
+  1334→        </div>
+  1335→
+  1336→        {/* ── Article Search Bar ── */}
+  1337→        <div className="print:hidden">
+  1338→          <ArticleSearchBar
+  1339→            searchQuery={searchQuery}
+  1340→            onSearchChange={setSearchQuery}
+  1341→            totalMatches={totalMatches}
+  1342→            currentMatchIndex={currentMatchIndex}
+  1343→            onNext={goToNextMatch}
+  1344→            onPrev={goToPrevMatch}
+  1345→            onClear={clearSearchAndClose}
+  1346→            isOpen={isSearchBarOpen}
+  1347→            onOpen={() => setSearchOpen(true)}
+  1348→          />
+  1349→        </div>
+  1350→
+  1351→        {/* ── CONSILIUM PROFESSORUM Upgrade Button ── */}
+  1352→        <TooltipProvider delayDuration={300}>
+  1353→          <Tooltip>
+  1354→            <TooltipTrigger asChild>
+  1355→              <motion.div
+  1356→                initial={{ opacity: 0, y: 10 }}
+  1357→                animate={{ opacity: 1, y: 0 }}
+  1358→                transition={{ duration: 0.4, delay: 0.15 }}
+  1359→              >
+  1360→                <button
+  1361→                  onClick={() => setUpgradeDialogOpen(true)}
+  1362→                  disabled={isUpgrading || isPolishing || !generatedArticle}
+  1363→                  className="group relative w-full rounded-xl p-[2px] bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+  1364→                >
+  1365→                  <div className="flex items-center justify-center gap-3 rounded-[10px] bg-background px-5 py-4 transition-all group-hover:bg-transparent group-disabled:hover:bg-background">
+  1366→                    <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/20">
+  1367→                      <Crown className="size-5" />
+  1368→                    </div>
+  1369→                    <div className="text-left flex-1">
+  1370→                      <p className="font-bold text-sm bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+  1371→                        ⚡ Upgrade to CONSILIUM PROFESSORUM
+  1372→                      </p>
+  1373→                      <p className="text-xs text-muted-foreground mt-0.5">
+  1374→                        Rewrite your article using a consortium of 20 top-world professors for Scopus Q1 quality
+  1375→                      </p>
+  1376→                    </div>
+  1377→                    <Sparkles className="size-5 text-emerald-500 shrink-0" />
+  1378→                  </div>
+  1379→                </button>
+  1380→              </motion.div>
+  1381→            </TooltipTrigger>
+  1382→            <TooltipContent side="bottom" className="max-w-xs">
+  1383→              <p>Rewrite your entire article using a consortium of 20 top-world professors for Scopus Q1 quality</p>
+  1384→            </TooltipContent>
+  1385→          </Tooltip>
+  1386→        </TooltipProvider>
+  1387→
+  1388→        {/* ── Upgrade Confirmation Dialog ── */}
+  1389→        <Dialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
+  1390→          <DialogContent>
+  1391→            <DialogHeader>
+  1392→              <DialogTitle className="flex items-center gap-2">
+  1393→                <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white">
+  1394→                  <Crown className="size-4" />
+  1395→                </div>
+  1396→                CONSILIUM PROFESSORUM Mode
+  1397→              </DialogTitle>
+  1398→              <DialogDescription asChild>
+  1399→                <div className="space-y-3 pt-2">
+  1400→                  <p>
+  1401→                    This will rewrite <strong>ALL sections</strong> of your article to CONSILIUM
+  1402→                    PROFESSORUM Scopus Q1 standard.
+  1403→                  </p>
+  1404→                  <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
+  1405→                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
+  1406→                      <Zap className="size-4" />
+  1407→                      The process takes 3–5 minutes. Continue?
+  1408→                    </div>
+  1409→                  </div>
+  1410→                </div>
+  1411→              </DialogDescription>
+  1412→            </DialogHeader>
+  1413→            <DialogFooter className="gap-2 sm:gap-0">
+  1414→              <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>
+  1415→                Cancel
+  1416→              </Button>
+  1417→              <Button
+  1418→                onClick={handleUpgrade}
+  1419→                className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white hover:opacity-90 shadow-lg"
+  1420→              >
+  1421→                <Crown className="size-4" />
+  1422→                Start Upgrade
+  1423→              </Button>
+  1424→            </DialogFooter>
+  1425→          </DialogContent>
+  1426→        </Dialog>
+  1427→
+  1428→        {/* ── Upgrade Full-Page Overlay ── */}
+  1429→        <AnimatePresence>
+  1430→          {isUpgrading && (
+  1431→            <motion.div
+  1432→              initial={{ opacity: 0 }}
+  1433→              animate={{ opacity: 1 }}
+  1434→              exit={{ opacity: 0 }}
+  1435→              className="fixed inset-0 z-[200] bg-background/95 backdrop-blur-xl flex items-center justify-center"
+  1436→            >
+  1437→              <div className="w-full max-w-lg mx-auto px-6 space-y-8 text-center">
+  1438→                {/* Animated icon */}
+  1439→                <motion.div
+  1440→                  animate={{ rotate: 360 }}
+  1441→                  transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+  1442→                  className="mx-auto"
+  1443→                >
+  1444→                  <div className="size-24 rounded-full bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+  1445→                    <Crown className="size-10 text-white" />
+  1446→                  </div>
+  1447→                </motion.div>
+  1448→
+  1449→                <div className="space-y-2">
+  1450→                  <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+  1451→                    CONSILIUM PROFESSORUM
+  1452→                  </h2>
+  1453→                  <p className="text-sm text-muted-foreground">
+  1454→                    20 top-world professors are upgrading your article to Scopus Q1 quality
+  1455→                  </p>
+  1456→                </div>
+  1457→
+  1458→                {/* Progress steps */}
+  1459→                <div className="space-y-3 text-left bg-card rounded-xl border p-5 shadow-lg">
+  1460→                  <div className="flex items-center justify-between mb-2">
+  1461→                    <span className="text-xs font-medium text-muted-foreground">Section Progress</span>
+  1462→                    <span className="text-xs tabular-nums text-muted-foreground">
+  1463→                      {Math.min(upgradeStepIndex + 1, UPGRADE_SECTION_STEPS.length)} / {UPGRADE_SECTION_STEPS.length}
+  1464→                    </span>
+  1465→                  </div>
+  1466→                  <Progress
+  1467→                    value={(upgradeStepIndex / UPGRADE_SECTION_STEPS.length) * 100}
+  1468→                    className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:via-teal-500 [&>div]:to-cyan-500"
+  1469→                  />
+  1470→                  <div className="space-y-2 mt-4">
+  1471→                    {UPGRADE_SECTION_STEPS.map((step, idx) => (
+  1472→                      <div
+  1473→                        key={step}
+  1474→                        className={`flex items-center gap-2.5 text-sm transition-all duration-300 ${
+  1475→                          idx < upgradeStepIndex
+  1476→                            ? 'text-emerald-600'
+  1477→                            : idx === upgradeStepIndex
+  1478→                              ? 'text-foreground font-medium'
+  1479→                              : 'text-muted-foreground/40'
+  1480→                        }`}
+  1481→                      >
+  1482→                        {idx < upgradeStepIndex ? (
+  1483→                          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+  1484→                        ) : idx === upgradeStepIndex ? (
+  1485→                          <Loader2 className="size-4 text-emerald-500 shrink-0 animate-spin" />
+  1486→                        ) : (
+  1487→                          <div className="size-4 rounded-full border border-muted-foreground/20 shrink-0" />
+  1488→                        )}
+  1489→                        <span className="truncate">{step}</span>
+  1490→                        {idx < upgradeStepIndex && (
+  1491→                          <span className="ml-auto text-[10px] text-emerald-500">Done</span>
+  1492→                        )}
+  1493→                      </div>
+  1494→                    ))}
+  1495→                  </div>
+  1496→                </div>
+  1497→
+  1498→                <p className="text-xs text-muted-foreground">
+  1499→                  Please do not close this tab while the upgrade is in progress
+  1500→                </p>
+  1501→              </div>
+  1502→            </motion.div>
+  1503→          )}
+  1504→        </AnimatePresence>
+  1505→
+  1506→        {/* ── Tabs ── */}
+  1507→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+  1508→          <TabsList className="w-full sm:w-auto">
+  1509→            <TabsTrigger value="options" className="gap-1.5">
+  1510→              <Sparkles className="size-3.5" />
+  1511→              Polish Options
+  1512→            </TabsTrigger>
+  1513→            {showReviewerNotes && (
+  1514→              <TabsTrigger value="reviewer-notes" className="gap-1.5">
+  1515→                <FileCheck className="size-3.5" />
+  1516→                Review Notes
+  1517→                {reviewerNotes && <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{reviewerNotes.overallScore}/10</Badge>}
+  1518→              </TabsTrigger>
+  1519→            )}
+  1520→            <TabsTrigger value="preview" className="gap-1.5">
+  1521→              <GitCompare className="size-3.5" />
+  1522→              Preview
+  1523→            </TabsTrigger>
+  1524→            {changeSummary && (
+  1525→              <TabsTrigger value="summary" className="gap-1.5">
+  1526→                <Award className="size-3.5" />
+  1527→                Summary
+  1528→              </TabsTrigger>
+  1529→            )}
+  1530→          </TabsList>
+  1531→
+  1532→          {/* ── Options Tab ── */}
+  1533→          <TabsContent value="options">
+  1534→            <div className="space-y-4">
+  1535→              <div className="flex items-center justify-between">
+  1536→                <p className="text-sm text-muted-foreground">
+  1537→                  Select which aspects to polish ({polishOptions.filter((o) => o.enabled).length} of{' '}
+  1538→                  {polishOptions.length} enabled)
+  1539→                </p>
+  1540→                <div className="flex items-center gap-2">
+  1541→                  <Button
+  1542→                    variant="ghost"
+  1543→                    size="sm"
+  1544→                    onClick={() => toggleAllOptions(true)}
+  1545→                    className="text-xs h-7"
+  1546→                  >
+  1547→                    Enable all
+  1548→                  </Button>
+  1549→                  <Button
+  1550→                    variant="ghost"
+  1551→                    size="sm"
+  1552→                    onClick={() => toggleAllOptions(false)}
+  1553→                    className="text-xs h-7"
+  1554→                  >
+  1555→                    Disable all
+  1556→                  </Button>
+  1557→                </div>
+  1558→              </div>
+  1559→
+  1560→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+  1561→                {polishOptions.map((option) => (
+  1562→                  <PolishOptionCard
+  1563→                    key={option.id}
+  1564→                    option={option}
+  1565→                    isPolishing={isPolishing}
+  1566→                    onToggle={toggleOption}
+  1567→                  />
+  1568→                ))}
+  1569→              </div>
+  1570→
+  1571→              <Separator />
+  1572→
+  1573→              <div className="flex items-center justify-between">
+  1574→                <div>
+  1575→                  <p className="text-sm font-medium">
+  1576→                    Ready to polish your article
+  1577→                  </p>
+  1578→                  <p className="text-xs text-muted-foreground">
+  1579→                    {polishOptions.filter((o) => o.enabled).length} aspects selected for improvement
+  1580→                  </p>
+  1581→                </div>
+  1582→                <div className="flex items-center gap-2 flex-wrap">
+  1583→                  {/* ── Generate Reviewer Notes Button ── */}
+  1584→                  <Button
+  1585→                    onClick={generateReviewerNotes}
+  1586→                    disabled={isGeneratingReview || isPolishing || !generatedArticle}
+  1587→                    variant="outline"
+  1588→                    className="gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/20"
+  1589→                    size="lg"
+  1590→                  >
+  1591→                    {isGeneratingReview ? (
+  1592→                      <><Loader2 className="size-4 animate-spin" /> Reviewing...</>
+  1593→                    ) : (
+  1594→                      <><FileCheck className="size-4" /> {reviewerNotes ? 'Re-Review' : 'Peer Review'}</>
+  1595→                    )}
+  1596→                  </Button>
+  1597→                  {/* ── Auto-Polish Quick Button ── */}
+  1598→                  <Button
+  1599→                    onClick={handleAutoPolish}
+  1600→                    disabled={isPolishing}
+  1601→                    variant="outline"
+  1602→                    className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/20"
+  1603→                    size="lg"
+  1604→                  >
+  1605→                    <Zap className="size-4" />
+  1606→                    Auto-Polish
+  1607→                  </Button>
+  1608→                  <Button
+  1609→                    onClick={startPolish}
+  1610→                    disabled={isPolishing || !isAnyOptionEnabled}
+  1611→                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+  1612→                    size="lg"
+  1613→                  >
+  1614→                    {isPolishing ? (
+  1615→                      <>
+  1616→                        <Loader2 className="size-4 animate-spin" />
+  1617→                        Polishing...
+  1618→                      </>
+  1619→                    ) : (
+  1620→                      <>
+  1621→                        <Wand2 className="size-4" />
+  1622→                        {reviewerNotes ? 'Polish with Review Notes' : 'Start Polish'}
+  1623→                      </>
+  1624→                    )}
+  1625→                  </Button>
+  1626→                </div>
+  1627→              </div>
+  1628→            </div>
+  1629→          </TabsContent>
+  1630→
+  1631→          {/* ── Reviewer Notes Panel ── */}
+  1632→          {showReviewerNotes && (
+  1633→            <TabsContent value="reviewer-notes">
+  1634→              <Card className="border-orange-200 dark:border-orange-800">
+  1635→                <CardHeader>
+  1636→                  <div className="flex items-center justify-between">
+  1637→                    <div className="flex items-center gap-3">
+  1638→                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30">
+  1639→                        <FileCheck className="size-5 text-orange-600 dark:text-orange-400" />
+  1640→                      </div>
+  1641→                      <div>
+  1642→                        <CardTitle className="text-lg">Q1 Peer Review Notes</CardTitle>
+  1643→                        <CardDescription>
+  1644→                          {isGeneratingReview ? reviewStatusMessage : reviewerNotes
+  1645→                            ? `Overall: ${reviewerNotes.overallRecommendation || 'N/A'} (Score: ${reviewerNotes.overallScore ?? 'N/A'}/10)`
+  1646→                            : 'Generate critical peer review feedback before polishing'}
+  1647→                        </CardDescription>
+  1648→                      </div>
+  1649→                    </div>
+  1650→                    {reviewerNotes && (
+  1651→                      <Badge variant={reviewerNotes.overallScore >= 7 ? 'default' : reviewerNotes.overallScore >= 5 ? 'secondary' : 'destructive'} className="text-sm">
+  1652→                        {reviewerNotes.overallScore >= 7 ? 'Acceptable' : reviewerNotes.overallScore >= 5 ? 'Needs Revision' : 'Major Issues'}
+  1653→                      </Badge>
+  1654→                    )}
+  1655→                  </div>
+  1656→                </CardHeader>
+  1657→                <CardContent>
+  1658→                  {isGeneratingReview && (
+  1659→                    <div className="flex flex-col items-center justify-center py-8 gap-3">
+  1660→                      <Loader2 className="size-8 animate-spin text-orange-500" />
+  1661→                      <p className="text-sm text-muted-foreground">{reviewStatusMessage || 'Analysing your article...'}</p>
+  1662→                    </div>
+  1663→                  )}
+  1664→                  {reviewerNotes && !isGeneratingReview && (
+  1665→                    <ScrollArea className="max-h-[500px] pr-4">
+  1666→                      <div className="space-y-6">
+  1667→                        {/* Priority Actions */}
+  1668→                        {reviewerNotes.priorityActions?.length > 0 && (
+  1669→                          <div className="rounded-lg bg-red-50 dark:bg-red-900/10 p-4 border border-red-200 dark:border-red-800">
+  1670→                            <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2 flex items-center gap-2">
+  1671→                              <AlertTriangle className="size-4" /> Priority Actions Required
+  1672→                            </h4>
+  1673→                            <ul className="space-y-1 text-sm text-red-800 dark:text-red-200">
+  1674→                              {reviewerNotes.priorityActions.map((action: string, i: number) => (
+  1675→                                <li key={i} className="flex gap-2"><span className="font-bold">{i + 1}.</span> {action}</li>
+  1676→                              ))}
+  1677→                            </ul>
+  1678→                          </div>
+  1679→                        )}
+  1680→
+  1681→                        {/* Reviewer Cards */}
+  1682→                        {reviewerNotes.reviewers?.map((reviewer: any, idx: number) => (
+  1683→                          <Card key={idx} className="border-border">
+  1684→                            <CardHeader className="pb-3">
+  1685→                              <div className="flex items-center justify-between">
+  1686→                                <div>
+  1687→                                  <p className="font-semibold">{reviewer.name}</p>
+  1688→                                  <p className="text-xs text-muted-foreground">{reviewer.role}</p>
+  1689→                                </div>
+  1690→                                <Badge variant={reviewer.recommendation === 'Accept' ? 'default' : 'secondary'}>{reviewer.recommendation}</Badge>
+  1691→                              </div>
+  1692→                            </CardHeader>
+  1693→                            <CardContent className="space-y-3 text-sm">
+  1694→                              <p className="italic text-muted-foreground">{reviewer.overallAssessment}</p>
+  1695→                              {reviewer.majorIssues?.length > 0 && (
+  1696→                                <div>
+  1697→                                  <p className="font-medium text-red-600 dark:text-red-400">Major Issues ({reviewer.majorIssues.length})</p>
+  1698→                                  <ul className="mt-1 space-y-1 list-disc list-inside text-muted-foreground">
+  1699→                                    {reviewer.majorIssues.map((issue: string, i: number) => <li key={i}>{issue}</li>)}
+  1700→                                  </ul>
+  1701→                                </div>
+  1702→                              )}
+  1703→                              {reviewer.minorIssues?.length > 0 && (
+  1704→                                <div>
+  1705→                                  <p className="font-medium text-amber-600 dark:text-amber-400">Minor Issues ({reviewer.minorIssues.length})</p>
+  1706→                                  <ul className="mt-1 space-y-1 list-disc list-inside text-muted-foreground">
+  1707→                                    {reviewer.minorIssues.map((issue: string, i: number) => <li key={i}>{issue}</li>)}
+  1708→                                  </ul>
+  1709→                                </div>
+  1710→                              )}
+  1711→                              {reviewer.strengths?.length > 0 && (
+  1712→                                <div>
+  1713→                                  <p className="font-medium text-emerald-600 dark:text-emerald-400">Strengths</p>
+  1714→                                  <ul className="mt-1 space-y-1 list-disc list-inside text-muted-foreground">
+  1715→                                    {reviewer.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
+  1716→                                  </ul>
+  1717→                                </div>
+  1718→                              )}
+  1719→                            </CardContent>
+  1720→                          </Card>
+  1721→                        ))}
+  1722→                      </div>
+  1723→                    </ScrollArea>
+  1724→                  )}
+  1725→                </CardContent>
+  1726→              </Card>
+  1727→            </TabsContent>
+  1728→          )}
+  1729→
+  1730→          {/* ── Preview Tab ── */}
+  1731→          <TabsContent value="preview">
+  1732→            <div className="space-y-4">
+  1733→              {isPolishing && polishSteps.length > 0 && (
+  1734→                <Card>
+  1735→                  <CardContent className="p-6">
+  1736→                    <PolishProgressOverlay
+  1737→                      steps={polishSteps}
+  1738→                      currentStepIndex={currentStepIndex}
+  1739→                      estimatedSeconds={estimatedTime}
+  1740→                    />
+  1741→                  </CardContent>
+  1742→                </Card>
+  1743→              )}
+  1744→
+  1745→              {hasPolished && !isPolishing && (
+  1746→                <Card>
+  1747→                  <CardHeader className="pb-3">
+  1748→                    <div className="flex items-center justify-between">
+  1749→                      <div className="space-y-1">
+  1750→                        <CardTitle className="text-base flex items-center gap-2">
+  1751→                          <GitCompare className="size-4.5 text-emerald-500" />
+  1752→                          Before &amp; After Comparison
+  1753→                        </CardTitle>
+  1754→                        <CardDescription>
+  1755→                          Review changes section by section
+  1756→                        </CardDescription>
+  1757→                      </div>
+  1758→                      {/* View mode toggle buttons */}
+  1759→                      <div className="flex items-center gap-1.5 shrink-0">
+  1760→                        <Button
+  1761→                          variant={comparisonViewMode === 'split' ? 'default' : 'outline'}
+  1762→                          size="sm"
+  1763→                          className={`text-xs h-7 gap-1 ${comparisonViewMode === 'split' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+  1764→                          onClick={() => setComparisonViewMode('split')}
+  1765→                        >
+  1766→                          <Columns className="size-3" />
+  1767→                          Split View
+  1768→                        </Button>
+  1769→                        <Button
+  1770→                          variant={comparisonViewMode === 'original' ? 'default' : 'outline'}
+  1771→                          size="sm"
+  1772→                          className={`text-xs h-7 gap-1 ${comparisonViewMode === 'original' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+  1773→                          onClick={() => setComparisonViewMode('original')}
+  1774→                        >
+  1775→                          Original
+  1776→                        </Button>
+  1777→                        <Button
+  1778→                          variant={comparisonViewMode === 'polished' ? 'default' : 'outline'}
+  1779→                          size="sm"
+  1780→                          className={`text-xs h-7 gap-1 ${comparisonViewMode === 'polished' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+  1781→                          onClick={() => setComparisonViewMode('polished')}
+  1782→                        >
+  1783→                          Polished
+  1784→                        </Button>
+  1785→                      </div>
+  1786→                    </div>
+  1787→                  </CardHeader>
+  1788→                  <CardContent>
+  1789→                    <ScrollArea className="max-h-[600px]">
+  1790→                      <div className="space-y-2 pr-4">
+  1791→                        {generatedArticle.sections.map((section) => {
+  1792→                          const polishedSection = polishedArticle?.sections.find(
+  1793→                            (s) => s.type === section.type
+  1794→                          );
+  1795→                          const sectionChangeCount = getSectionChangeCount(section.type, changeSummary);
+  1796→
+  1797→                          return (
+  1798→                            <SectionComparison
+  1799→                              key={section.type}
+  1800→                              sectionType={section.type}
+  1801→                              originalSection={section}
+  1802→                              polishedSection={polishedSection}
+  1803→                              changeCount={sectionChangeCount}
+  1804→                              searchQuery={searchQuery}
+  1805→                              viewMode={comparisonViewMode}
+  1806→                            />
+  1807→                          );
+  1808→                        })}
+  1809→                      </div>
+  1810→                    </ScrollArea>
+  1811→                  </CardContent>
+  1812→                </Card>
+  1813→              )}
+  1814→
+  1815→              {!hasPolished && !isPolishing && (
+  1816→                <Card>
+  1817→                  <CardContent className="p-12 flex flex-col items-center justify-center gap-4 text-center">
+  1818→                    <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+  1819→                      <Sparkles className="size-7 text-muted-foreground" />
+  1820→                    </div>
+  1821→                    <div className="space-y-1.5">
+  1822→                      <h3 className="text-lg font-semibold">Ready to Polish</h3>
+  1823→                      <p className="text-sm text-muted-foreground max-w-md">
+  1824→                        Switch to the Polish Options tab to configure your preferences, then start the
+  1825→                        polish process to see a side-by-side comparison here.
+  1826→                      </p>
+  1827→                    </div>
+  1828→                    <Button
+  1829→                      variant="outline"
+  1830→                      onClick={() => setActiveTab('options')}
+  1831→                      className="mt-2"
+  1832→                    >
+  1833→                      Configure Options
+  1834→                      <ChevronRight className="size-4" />
+  1835→                    </Button>
+  1836→                  </CardContent>
+  1837→                </Card>
+  1838→              )}
+  1839→
+  1840→              {/* ── Change summary (compact) ── */}
+  1841→              {changeSummary && hasPolished && !isPolishing && (
+  1842→                <ChangeSummaryPanel summary={changeSummary} animateScores={scoresHaveAnimated} />
+  1843→              )}
+  1844→            </div>
+  1845→          </TabsContent>
+  1846→
+  1847→          {/* ── Summary Tab ── */}
+  1848→          {changeSummary && (
+  1849→            <TabsContent value="summary">
+  1850→              <div className="space-y-4">
+  1851→                <ChangeSummaryPanel summary={changeSummary} animateScores={scoresHaveAnimated} />
+  1852→
+  1853→                <Card>
+  1854→                  <CardHeader className="pb-3">
+  1855→                    <CardTitle className="text-base flex items-center gap-2">
+  1856→                      <Star className="size-4.5 text-amber-500" />
+  1857→                      Quality Achievement
+  1858→                    </CardTitle>
+  1859→                  </CardHeader>
+  1860→                  <CardContent>
+  1861→                    <div className="flex items-center justify-center">
+  1862→                      <QualityScoreRing score={changeSummary.qualityAfter} label="Final Score" size={120} animate={scoresHaveAnimated} />
+  1863→                    </div>
+  1864→                    <p className="text-center text-sm text-muted-foreground mt-4">
+  1865→                      {changeSummary.qualityAfter >= 90
+  1866→                        ? 'Your article meets high publication standards.'
+  1867→                        : changeSummary.qualityAfter >= 75
+  1868→                          ? 'Your article is in good shape with minor improvements possible.'
+  1869→                          : 'Consider additional editing to reach publication standards.'}
+  1870→                    </p>
+  1871→                  </CardContent>
+  1872→                </Card>
+  1873→              </div>
+  1874→            </TabsContent>
+  1875→          )}
+  1876→        </Tabs>
+  1877→
+  1878→        {/* ── Final Actions (Sticky with Frosted Glass) ── */}
+  1879→        <div className="relative -mx-6 px-6 mt-8">
+  1880→          <Separator />
+  1881→        </div>
+  1882→
+  1883→        {/* Spacer to account for sticky bar height — handled by pb-24 on parent */}
+  1884→
+  1885→        <motion.div
+  1886→          initial={{ y: 40, opacity: 0 }}
+  1887→          animate={{ y: 0, opacity: 1 }}
+  1888→          transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
+  1889→          className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
+  1890→        >
+  1891→          <div className="max-w-7xl mx-auto px-6 py-3">
+  1892→            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+  1893→              <div className="flex items-center gap-2">
+  1894→                <Button variant="outline" onClick={prevStep} size="sm">
+  1895→                  <ArrowLeft className="size-4" />
+  1896→                  Back
+  1897→                </Button>
+  1898→                {polishCount > 0 && (
+  1899→                  <Badge variant="secondary" className="text-xs bg-muted/50">
+  1900→                    <Wand2 className="size-3 mr-1" />
+  1901→                    Polish #{polishCount}
+  1902→                  </Badge>
+  1903→                )}
+  1904→              </div>
+  1905→
+  1906→              <div className="flex flex-wrap items-center gap-2">
+  1907→                <Button
+  1908→                  variant="outline"
+  1909→                  onClick={copyArticle}
+  1910→                  disabled={!article}
+  1911→                  className="gap-1.5"
+  1912→                  size="sm"
+  1913→                >
+  1914→                  <Copy className="size-3.5" />
+  1915→                  <span className="hidden sm:inline">Copy Full Article</span>
+  1916→                  <span className="sm:hidden">Copy</span>
+  1917→                </Button>
+  1918→
+  1919→                <Button
+  1920→                  variant="outline"
+  1921→                  onClick={downloadArticle}
+  1922→                  disabled={!article}
+  1923→                  className="gap-1.5"
+  1924→                  size="sm"
+  1925→                >
+  1926→                  <Download className="size-3.5" />
+  1927→                  <span className="hidden sm:inline">Download as Text</span>
+  1928→                  <span className="sm:hidden">Download</span>
+  1929→                </Button>
+  1930→
+  1931→                <Button
+  1932→                  variant="outline"
+  1933→                  onClick={() => {
+  1934→                    if (article) {
+  1935→                      exportToMarkdown(article);
+  1936→                      toast.success('Article downloaded as Markdown');
+  1937→                    }
+  1938→                  }}
+  1939→                  disabled={!article}
+  1940→                  className="gap-1.5"
+  1941→                  size="sm"
+  1942→                >
+  1943→                  <FileText className="size-3.5" />
+  1944→                  <span className="hidden sm:inline">MD</span>
+  1945→                  <span className="sm:hidden">MD</span>
+  1946→                </Button>
+  1947→
+  1948→                <Button
+  1949→                  variant="outline"
+  1950→                  onClick={handleExportPdf}
+  1951→                  disabled={!article || isExportingPdf}
+  1952→                  className="gap-1.5"
+  1953→                  size="sm"
+  1954→                >
+  1955→                  {isExportingPdf ? (
+  1956→                    <Loader2 className="size-3.5 animate-spin" />
+  1957→                  ) : (
+  1958→                    <FileText className="size-3.5" />
+  1959→                  )}
+  1960→                  <span className="hidden sm:inline">{isExportingPdf ? 'Generating PDF...' : 'PDF'}</span>
+  1961→                  <span className="sm:hidden">{isExportingPdf ? '...' : 'PDF'}</span>
+  1962→                </Button>
+  1963→
+  1964→                {hasPolished && (
+  1965→                  <Button
+  1966→                    variant="outline"
+  1967→                    onClick={regeneratePolish}
+  1968→                    className="gap-1.5"
+  1969→                    size="sm"
+  1970→                  >
+  1971→                    <RefreshCw className="size-3.5" />
+  1972→                    <span className="hidden sm:inline">Regenerate</span>
+  1973→                    <span className="sm:hidden">Redo</span>
+  1974→                  </Button>
+  1975→                )}
+  1976→
+  1977→                {hasPolished && (
+  1978→                  <Button
+  1979→                    onClick={acceptAndExport}
+  1980→                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-lg shadow-emerald-600/20"
+  1981→                    size="sm"
+  1982→                  >
+  1983→                    <CheckCircle2 className="size-3.5" />
+  1984→                    Accept &amp; Export
+  1985→                  </Button>
+  1986→                )}
+  1987→              </div>
+  1988→            </div>
+  1989→          </div>
+  1990→        </motion.div>
+  1991→      </div>
+  1992→    </>
+  1993→  );
+  1994→}
+  1995→

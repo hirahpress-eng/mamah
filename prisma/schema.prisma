@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  name            String?
+  avatarUrl       String?
+  role            String     @default("user")
+  authProvider    String     @default("google") // google | email
+  googleId        String?
+  subscriptionTier String     @default("free") // free | pro | enterprise
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  articles        Article[]
+}
+
+model Article {
+  id                String     @id @default(cuid())
+  userId            String?
+  title             String
+  keywords          String     // JSON array
+  inputMode         String     // keywords | title | idea
+  inputText         String     // original input
+  researchMethod    String?
+  status            String     @default("draft") // draft | generating | completed | polished
+  wordCount         Int        @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  sections          Section[]
+  references        Reference[]
+  user              User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Section {
+  id           String   @id @default(cuid())
+  articleId    String
+  type         String   // abstract | introduction | method | results | discussion | conclusion
+  content      String   // markdown content
+  order        Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  article      Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model Reference {
+  id           String   @id @default(cuid())
+  articleId    String
+  authors      String
+  title        String
+  year         Int
+  journal      String?
+  doi          String?
+  volume       String?
+  issue        String?
+  pages        String?
+  refType      String   // book | grand_theory | middle_theory | applied_theory | journal_scopus | journal_sinta
+  isSelected   Boolean  @default(false)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  article      Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model GenerationLog {
+  id        String   @id @default(cuid())
+  articleId String?
+  step      String
+  input     String?
+  output    String?
+  duration  Int?     // ms
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,1198 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useEffect, useCallback, useState, useRef } from 'react';
+     4→     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→     5→import { useTheme } from 'next-themes';
+     6→     6→import {
+     7→     7→  BookOpen,
+     8→     8→  Library,
+     9→     9→  FlaskConical,
+    10→    10→  FileText,
+    11→    11→  Wand2,
+    12→    12→  ChevronLeft,
+    13→    13→  ChevronDown,
+    14→    14→  ChevronRight,
+    15→    15→  RotateCcw,
+    16→    16→  GraduationCap,
+    17→    17→  Sun,
+    18→    18→  Moon,
+    19→    19→  Sparkles,
+    20→    20→  BookMarked,
+    21→    21→  PenTool,
+    22→    22→  Heart,
+    23→    23→  Shield,
+    24→    24→  FileCheck,
+    25→    25→  BarChart3,
+    26→    26→  Info,
+    27→    27→  Keyboard,
+    28→    28→  Search,
+    29→    29→  Plus,
+    30→    30→  History,
+    31→    31→  Target,
+    32→    32→  HelpCircle,
+    33→    33→  LogIn,
+    34→    34→  LogOut,
+    35→    35→  UserCircle,
+    36→    36→  Crown,
+    37→    37→  Bot,
+    38→    38→  Zap,
+    39→    39→  Globe,
+    40→    40→} from 'lucide-react';
+    41→    41→import { Button } from '@/components/ui/button';
+    42→    42→import { Card, CardContent } from '@/components/ui/card';
+    43→    43→import { Badge } from '@/components/ui/badge';
+    44→    44→import { Separator } from '@/components/ui/separator';
+    45→    45→import { useArticleStore, type GeneratedArticle } from '@/store/article-store';
+    46→    46→import { toast } from 'sonner';
+    47→    47→import AuthModal from '@/components/auth-modal';
+    48→    48→import Step1Input from '@/components/article-generator/step1-input';
+    49→    49→import Step2References from '@/components/article-generator/step2-references';
+    50→    50→import Step3Method from '@/components/article-generator/step3-method';
+    51→    51→import Step4Output from '@/components/article-generator/step4-output';
+    52→    52→import Step5Polish from '@/components/article-generator/step5-polish';
+    53→    53→import ArticleHistorySidebar from '@/components/article-history-sidebar';
+    54→    54→import StatsDashboard from '@/components/stats-dashboard';
+    55→    55→import CitationCounter from '@/components/citation-counter';
+    56→    56→import {
+    57→    57→  OnboardingTutorial,
+    58→    58→  useOnboardingStatus,
+    59→    59→} from '@/components/onboarding-tutorial';
+    60→    60→import SuperBotPanel from '@/components/super-bot-panel';
+    61→    61→
+    62→    62→// ─── Constants ────────────────────────────────────────────────────────
+    63→    63→
+    64→    64→const APP_VERSION = 'v2.1.0';
+    65→    65→
+    66→    66→const STEPS = [
+    67→    67→  { id: 1, label: 'Define Research', icon: BookOpen, shortLabel: 'Research' },
+    68→    68→  { id: 2, label: 'References', icon: Library, shortLabel: 'References' },
+    69→    69→  { id: 3, label: 'Method & Generate', icon: FlaskConical, shortLabel: 'Generate' },
+    70→    70→  { id: 4, label: 'Article Output', icon: FileText, shortLabel: 'Output' },
+    71→    71→  { id: 5, label: 'Polish & Layout', icon: Wand2, shortLabel: 'Polish' },
+    72→    72→] as const;
+    73→    73→
+    74→    74→// ─── Step Navigation Component ─────────────────────────────────────
+    75→    75→
+    76→    76→function StepNavigation({ currentStep }: { currentStep: number }) {
+    77→    77→  const { setCurrentStep } = useArticleStore();
+    78→    78→
+    79→    79→  return (
+    80→    80→    <nav className="w-full" aria-label="Article generation steps">
+    81→    81→      {/* Desktop horizontal stepper */}
+    82→    82→      <div className="hidden md:flex items-center justify-between w-full">
+    83→    83→        {STEPS.map((step, index) => {
+    84→    84→          const isCompleted = currentStep > step.id;
+    85→    85→          const isActive = currentStep === step.id;
+    86→    86→          const Icon = step.icon;
+    87→    87→
+    88→    88→          return (
+    89→    89→            <React.Fragment key={step.id}>
+    90→    90→              <button
+    91→    91→                onClick={() => {
+    92→    92→                  if (isCompleted || isActive) setCurrentStep(step.id);
+    93→    93→                }}
+    94→    94→                className={`flex flex-col items-center gap-1.5 group transition-all duration-300 ${
+    95→    95→                  isCompleted || isActive ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+    96→    96→                }`}
+    97→    97→                aria-current={isActive ? 'step' : undefined}
+    98→    98→              >
+    99→    99→                <div
+   100→   100→                  className={`relative flex items-center justify-center size-11 rounded-xl transition-all duration-300 ${
+   101→   101→                    isActive
+   102→   102→                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-110'
+   103→   103→                      : isCompleted
+   104→   104→                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+   105→   105→                        : 'bg-muted text-muted-foreground'
+   106→   106→                  }`}
+   107→   107→                >
+   108→   108→                  <Icon className="size-5" />
+   109→   109→                  {isCompleted && (
+   110→   110→                    <motion.div
+   111→   111→                      initial={{ scale: 0 }}
+   112→   112→                      animate={{ scale: 1 }}
+   113→   113→                      className="absolute -top-1 -right-1 size-4 bg-emerald-500 rounded-full flex items-center justify-center"
+   114→   114→                    >
+   115→   115→                      <svg className="size-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+   116→   116→                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   117→   117→                      </svg>
+   118→   118→                    </motion.div>
+   119→   119→                  )}
+   120→   120→                </div>
+   121→   121→                <span
+   122→   122→                  className={`text-xs font-medium text-center leading-tight transition-colors ${
+   123→   123→                    isActive
+   124→   124→                      ? 'text-emerald-700 dark:text-emerald-300'
+   125→   125→                      : isCompleted
+   126→   126→                        ? 'text-foreground/70'
+   127→   127→                        : 'text-muted-foreground'
+   128→   128→                  }`}
+   129→   129→                >
+   130→   130→                  {step.label}
+   131→   131→                </span>
+   132→   132→              </button>
+   133→   133→              {index < STEPS.length - 1 && (
+   134→   134→                <div className="flex-1 mx-2 mt-[-1.25rem] relative">
+   135→   135→                  {/* Base connector line */}
+   136→   136→                  <div className="absolute inset-0 h-0.5 rounded-full bg-border" />
+   137→   137→                  {/* Animated fill connector */}
+   138→   138→                  <motion.div
+   139→   139→                    className="h-0.5 rounded-full bg-emerald-500 absolute inset-y-0 left-0"
+   140→   140→                    initial={false}
+   141→   141→                    animate={{
+   142→   142→                      width: currentStep > step.id ? '100%' : '0%',
+   143→   143→                    }}
+   144→   144→                    transition={{ duration: 0.5, ease: 'easeInOut' }}
+   145→   145→                  />
+   146→   146→                  {/* Animated numbered dot at midpoint */}
+   147→   147→                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+   148→   148→                    <motion.div
+   149→   149→                      className={`flex items-center justify-center size-5 rounded-full text-[10px] font-bold transition-colors duration-300 ${
+   150→   150→                        currentStep > step.id
+   151→   151→                          ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/40'
+   152→   152→                          : 'bg-background border-2 border-border text-muted-foreground'
+   153→   153→                      }`}
+   154→   154→                      animate={{
+   155→   155→                        scale: currentStep > step.id ? [1, 1.15, 1] : 1,
+   156→   156→                      }}
+   157→   157→                      transition={{ duration: 0.4, ease: 'easeOut' }}
+   158→   158→                    >
+   159→   159→                      {currentStep > step.id ? (
+   160→   160→                        <svg className="size-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+   161→   161→                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+   162→   162→                        </svg>
+   163→   163→                      ) : (
+   164→   164→                        step.id + 1
+   165→   165→                      )}
+   166→   166→                    </motion.div>
+   167→   167→                  </div>
+   168→   168→                </div>
+   169→   169→              )}
+   170→   170→            </React.Fragment>
+   171→   171→          );
+   172→   172→        })}
+   173→   173→      </div>
+   174→   174→
+   175→   175→      {/* Mobile compact stepper (sticky) */}
+   176→   176→      <div className="flex md:hidden items-center gap-1 overflow-x-auto pb-1">
+   177→   177→        {STEPS.map((step) => {
+   178→   178→          const isCompleted = currentStep > step.id;
+   179→   179→          const isActive = currentStep === step.id;
+   180→   180→          const Icon = step.icon;
+   181→   181→
+   182→   182→          return (
+   183→   183→            <button
+   184→   184→              key={step.id}
+   185→   185→              onClick={() => {
+   186→   186→                if (isCompleted || isActive) setCurrentStep(step.id);
+   187→   187→              }}
+   188→   188→              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+   189→   189→                isActive
+   190→   190→                  ? 'bg-emerald-600 text-white shadow-sm'
+   191→   191→                  : isCompleted
+   192→   192→                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+   193→   193→                    : 'bg-muted text-muted-foreground'
+   194→   194→              }`}
+   195→   195→            >
+   196→   196→              <Icon className="size-3.5" />
+   197→   197→              {step.shortLabel}
+   198→   198→            </button>
+   199→   199→          );
+   200→   200→        })}
+   201→   201→      </div>
+   202→   202→    </nav>
+   203→   203→  );
+   204→   204→}
+   205→   205→
+   206→   206→// ─── Progress Indicator Component ───────────────────────────────────
+   207→   207→
+   208→   208→function GlobalProgressIndicator({ currentStep }: { currentStep: number }) {
+   209→   209→  const progressPercent = Math.max(0, ((currentStep - 1) / (STEPS.length - 1)) * 100);
+   210→   210→
+   211→   211→  return (
+   212→   212→    <div className="w-full h-1 bg-border/50 overflow-hidden">
+   213→   213→      <motion.div
+   214→   214→        className="h-full rounded-full"
+   215→   215→        style={{
+   216→   216→          background: 'linear-gradient(90deg, #10b981, #14b8a6, #059669)',
+   217→   217→        }}
+   218→   218→        initial={false}
+   219→   219→        animate={{ width: `${progressPercent}%` }}
+   220→   220→        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+   221→   221→      />
+   222→   222→    </div>
+   223→   223→  );
+   224→   224→}
+   225→   225→
+   226→   226→// ─── Step Header Component ─────────────────────────────────────────
+   227→   227→
+   228→   228→function StepHeader({
+   229→   229→  step,
+   230→   230→  title,
+   231→   231→  description,
+   232→   232→}: {
+   233→   233→  step: number;
+   234→   234→  title: string;
+   235→   235→  description: string;
+   236→   236→}) {
+   237→   237→  return (
+   238→   238→    <div
+   239→   239→      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+   240→   240→    >
+   241→   241→      <div>
+   242→   242→        <div className="flex items-center gap-2 mb-1">
+   243→   243→          <Badge
+   244→   244→            variant="outline"
+   245→   245→            className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800"
+   246→   246→          >
+   247→   247→            Step {step} of 5
+   248→   248→          </Badge>
+   249→   249→        </div>
+   250→   250→        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+   251→   251→          {title}
+   252→   252→        </h1>
+   253→   253→        <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+   254→   254→      </div>
+   255→   255→    </div>
+   256→   256→  );
+   257→   257→}
+   258→   258→
+   259→   259→// ─── Welcome Banner Component ──────────────────────────────────────
+   260→   260→
+   261→   261→function WelcomeBanner() {
+   262→   262→  const features = [
+   263→   263→    {
+   264→   264→      icon: Sparkles,
+   265→   265→      title: 'Generate Titles',
+   266→   266→      description: 'AI-powered academic title suggestions from keywords or ideas',
+   267→   267→    },
+   268→   268→    {
+   269→   269→      icon: BookMarked,
+   270→   270→      title: 'Find References',
+   271→   271→      description: 'Search and curate up to 50 scholarly references',
+   272→   272→    },
+   273→   273→    {
+   274→   274→      icon: PenTool,
+   275→   275→      title: 'Create Articles',
+   276→   276→      description: 'Full IMRAD articles polished to publication quality',
+   277→   277→    },
+   278→   278→  ];
+   279→   279→
+   280→   280→  return (
+   281→   281→    <motion.div
+   282→   282→      initial={{ opacity: 0, y: 20 }}
+   283→   283→      animate={{ opacity: 1, y: 0 }}
+   284→   284→      transition={{ duration: 0.6, ease: 'easeOut' }}
+   285→   285→      className="mb-6"
+   286→   286→    >
+   287→   287→      <Card className="overflow-hidden border-0 shadow-lg card-glow bg-gradient-to-br from-white via-emerald-50/40 to-teal-50/60 dark:from-slate-900 dark:via-emerald-950/20 dark:to-teal-950/30">
+   288→   288→        <CardContent className="p-0">
+   289→   289→          <div className="flex flex-col lg:flex-row items-center gap-6 p-6 sm:p-8">
+   290→   290→            {/* Decorative illustration area */}
+   291→   291→            <div className="flex-shrink-0">
+   292→   292→              <motion.div
+   293→   293→                className="relative flex items-center justify-center size-24 sm:size-28 rounded-full"
+   294→   294→                style={{
+   295→   295→                  background: 'linear-gradient(135deg, #10b981, #0d9488, #059669)',
+   296→   296→                }}
+   297→   297→                animate={{
+   298→   298→                  boxShadow: [
+   299→   299→                    '0 0 0 0 rgba(16, 185, 129, 0.3)',
+   300→   300→                    '0 0 20px 8px rgba(16, 185, 129, 0.15)',
+   301→   301→                    '0 0 0 0 rgba(16, 185, 129, 0.3)',
+   302→   302→                  ],
+   303→   303→                }}
+   304→   304→                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+   305→   305→              >
+   306→   306→                <div className="absolute inset-1 rounded-full bg-white/20 backdrop-blur-sm" />
+   307→   307→                <GraduationCap className="size-10 sm:size-12 text-white relative z-10" />
+   308→   308→              </motion.div>
+   309→   309→            </div>
+   310→   310→
+   311→   311→            {/* Content */}
+   312→   312→            <div className="flex-1 text-center lg:text-left">
+   313→   313→              <motion.h2
+   314→   314→                className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-emerald"
+   315→   315→                initial={{ opacity: 0, x: -10 }}
+   316→   316→                animate={{ opacity: 1, x: 0 }}
+   317→   317→                transition={{ delay: 0.2, duration: 0.4 }}
+   318→   318→              >
+   319→   319→                Welcome to Mamah
+   320→   320→              </motion.h2>
+   321→   321→              <motion.p
+   322→   322→                className="mt-2 text-sm sm:text-base text-muted-foreground max-w-xl"
+   323→   323→                initial={{ opacity: 0 }}
+   324→   324→                animate={{ opacity: 1 }}
+   325→   325→                transition={{ delay: 0.3, duration: 0.4 }}
+   326→   326→              >
+   327→   327→                Your AI-powered academic writing assistant. Generate publication-ready research
+   328→   328→                articles with proper IMRAD structure, curated references, and professional academic
+   329→   329→                language in minutes.
+   330→   330→              </motion.p>
+   331→   331→
+   332→   332→              {/* Feature highlights */}
+   333→   333→              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+   334→   334→                {features.map((feature, i) => {
+   335→   335→                  const FeatureIcon = feature.icon;
+   336→   336→                  return (
+   337→   337→                    <motion.div
+   338→   338→                      key={feature.title}
+   339→   339→                      className="flex items-start gap-3 p-3 rounded-xl bg-white/60 dark:bg-slate-800/40 border border-border/40 backdrop-blur-sm card-hover-lift transition-smooth"
+   340→   340→                      initial={{ opacity: 0, y: 10 }}
+   341→   341→                      animate={{ opacity: 1, y: 0 }}
+   342→   342→                      transition={{ delay: 0.4 + i * 0.1, duration: 0.35 }}
+   343→   343→                    >
+   344→   344→                      <div className="flex-shrink-0 flex items-center justify-center size-8 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+   345→   345→                        <FeatureIcon className="size-4" />
+   346→   346→                      </div>
+   347→   347→                      <div>
+   348→   348→                        <p className="text-sm font-semibold text-foreground">{feature.title}</p>
+   349→   349→                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+   350→   350→                          {feature.description}
+   351→   351→                        </p>
+   352→   352→                      </div>
+   353→   353→                    </motion.div>
+   354→   354→                  );
+   355→   355→                })}
+   356→   356→              </div>
+   357→   357→            </div>
+   358→   358→          </div>
+   359→   359→        </CardContent>
+   360→   360→      </Card>
+   361→   361→    </motion.div>
+   362→   362→  );
+   363→   363→}
+   364→   364→
+   365→   365→// ─── Step Tips Component ──────────────────────────────────────────
+   366→   366→
+   367→   367→const STEP_TIPS: Record<number, { icon: typeof Info; title: string; tips: string[] }> = {
+   368→   368→  1: {
+   369→   369→    icon: BookOpen,
+   370→   370→    title: 'Research Definition Tips',
+   371→   371→    tips: [
+   372→   372→      'Use specific keywords for better title suggestions',
+   373→   373→      'Try the Idea tab for more creative, exploratory inputs',
+   374→   374→      'Browse Templates for popular research topics to get started quickly',
+   375→   375→      'Select at least 3 keywords for optimal results',
+   376→   376→    ],
+   377→   377→  },
+   378→   378→  2: {
+   379→   379→    icon: Library,
+   380→   380→    title: 'Reference Selection Tips',
+   381→   381→    tips: [
+   382→   382→      'Aim for a mix of journal articles, books, and theoretical sources',
+   383→   383→      'Prioritise recent publications (last 5 years) for current relevance',
+   384→   384→      'Use filters to narrow down by type, year, or topic',
+   385→   385→      'Select at least 5 references to proceed to generation',
+   386→   386→    ],
+   387→   387→  },
+   388→   388→  3: {
+   389→   389→    icon: FlaskConical,
+   390→   390→    title: 'Generation Tips',
+   391→   391→    tips: [
+   392→   392→      'Literature Review is recommended for most academic articles',
+   393→   393→      'Add specific instructions for targeted, customised output',
+   394→   394→      'Article generation typically takes 1–3 minutes',
+   395→   395→      'Review your references before generating for best results',
+   396→   396→    ],
+   397→   397→  },
+   398→   398→  4: {
+   399→   399→    icon: FileText,
+   400→   400→    title: 'Article Review Tips',
+   401→   401→    tips: [
+   402→   402→      'Use Ctrl+F to search within the article content',
+   403→   403→      'Check the Table of Contents for section completion status',
+   404→   404→      'Expand each section to review in detail',
+   405→   405→      'Export to DOCX, PDF, or Markdown for offline editing',
+   406→   406→    ],
+   407→   407→  },
+   408→   408→  5: {
+   409→   409→    icon: Wand2,
+   410→   410→    title: 'Polish Tips',
+   411→   411→    tips: [
+   412→   412→      'Use Auto-Polish to enable all refinements at once',
+   413→   413→      'Compare before/after to see the quality improvements',
+   414→   414→      'Each polish pass builds on the previous version',
+   415→   415→      'Export the final polished article in your preferred format',
+   416→   416→    ],
+   417→   417→  },
+   418→   418→};
+   419→   419→
+   420→   420→function StepTipsBar({ step }: { step: number }) {
+   421→   421→  const [isExpanded, setIsExpanded] = useState(false);
+   422→   422→  const [dismissed, setDismissed] = useState(false);
+   423→   423→  const tipData = STEP_TIPS[step];
+   424→   424→  if (!tipData || dismissed) return null;
+   425→   425→  const TipIcon = tipData.icon;
+   426→   426→
+   427→   427→  return (
+   428→   428→    <motion.div
+   429→   429→      initial={{ opacity: 0, y: -8 }}
+   430→   430→      animate={{ opacity: 1, y: 0 }}
+   431→   431→      transition={{ duration: 0.3, delay: 0.2 }}
+   432→   432→    >
+   433→   433→      <div className="flex items-start gap-3 rounded-xl border border-emerald-200/60 bg-emerald-50/50 dark:border-emerald-800/40 dark:bg-emerald-950/20 px-4 py-3">
+   434→   434→        <div className="flex items-center justify-center size-8 rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 shrink-0 mt-0.5">
+   435→   435→          <TipIcon className="size-4" />
+   436→   436→        </div>
+   437→   437→        <div className="flex-1 min-w-0">
+   438→   438→          <div className="flex items-center justify-between mb-1">
+   439→   439→            <p className="text-sm font-semibold text-foreground">{tipData.title}</p>
+   440→   440→            <div className="flex items-center gap-1">
+   441→   441→              <button
+   442→   442→                onClick={() => setIsExpanded(!isExpanded)}
+   443→   443→                className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium transition-colors"
+   444→   444→              >
+   445→   445→                {isExpanded ? 'Show Less' : 'Show Tips'}
+   446→   446→              </button>
+   447→   447→              <button
+   448→   448→                onClick={() => setDismissed(true)}
+   449→   449→                className="ml-2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+   450→   450→                aria-label="Dismiss tips"
+   451→   451→              >
+   452→   452→                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+   453→   453→                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+   454→   454→                </svg>
+   455→   455→              </button>
+   456→   456→            </div>
+   457→   457→          </div>
+   458→   458→          <AnimatePresence>
+   459→   459→            {isExpanded && (
+   460→   460→              <motion.ul
+   461→   461→                initial={{ height: 0, opacity: 0 }}
+   462→   462→                animate={{ height: 'auto', opacity: 1 }}
+   463→   463→                exit={{ height: 0, opacity: 0 }}
+   464→   464→                transition={{ duration: 0.25 }}
+   465→   465→                className="overflow-hidden"
+   466→   466→              >
+   467→   467→                {tipData.tips.map((tip, i) => (
+   468→   468→                  <motion.li
+   469→   469→                    key={i}
+   470→   470→                    initial={{ opacity: 0, x: -8 }}
+   471→   471→                    animate={{ opacity: 1, x: 0 }}
+   472→   472→                    transition={{ delay: i * 0.06 }}
+   473→   473→                    className="flex items-start gap-2 text-xs text-muted-foreground mt-1.5 leading-relaxed"
+   474→   474→                  >
+   475→   475→                    <span className="shrink-0 mt-0.5 size-1.5 rounded-full bg-emerald-400 dark:bg-emerald-500" />
+   476→   476→                    {tip}
+   477→   477→                  </motion.li>
+   478→   478→                ))}
+   479→   479→              </motion.ul>
+   480→   480→            )}
+   481→   481→          </AnimatePresence>
+   482→   482→        </div>
+   483→   483→      </div>
+   484→   484→    </motion.div>
+   485→   485→  );
+   486→   486→}
+   487→   487→
+   488→   488→// ─── Word Count Goal Progress Bar ──────────────────────────────────
+   489→   489→
+   490→   490→const WORD_COUNT_TARGET = 7750;
+   491→   491→
+   492→   492→function WordCountGoalBar({ article }: { article: GeneratedArticle }) {
+   493→   493→  const totalWords =
+   494→   494→    article.totalWordCount > 0
+   495→   495→      ? article.totalWordCount
+   496→   496→      : article.sections.reduce((sum, s) => sum + (s.wordCount || 0), 0);
+   497→   497→  const percent = Math.min(100, Math.round((totalWords / WORD_COUNT_TARGET) * 100));
+   498→   498→
+   499→   499→  return (
+   500→   500→    <div className="border-t border-border/30 bg-white/40 dark:bg-slate-900/40">
+   501→   501→      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2">
+   502→   502→        <div className="flex items-center gap-3">
+   503→   503→          <Target className="size-3.5 text-emerald-500 shrink-0" />
+   504→   504→          <div className="flex-1 flex items-center gap-2">
+   505→   505→            <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
+   506→   506→              <motion.div
+   507→   507→                className="h-full rounded-full"
+   508→   508→                style={{
+   509→   509→                  background: 'linear-gradient(90deg, #059669, #10b981, #14b8a6)',
+   510→   510→                }}
+   511→   511→                initial={{ width: 0 }}
+   512→   512→                animate={{ width: `${percent}%` }}
+   513→   513→                transition={{ duration: 1.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+   514→   514→              />
+   515→   515→            </div>
+   516→   516→            <span className="text-[11px] font-medium tabular-nums text-muted-foreground whitespace-nowrap">
+   517→   517→              {totalWords.toLocaleString()} / {WORD_COUNT_TARGET.toLocaleString()} target
+   518→   518→              <span className="ml-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+   519→   519→                ({percent}%)
+   520→   520→              </span>
+   521→   521→            </span>
+   522→   522→          </div>
+   523→   523→        </div>
+   524→   524→      </div>
+   525→   525→    </div>
+   526→   526→  );
+   527→   527→}
+   528→   528→
+   529→   529→// ─── Keyboard Shortcuts Section ────────────────────────────────────
+   530→   530→
+   531→   531→const KEYBOARD_SHORTCUTS = [
+   532→   532→  {
+   533→   533→    keys: ['Ctrl', '→'],
+   534→   534→    label: 'Next step',
+   535→   535→    available: true,
+   536→   536→  },
+   537→   537→  {
+   538→   538→    keys: ['Ctrl', '←'],
+   539→   539→    label: 'Previous step',
+   540→   540→    available: true,
+   541→   541→  },
+   542→   542→  {
+   543→   543→    keys: ['Esc'],
+   544→   544→    label: 'Go back',
+   545→   545→    available: true,
+   546→   546→  },
+   547→   547→  {
+   548→   548→    keys: ['Ctrl', 'F'],
+   549→   549→    label: 'Search in article',
+   550→   550→    available: 'Step 4–5',
+   551→   551→  },
+   552→   552→];
+   553→   553→
+   554→   554→function KeyboardShortcutsSection({
+   555→   555→  isOpen,
+   556→   556→  onToggle,
+   557→   557→}: {
+   558→   558→  isOpen: boolean;
+   559→   559→  onToggle: () => void;
+   560→   560→}) {
+   561→   561→  // Default collapsed on mobile, expanded on desktop (tracked via CSS + state)
+   562→   562→  // We default to false and let the initial media query effect handle it
+   563→   563→  const [isDesktop, setIsDesktop] = useState(false);
+   564→   564→
+   565→   565→  useEffect(() => {
+   566→   566→    const mql = window.matchMedia('(min-width: 768px)');
+   567→   567→    const onChange = () => setIsDesktop(mql.matches);
+   568→   568→    onChange();
+   569→   569→    mql.addEventListener('change', onChange);
+   570→   570→    return () => mql.removeEventListener('change', onChange);
+   571→   571→  }, []);
+   572→   572→
+   573→   573→  // On desktop default to expanded; on mobile default to collapsed
+   574→   574→  const effectiveOpen = isDesktop ? (isOpen !== false) : isOpen;
+   575→   575→
+   576→   576→  return (
+   577→   577→    <div className="mb-3">
+   578→   578→      <button
+   579→   579→        onClick={onToggle}
+   580→   580→        className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group w-full sm:w-auto"
+   581→   581→      >
+   582→   582→        <Keyboard className="size-3.5 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
+   583→   583→        <span>Keyboard Shortcuts</span>
+   584→   584→        <motion.div
+   585→   585→          animate={{ rotate: effectiveOpen ? 180 : 0 }}
+   586→   586→          transition={{ duration: 0.25, ease: 'easeInOut' }}
+   587→   587→        >
+   588→   588→          <ChevronDown className="size-3" />
+   589→   589→        </motion.div>
+   590→   590→      </button>
+   591→   591→      <AnimatePresence initial={false}>
+   592→   592→        {effectiveOpen && (
+   593→   593→          <motion.div
+   594→   594→            initial={{ height: 0, opacity: 0 }}
+   595→   595→            animate={{ height: 'auto', opacity: 1 }}
+   596→   596→            exit={{ height: 0, opacity: 0 }}
+   597→   597→            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+   598→   598→            className="overflow-hidden"
+   599→   599→          >
+   600→   600→            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+   601→   601→              {KEYBOARD_SHORTCUTS.map((shortcut) => (
+   602→   602→                <div
+   603→   603→                  key={shortcut.label}
+   604→   604→                  className="flex items-center gap-2 rounded-lg px-3 py-2 bg-muted/40 border border-border/30"
+   605→   605→                >
+   606→   606→                  <div className="flex items-center gap-0.5">
+   607→   607→                    {shortcut.keys.map((key, i) => (
+   608→   608→                      <React.Fragment key={key}>
+   609→   609→                        <kbd className="inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1 rounded border border-border/60 bg-background text-[10px] font-mono text-foreground/80 shadow-[0_1px_0_0_hsl(var(--border))]">
+   610→   610→                          {key}
+   611→   611→                        </kbd>
+   612→   612→                        {i < shortcut.keys.length - 1 && (
+   613→   613→                          <span className="text-[10px] text-muted-foreground mx-0.5">+</span>
+   614→   614→                        )}
+   615→   615→                      </React.Fragment>
+   616→   616→                    ))}
+   617→   617→                  </div>
+   618→   618→                  <span className="text-[11px] text-muted-foreground leading-tight">
+   619→   619→                    {shortcut.label}
+   620→   620→                    {shortcut.available !== true && (
+   621→   621→                      <span className="text-emerald-500 ml-1 font-medium text-[10px]">
+   622→   622→                        ({shortcut.available})
+   623→   623→                      </span>
+   624→   624→                    )}
+   625→   625→                  </span>
+   626→   626→                </div>
+   627→   627→              ))}
+   628→   628→            </div>
+   629→   629→          </motion.div>
+   630→   630→        )}
+   631→   631→      </AnimatePresence>
+   632→   632→    </div>
+   633→   633→  );
+   634→   634→}
+   635→   635→
+   636→   636→// ─── Mobile Quick Actions ──────────────────────────────────────────
+   637→   637→
+   638→   638→function MobileQuickActions() {
+   639→   639→  const { resetAll, setCurrentStep } = useArticleStore();
+   640→   640→  const { setTheme, resolvedTheme } = useTheme();
+   641→   641→
+   642→   642→  return (
+   643→   643→    <div className="flex md:hidden items-center justify-center gap-2 mt-3 pt-3 border-t border-border/30">
+   644→   644→      <Button
+   645→   645→        variant="outline"
+   646→   646→        size="icon"
+   647→   647→        onClick={() => {
+   648→   648→          resetAll();
+   649→   649→          toast.success('Starting a new article');
+   650→   650→        }}
+   651→   651→        className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
+   652→   652→        aria-label="New Article"
+   653→   653→      >
+   654→   654→        <Plus className="size-4" />
+   655→   655→      </Button>
+   656→   656→      <Button
+   657→   657→        variant="outline"
+   658→   658→        size="icon"
+   659→   659→        onClick={() => {
+   660→   660→          setCurrentStep(4);
+   661→   661→          toast.info('View article history from the sidebar');
+   662→   662→        }}
+   663→   663→        className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
+   664→   664→        aria-label="View History"
+   665→   665→      >
+   666→   666→        <History className="size-4" />
+   667→   667→      </Button>
+   668→   668→      <Button
+   669→   669→        variant="outline"
+   670→   670→        size="icon"
+   671→   671→        onClick={() => {
+   672→   672→          setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+   673→   673→        }}
+   674→   674→        className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
+   675→   675→        aria-label="Toggle Theme"
+   676→   676→      >
+   677→   677→        <Sun className="size-4 dark:hidden" />
+   678→   678→        <Moon className="size-4 hidden dark:block" />
+   679→   679→      </Button>
+   680→   680→    </div>
+   681→   681→  );
+   682→   682→}
+   683→   683→
+   684→   684→// ─── Main Application Component ────────────────────────────────────
+   685→   685→
+   686→   686→export default function ArticleGeneratorApp() {
+   687→   687→  const { currentStep, prevStep, nextStep, resetAll, generatedArticle, generatedTitles, articleHistory, authUser, setAuthUser, authModalOpen, setAuthModalOpen } =
+   688→   688→    useArticleStore();
+   689→   689→  const { setTheme, resolvedTheme } = useTheme();
+   690→   690→  const [isScrolled, setIsScrolled] = useState(false);
+   691→   691→  const [mounted, setMounted] = useState(false);
+   692→   692→  const [statsOpen, setStatsOpen] = useState(false);
+   693→   693→  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+   694→   694→  const [tutorialOpen, setTutorialOpen] = useState(false);
+   695→   695→  const [showSuperBot, setShowSuperBot] = useState(false);
+   696→   696→  const { hasCompleted, resetOnboarding } = useOnboardingStatus();
+   697→   697→  const tutorialTriggeredRef = useRef(false);
+   698→   698→  // Direction tracking: transitionPrevStep lags behind currentStep by one render via useEffect,
+   699→   699→  // so direction is correctly computed during the render where the key changes.
+   700→   700→  const [transitionPrevStep, setTransitionPrevStep] = useState(currentStep);
+   701→   701→  const direction = currentStep > transitionPrevStep ? 1 : currentStep < transitionPrevStep ? -1 : 1;
+   702→   702→  useEffect(() => {
+   703→   703→    setTransitionPrevStep(currentStep);
+   704→   704→  }, [currentStep]);
+   705→   705→  // mounted: tracks hydration state for SSR-safe theme icon rendering
+   706→   706→
+   707→   707→  const stepInfo = STEPS.find((s) => s.id === currentStep);
+   708→   708→  const showWelcomeBanner = currentStep === 1 && generatedTitles.length === 0;
+   709→   709→
+   710→   710→  // ── Auto-show tutorial for first-time users ───────────────────
+   711→   711→  useEffect(() => {
+   712→   712→    if (mounted && !tutorialTriggeredRef.current && !hasCompleted && articleHistory.length === 0) {
+   713→   713→      tutorialTriggeredRef.current = true;
+   714→   714→      const timer = setTimeout(() => setTutorialOpen(true), 600);
+   715→   715→      return () => clearTimeout(timer);
+   716→   716→    }
+   717→   717→  }, [mounted, hasCompleted, articleHistory.length]);
+   718→   718→
+   719→   719→  // ── Logo pulse on initial load ──────────────────────────────────
+   720→   720→  // Note: mounted state avoids hydration mismatch for theme icon
+   721→   721→  useEffect(() => {
+   722→   722→    const id = requestAnimationFrame(() => setMounted(true));
+   723→   723→    return () => cancelAnimationFrame(id);
+   724→   724→  }, []);
+   725→   725→
+   726→   726→  // ── Auto-check session on mount ──────────────────────────
+   727→   727→  useEffect(() => {
+   728→   728→    (async () => {
+   729→   729→      try {
+   730→   730→        const res = await fetch('/api/auth/me');
+   731→   731→        const data = await res.json();
+   732→   732→        if (data.success && data.user) {
+   733→   733→          setAuthUser({
+   734→   734→            id: data.user.id,
+   735→   735→            email: data.user.email,
+   736→   736→            fullName: data.user.name || undefined,
+   737→   737→            avatarUrl: data.user.avatarUrl || undefined,
+   738→   738→            subscriptionTier: data.user.subscriptionTier || 'free',
+   739→   739→          });
+   740→   740→        }
+   741→   741→      } catch {
+   742→   742→        // Ignore — user is not logged in
+   743→   743→      }
+   744→   744→    })();
+   745→   745→  }, [setAuthUser]);
+   746→   746→
+   747→   747→  // ── Scroll listener for header gradient border ──────────────────
+   748→   748→  useEffect(() => {
+   749→   749→    const handleScroll = () => {
+   750→   750→      setIsScrolled(window.scrollY > 8);
+   751→   751→    };
+   752→   752→    window.addEventListener('scroll', handleScroll, { passive: true });
+   753→   753→    return () => window.removeEventListener('scroll', handleScroll);
+   754→   754→  }, []);
+   755→   755→
+   756→   756→  // ── Keyboard navigation ─────────────────────────────────────────
+   757→   757→  const handleKeyDown = useCallback(
+   758→   758→    (e: KeyboardEvent) => {
+   759→   759→      // Don't intercept if user is typing in an input/textarea
+   760→   760→      const tag = (e.target as HTMLElement).tagName;
+   761→   761→      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+   762→   762→
+   763→   763→      if (e.ctrlKey || e.metaKey) {
+   764→   764→        if (e.key === 'ArrowRight') {
+   765→   765→          e.preventDefault();
+   766→   766→          nextStep();
+   767→   767→        } else if (e.key === 'ArrowLeft') {
+   768→   768→          e.preventDefault();
+   769→   769→          prevStep();
+   770→   770→        }
+   771→   771→      }
+   772→   772→      if (e.key === 'Escape') {
+   773→   773→        e.preventDefault();
+   774→   774→        prevStep();
+   775→   775→      }
+   776→   776→    },
+   777→   777→    [nextStep, prevStep]
+   778→   778→  );
+   779→   779→
+   780→   780→  useEffect(() => {
+   781→   781→    window.addEventListener('keydown', handleKeyDown);
+   782→   782→    return () => window.removeEventListener('keydown', handleKeyDown);
+   783→   783→  }, [handleKeyDown]);
+   784→   784→
+   785→   785→  // ── Theme toggle handler ────────────────────────────────────────
+   786→   786→  const toggleTheme = () => {
+   787→   787→    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+   788→   788→  };
+   789→   789→
+   790→   790→  // Avoid hydration mismatch for theme icon
+   791→   791→  const isDark = mounted && resolvedTheme === 'dark';
+   792→   792→
+   793→   793→  return (
+   794→   794→    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50/50 via-white to-emerald-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/10">
+   795→   795→      {/* ── Header ───────────────────────────────────────────────── */}
+   796→   796→      <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl relative">
+   797→   797→        {/* Animated gradient bottom border on scroll */}
+   798→   798→        <motion.div
+   799→   799→          className="absolute bottom-0 left-0 right-0 h-[2px]"
+   800→   800→          style={{
+   801→   801→            background: isScrolled
+   802→   802→              ? 'linear-gradient(90deg, transparent, #10b981, #14b8a6, #059669, transparent)'
+   803→   803→              : 'none',
+   804→   804→          }}
+   805→   805→          initial={false}
+   806→   806→          animate={{
+   807→   807→            opacity: isScrolled ? 1 : 0,
+   808→   808→          }}
+   809→   809→          transition={{ duration: 0.4 }}
+   810→   810→        />
+   811→   811→        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+   812→   812→          <div className="flex items-center justify-between h-14">
+   813→   813→            <div className="flex items-center gap-3">
+   814→   814→              <motion.div
+   815→   815→                className="flex items-center justify-center size-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm btn-glow"
+   816→   816→                animate={
+   817→   817→                  mounted
+   818→   818→                    ? {
+   819→   819→                        scale: [1, 1.1, 1],
+   820→   820→                      }
+   821→   821→                    : {}
+   822→   822→                }
+   823→   823→                transition={{ duration: 0.8, ease: 'easeInOut' }}
+   824→   824→              >
+   825→   825→                <GraduationCap className="size-4.5" />
+   826→   826→              </motion.div>
+   827→   827→              <div className="hidden sm:block">
+   828→   828→                <h1 className="text-sm font-bold tracking-tight text-foreground leading-none">
+   829→   829→                  Mamah
+   830→   830→                </h1>
+   831→   831→                <p className="text-[10px] text-muted-foreground leading-none mt-0.5">
+   832→   832→                  Academic Literature Generator
+   833→   833→                </p>
+   834→   834→              </div>
+   835→   835→            </div>
+   836→   836→            <div className="flex items-center gap-1.5">
+   837→   837→              {/* Help / Tutorial Button (Step 1 only) */}
+   838→   838→              {currentStep === 1 && (
+   839→   839→                <Button
+   840→   840→                  variant="ghost"
+   841→   841→                  size="icon"
+   842→   842→                  onClick={() => setTutorialOpen(true)}
+   843→   843→                  className="size-9 text-muted-foreground hover:text-emerald-600"
+   844→   844→                  aria-label="Open tutorial"
+   845→   845→                >
+   846→   846→                  <HelpCircle className="size-4" />
+   847→   847→                </Button>
+   848→   848→              )}
+   849→   849→
+   850→   850→              {/* Auth Button / User Avatar */}
+   851→   851→              {authUser ? (
+   852→   852→                <div className="flex items-center gap-1.5">
+   853→   853→                  {authUser.subscriptionTier === 'pro' && (
+   854→   854→                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] px-1.5 py-0">
+   855→   855→                      <Crown className="size-2.5 mr-0.5" />PRO
+   856→   856→                    </Badge>
+   857→   857→                  )}
+   858→   858→                  <Button
+   859→   859→                    variant="ghost"
+   860→   860→                    size="icon"
+   861→   861→                    onClick={async () => {
+   862→   862→                      try {
+   863→   863→                        await fetch('/api/auth/logout', { method: 'POST' });
+   864→   864→                      } catch { /* ignore */ }
+   865→   865→                      setAuthUser(null);
+   866→   866→                      toast.success('Berhasil logout');
+   867→   867→                    }}
+   868→   868→                    className="size-9"
+   869→   869→                    aria-label="Sign out"
+   870→   870→                  >
+   871→   871→                    <LogOut className="size-4 text-muted-foreground" />
+   872→   872→                  </Button>
+   873→   873→                </div>
+   874→   874→              ) : (
+   875→   875→                <Button
+   876→   876→                  variant="ghost"
+   877→   877→                  size="sm"
+   878→   878→                  onClick={() => setAuthModalOpen(true)}
+   879→   879→                  className="text-muted-foreground hover:text-emerald-600 gap-1.5"
+   880→   880→                >
+   881→   881→                  <LogIn className="size-3.5" />
+   882→   882→                  <span className="hidden sm:inline text-xs">Sign In</span>
+   883→   883→                </Button>
+   884→   884→              )}
+   885→   885→
+   886→   886→              {/* History Sidebar */}
+   887→   887→              <ArticleHistorySidebar />
+   888→   888→
+   889→   889→              {/* Dark Mode Toggle */}
+   890→   890→              <Button
+   891→   891→                variant="ghost"
+   892→   892→                size="icon"
+   893→   893→                onClick={toggleTheme}
+   894→   894→                className="size-9 text-muted-foreground hover:text-foreground"
+   895→   895→                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+   896→   896→              >
+   897→   897→                <AnimatePresence mode="wait" initial={false}>
+   898→   898→                  {isDark ? (
+   899→   899→                    <motion.div
+   900→   900→                      key="sun"
+   901→   901→                      initial={{ rotate: -90, scale: 0 }}
+   902→   902→                      animate={{ rotate: 0, scale: 1 }}
+   903→   903→                      exit={{ rotate: 90, scale: 0 }}
+   904→   904→                      transition={{ duration: 0.2 }}
+   905→   905→                    >
+   906→   906→                      <Sun className="size-4" />
+   907→   907→                    </motion.div>
+   908→   908→                  ) : (
+   909→   909→                    <motion.div
+   910→   910→                      key="moon"
+   911→   911→                      initial={{ rotate: 90, scale: 0 }}
+   912→   912→                      animate={{ rotate: 0, scale: 1 }}
+   913→   913→                      exit={{ rotate: -90, scale: 0 }}
+   914→   914→                      transition={{ duration: 0.2 }}
+   915→   915→                    >
+   916→   916→                      <Moon className="size-4" />
+   917→   917→                    </motion.div>
+   918→   918→                  )}
+   919→   919→                </AnimatePresence>
+   920→   920→              </Button>
+   921→   921→
+   922→   922→              {/* Citation Counter Pill */}
+   923→   923→              {generatedArticle && (
+   924→   924→                <CitationCounter article={generatedArticle} />
+   925→   925→              )}
+   926→   926→
+   927→   927→              {/* Stats Dashboard Button */}
+   928→   928→              {generatedArticle && (
+   929→   929→                <Button
+   930→   930→                  variant="ghost"
+   931→   931→                  size="icon"
+   932→   932→                  onClick={() => setStatsOpen(true)}
+   933→   933→                  className="size-9 text-muted-foreground hover:text-emerald-600"
+   934→   934→                  aria-label="Open article statistics"
+   935→   935→                >
+   936→   936→                  <BarChart3 className="size-4" />
+   937→   937→                </Button>
+   938→   938→              )}
+   939→   939→
+   940→   940→              {currentStep > 1 && (
+   941→   941→                <Button
+   942→   942→                  variant="ghost"
+   943→   943→                  size="sm"
+   944→   944→                  onClick={prevStep}
+   945→   945→                  className="text-muted-foreground hover:text-foreground"
+   946→   946→                >
+   947→   947→                  <ChevronLeft className="size-4 sm:mr-1" />
+   948→   948→                  <span className="hidden sm:inline">Back</span>
+   949→   949→                </Button>
+   950→   950→              )}
+   951→   951→              {(generatedArticle || currentStep > 1) && (
+   952→   952→                <Button
+   953→   953→                  variant="ghost"
+   954→   954→                  size="sm"
+   955→   955→                  onClick={resetAll}
+   956→   956→                  className="text-muted-foreground hover:text-destructive"
+   957→   957→                >
+   958→   958→                  <RotateCcw className="size-4 sm:mr-1" />
+   959→   959→                  <span className="hidden sm:inline">New Article</span>
+   960→   960→                </Button>
+   961→   961→              )}
+   962→   962→            </div>
+   963→   963→          </div>
+   964→   964→        </div>
+   965→   965→      </header>
+   966→   966→
+   967→   967→      {/* ── Step Navigation (sticky mobile) ──────────────────────── */}
+   968→   968→      <div className="sticky top-14 md:static z-40 border-b border-border/40 bg-white/80 dark:bg-slate-900/80 md:bg-white/50 md:dark:bg-slate-900/50 backdrop-blur-sm md:backdrop-blur-sm">
+   969→   969→        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
+   970→   970→          <StepNavigation currentStep={currentStep} />
+   971→   971→        </div>
+   972→   972→        {/* Global Progress Indicator */}
+   973→   973→        <GlobalProgressIndicator currentStep={currentStep} />
+   974→   974→      </div>
+   975→   975→
+   976→   976→      {/* ── Main Content ─────────────────────────────────────────── */}
+   977→   977→      <main className="flex-1">
+   978→   978→        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+   979→   979→          <AnimatePresence mode="wait">
+   980→   980→            <motion.div
+   981→   981→              key={currentStep}
+   982→   982→              initial={{ opacity: 0, x: direction * 40, scale: 0.98 }}
+   983→   983→              animate={{ opacity: 1, x: 0, scale: 1 }}
+   984→   984→              exit={{ opacity: 0, x: -direction * 40, scale: 0.98 }}
+   985→   985→              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+   986→   986→              className="space-y-6"
+   987→   987→            >
+   988→   988→              {/* Step Header — stagger: enters 50ms before content */}
+   989→   989→              <motion.div
+   990→   990→                initial={{ opacity: 0, y: 8 }}
+   991→   991→                animate={{ opacity: 1, y: 0 }}
+   992→   992→                transition={{ duration: 0.25, delay: 0 }}
+   993→   993→              >
+   994→   994→                <StepHeader
+   995→   995→                  step={currentStep}
+   996→   996→                  title={stepInfo?.label || 'Getting Started'}
+   997→   997→                  description={
+   998→   998→                    currentStep === 1
+   999→   999→                      ? 'Define your research topic through keywords, a title, or a research idea.'
+  1000→  1000→                      : currentStep === 2
+  1001→  1001→                        ? 'Search and select up to 50 academic references for your article.'
+  1002→  1002→                        : currentStep === 3
+  1003→  1003→                          ? 'Choose your research method and generate the full article.'
+  1004→  1004→                          : currentStep === 4
+  1005→  1005→                            ? 'Review your generated article in IMRAD format.'
+  1006→  1006→                            : 'Polish and refine your article to publication-ready quality.'
+  1007→  1007→                  }
+  1008→  1008→                />
+  1009→  1009→              </motion.div>
+  1010→  1010→
+  1011→  1011→              {/* Content — stagger: enters 50ms after header */}
+  1012→  1012→              <motion.div
+  1013→  1013→                initial={{ opacity: 0, y: 8 }}
+  1014→  1014→                animate={{ opacity: 1, y: 0 }}
+  1015→  1015→                transition={{ duration: 0.25, delay: 0.05 }}
+  1016→  1016→                className="space-y-6"
+  1017→  1017→              >
+  1018→  1018→                <Separator className="opacity-50" />
+  1019→  1019→
+  1020→  1020→                {/* Welcome Banner (fresh state on Step 1) */}
+  1021→  1021→                {showWelcomeBanner && <WelcomeBanner />}
+  1022→  1022→
+  1023→  1023→                {/* Contextual Step Tips */}
+  1024→  1024→                <StepTipsBar step={currentStep} />
+  1025→  1025→
+  1026→  1026→              {/* Step Content */}
+  1027→  1027→              <Card className="border-border/40 shadow-sm bg-white/60 dark:bg-slate-900/40 backdrop-blur-sm overflow-hidden card-hover-lift transition-smooth">
+  1028→  1028→                <CardContent className="p-4 sm:p-6 lg:p-8">
+  1029→  1029→                  {currentStep === 1 && <Step1Input />}
+  1030→  1030→                  {currentStep === 2 && (
+  1031→  1031→                    <div className="space-y-4">
+  1032→  1032→                      {/* Super Bot Toggle */}
+  1033→  1033→                      <div className="flex items-center gap-2">
+  1034→  1034→                        <Button
+  1035→  1035→                          variant={showSuperBot ? 'default' : 'outline'}
+  1036→  1036→                          size="sm"
+  1037→  1037→                          onClick={() => setShowSuperBot(true)}
+  1038→  1038→                          className={!showSuperBot ? 'gap-1.5 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700' : 'gap-1.5 bg-emerald-600 text-white'}
+  1039→  1039→                        >
+  1040→  1040→                          <Bot className="size-4" />
+  1041→  1041→                          <span className="hidden sm:inline">Super Bot</span>
+  1042→  1042→                        </Button>
+  1043→  1043→                        <Button
+  1044→  1044→                          variant={!showSuperBot ? 'default' : 'outline'}
+  1045→  1045→                          size="sm"
+  1046→  1046→                          onClick={() => setShowSuperBot(false)}
+  1047→  1047→                          className={!showSuperBot ? 'gap-1.5 bg-emerald-600 text-white' : 'gap-1.5 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700'}
+  1048→  1048→                        >
+  1049→  1049→                          <Library className="size-4" />
+  1050→  1050→                          <span className="hidden sm:inline">AI Search</span>
+  1051→  1051→                        </Button>
+  1052→  1052→                        {showSuperBot && (
+  1053→  1053→                          <Badge variant="outline" className="border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300">
+  1054→  1054→                            <Zap className="size-3 mr-1" />
+  1055→  1055→                            Custom Engine — No AI per click
+  1056→  1056→                          </Badge>
+  1057→  1057→                        )}
+  1058→  1058→                      </div>
+  1059→  1059→
+  1060→  1060→                      {showSuperBot ? (
+  1061→  1061→                        <SuperBotPanel />
+  1062→  1062→                      ) : (
+  1063→  1063→                        <Step2References />
+  1064→  1064→                      )}
+  1065→  1065→                    </div>
+  1066→  1066→                  )}
+  1067→  1067→                  {currentStep === 3 && <Step3Method />}
+  1068→  1068→                  {currentStep === 4 && <Step4Output />}
+  1069→  1069→                  {currentStep === 5 && <Step5Polish />}
+  1070→  1070→                </CardContent>
+  1071→  1071→              </Card>
+  1072→  1072→            </motion.div>
+  1073→  1073→            </motion.div>
+  1074→  1074→          </AnimatePresence>
+  1075→  1075→
+  1076→  1076→          {/* Keyboard navigation hint */}
+  1077→  1077→          <div className="hidden lg:flex items-center justify-center gap-4 mt-6 text-[11px] text-muted-foreground/50">
+  1078→  1078→            <span className="flex items-center gap-1">
+  1079→  1079→              <kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-mono">
+  1080→  1080→                Ctrl
+  1081→  1081→              </kbd>
+  1082→  1082→              +
+  1083→  1083→              <kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-mono">
+  1084→  1084→                ←
+  1085→  1085→              </kbd>
+  1086→  1086→              /
+  1087→  1087→              <kbd className="px-1.5 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-mono">
+  1088→  1088→                →
+  1089→  1089→              </kbd>
+  1090→  1090→              <span className="ml-0.5">Navigate steps</span>
+  1091→  1091→            </span>
+  1092→  1092→            <span className="text-border">|</span>
+  1093→  1093→            <span className="flex items-center gap-1">
+  1094→  1094→              <kbd className="px-2 py-0.5 rounded border border-border/60 bg-muted/50 text-[10px] font-mono">
+  1095→  1095→                Esc
+  1096→  1096→              </kbd>
+  1097→  1097→              <span className="ml-0.5">Go back</span>
+  1098→  1098→            </span>
+  1099→  1099→          </div>
+  1100→  1100→        </div>
+  1101→  1101→      </main>
+  1102→  1102→
+  1103→  1103→      {/* ── Auth Modal ──────────────────────────────────────────── */}
+  1104→  1104→      <AuthModal
+  1105→  1105→        open={authModalOpen}
+  1106→  1106→        onClose={() => setAuthModalOpen(false)}
+  1107→  1107→        onAuthSuccess={(user) => {
+  1108→  1108→          setAuthUser({
+  1109→  1109→            id: user.id,
+  1110→  1110→            email: user.email,
+  1111→  1111→            fullName: user.name || undefined,
+  1112→  1112→            avatarUrl: user.avatarUrl || undefined,
+  1113→  1113→            subscriptionTier: (user.subscriptionTier as 'free' | 'pro' | 'enterprise') || 'free',
+  1114→  1114→          });
+  1115→  1115→        }}
+  1116→  1116→      />
+  1117→  1117→
+  1118→  1118→      {/* ── Onboarding Tutorial ─────────────────────────────────── */}
+  1119→  1119→      <OnboardingTutorial open={tutorialOpen} onOpenChange={setTutorialOpen} />
+  1120→  1120→
+  1121→  1121→      {/* ── Stats Dashboard Dialog ───────────────────────────────── */}
+  1122→  1122→      {generatedArticle && (
+  1123→  1123→        <StatsDashboard
+  1124→  1124→          open={statsOpen}
+  1125→  1125→          onOpenChange={setStatsOpen}
+  1126→  1126→          article={generatedArticle}
+  1127→  1127→        />
+  1128→  1128→      )}
+  1129→  1129→
+  1130→  1130→      {/* ── Word Count Goal Progress (footer, when article exists) ── */}
+  1131→  1131→      {generatedArticle && (
+  1132→  1132→        <WordCountGoalBar article={generatedArticle} />
+  1133→  1133→      )}
+  1134→  1134→
+  1135→  1135→      {/* ── Footer ───────────────────────────────────────────────── */}
+  1136→  1136→      <footer className="mt-auto border-t border-border/40 bg-white/50 dark:bg-slate-900/50">
+  1137→  1137→        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+  1138→  1138→          {/* Keyboard Shortcuts Collapsible (desktop: expanded, mobile: collapsed) */}
+  1139→  1139→          <KeyboardShortcutsSection
+  1140→  1140→            isOpen={shortcutsOpen}
+  1141→  1141→            onToggle={() => setShortcutsOpen((v) => !v)}
+  1142→  1142→          />
+  1143→  1143→
+  1144→  1144→          <Separator className="opacity-40 mb-4" />
+  1145→  1145→
+  1146→  1146→          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+  1147→  1147→            {/* Left: copyright & version */}
+  1148→  1148→            <div className="flex items-center gap-2">
+  1149→  1149→              <p>© 2025 Mamah</p>
+  1150→  1150→              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
+  1151→  1151→                {APP_VERSION}
+  1152→  1152→              </Badge>
+  1153→  1153→            </div>
+  1154→  1154→
+  1155→  1155→            {/* Center: made with love */}
+  1156→  1156→            <p className="flex items-center gap-1">
+  1157→  1157→              Made with{' '}
+  1158→  1158→              <Heart className="size-3 text-red-400 fill-red-400" /> using{' '}
+  1159→  1159→              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Z.ai</span>
+  1160→  1160→            </p>
+  1161→  1161→
+  1162→  1162→            {/* Right: links with hover effects */}
+  1163→  1163→            <div className="flex items-center gap-3">
+  1164→  1164→              <button
+  1165→  1165→                className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1"
+  1166→  1166→                onClick={() => {
+  1167→  1167→                  resetOnboarding();
+  1168→  1168→                  setTutorialOpen(true);
+  1169→  1169→                }}
+  1170→  1170→              >
+  1171→  1171→                <HelpCircle className="size-3" />
+  1172→  1172→                Tutorial
+  1173→  1173→              </button>
+  1174→  1174→              <button
+  1175→  1175→                className="hover:text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 flex items-center gap-1 group"
+  1176→  1176→                onClick={() => toast.info('This page is coming soon!')}
+  1177→  1177→              >
+  1178→  1178→                <Shield className="size-3 group-hover:scale-110 transition-transform duration-200" />
+  1179→  1179→                <span className="group-hover:underline underline-offset-2">Privacy</span>
+  1180→  1180→              </button>
+  1181→  1181→              <button
+  1182→  1182→                className="hover:text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 flex items-center gap-1 group"
+  1183→  1183→                onClick={() => toast.info('This page is coming soon!')}
+  1184→  1184→              >
+  1185→  1185→                <FileCheck className="size-3 group-hover:scale-110 transition-transform duration-200" />
+  1186→  1186→                <span className="group-hover:underline underline-offset-2">Terms</span>
+  1187→  1187→              </button>
+  1188→  1188→            </div>
+  1189→  1189→          </div>
+  1190→  1190→
+  1191→  1191→          {/* Quick Actions — mobile only */}
+  1192→  1192→          <MobileQuickActions />
+  1193→  1193→        </div>
+  1194→  1194→      </footer>
+  1195→  1195→    </div>
+  1196→  1196→  );
+  1197→  1197→}
+  1198→  1198→

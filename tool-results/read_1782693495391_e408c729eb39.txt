@@ -1,0 +1,1046 @@
+     1→/**
+     2→ * database-configs.ts
+     3→ *
+     4→ * Comprehensive configuration registry for 15+ academic research databases.
+     5→ * Each entry encapsulates the database's identity, CSS selectors used for
+     6→ * web-scraping / headless-browser extraction, and behavioural parameters
+     7→ * that govern request pacing, pagination, and timeouts.
+     8→ *
+     9→ * This is a **backend-only utility module** — no React or client-side code.
+    10→ * Import it from API routes, server actions, or mini-services.
+    11→ */
+    12→
+    13→// ---------------------------------------------------------------------------
+    14→// Type definitions
+    15→// ---------------------------------------------------------------------------
+    16→
+    17→/**
+    18→ * CSS selectors that uniquely identify key DOM elements on a database's
+    19→ * search-results page.  Every selector must target the **current** layout
+    20→ * of the corresponding website (as of mid-2025).  If a selector changes
+    21→ * it should be updated here — all consuming code reads from this single
+    22→ * source of truth.
+    23→ */
+    24→export interface DatabaseSelectors {
+    25→  /** The main text input where a search query is typed. */
+    26→  search_input: string;
+    27→
+    28→  /** The button (or link) that submits the search form. */
+    29→  search_button: string;
+    30→
+    31→  /** Container element for a single search-result entry. */
+    32→  result_item: string;
+    33→
+    34→  /** Anchor / heading that holds the result's title. */
+    35→  result_title: string;
+    36→
+    37→  /** Element containing the list of author names. */
+    38→  result_authors: string;
+    39→
+    40→  /** Element holding the publication year. */
+    41→  result_year: string;
+    42→
+    43→  /** Paragraph or div with the abstract / snippet text. */
+    44→  result_abstract: string;
+    45→
+    46→  /** Link pointing to a downloadable PDF (if available). */
+    47→  result_pdf_link: string;
+    48→
+    49→  /** Element or data-attribute exposing the DOI. */
+    50→  result_doi: string;
+    51→
+    52→  /** Element that displays the citation / reference count. */
+    53→  result_citations: string;
+    54→
+    55→  /** Element with the journal or source name. */
+    56→  result_journal: string;
+    57→
+    58→  /** Button or link that navigates to the next page of results. */
+    59→  pagination_next: string;
+    60→
+    61→  /** Spinner, skeleton, or overlay shown while results are loading. */
+    62→  loading_indicator: string;
+    63→}
+    64→
+    65→/**
+    66→ * Behavioural knobs that control how the scraper interacts with a database
+    67→ * — pacing, scroll behaviour, pagination limits, and authentication
+    68→ * requirements.
+    69→ */
+    70→export interface DatabaseBehavior {
+    71→  /** Minimum random delay (ms) between successive HTTP requests. */
+    72→  delay_min: number;
+    73→
+    74→  /** Maximum random delay (ms) between successive HTTP requests. */
+    75→  delay_max: number;
+    76→
+    77→  /** Whether the page should be scrolled to the bottom before extraction. */
+    78→  scroll_before_extract: boolean;
+    79→
+    80→  /** Maximum number of result items available on a single page. */
+    81→  max_results_per_page: number;
+    82→
+    83→  /** Maximum number of pages to traverse per search session. */
+    84→  total_pages: number;
+    85→
+    86→  /** Milliseconds to wait before declaring a request timed out. */
+    87→  timeout_ms: number;
+    88→
+    89→  /** Minimum gap (ms) between requests to respect rate-limiting. */
+    90→  rate_limit_ms: number;
+    91→
+    92→  /** Whether the database requires the user to be logged in. */
+    93→  requires_login: boolean;
+    94→
+    95→  /** URL of the login page (only meaningful when `requires_login` is true). */
+    96→  login_url: string;
+    97→}
+    98→
+    99→/**
+   100→ * Full configuration for a single academic database.
+   101→ */
+   102→export interface DatabaseConfig {
+   103→  /** Unique slug used internally (e.g. key in `DATABASE_CONFIGS`). */
+   104→  id: string;
+   105→
+   106→  /** Human-readable display name. */
+   107→  name: string;
+   108→
+   109→  /** Canonical homepage URL. */
+   110→  url: string;
+   111→
+   112→  /** URL of the search page (often same as homepage). */
+   113→  searchUrl: string;
+   114→
+   115→  /** Short description of what the database covers. */
+   116→  description: string;
+   117→
+   118→  /** Category label — must match a value in `DATABASE_CATEGORIES`. */
+   119→  category: string;
+   120→
+   121→  /** Name of a Lucide icon (for UI rendering). */
+   122→  icon: string;
+   123→
+   124→  /** Whether the database is currently enabled for searching. */
+   125→  isEnabled: boolean;
+   126→
+   127→  /** CSS selectors for the database's result pages. */
+   128→  selectors: DatabaseSelectors;
+   129→
+   130→  /** Behavioural parameters for scraping. */
+   131→  behavior: DatabaseBehavior;
+   132→}
+   133→
+   134→// ---------------------------------------------------------------------------
+   135→// Constants
+   136→// ---------------------------------------------------------------------------
+   137→
+   138→/**
+   139→ * Canonical list of database categories used across the application.
+   140→ */
+   141→export const DATABASE_CATEGORIES = [
+   142→  "General",
+   143→  "Open Access",
+   144→  "Specialized",
+   145→  "Indonesian",
+   146→] as const;
+   147→
+   148→/**
+   149→ * Type alias for category values.
+   150→ */
+   151→export type DatabaseCategory = (typeof DATABASE_CATEGORIES)[number];
+   152→
+   153→// ---------------------------------------------------------------------------
+   154→// Database configurations
+   155→// ---------------------------------------------------------------------------
+   156→
+   157→/**
+   158→ * Master map of all supported academic databases, keyed by their unique `id`.
+   159→ *
+   160→ * **Adding a new database:**
+   161→ * 1.  Add a new entry to this record.
+   162→ * 2.  Make sure its `category` matches one of `DATABASE_CATEGORIES`.
+   163→ * 3.  Verify the CSS selectors against the live website.
+   164→ */
+   165→export const DATABASE_CONFIGS: Record<string, DatabaseConfig> = {
+   166→  // =========================================================================
+   167→  // 1. Google Scholar
+   168→  // =========================================================================
+   169→  google_scholar: {
+   170→    id: "google_scholar",
+   171→    name: "Google Scholar",
+   172→    url: "https://scholar.google.com",
+   173→    searchUrl: "https://scholar.google.com/scholar",
+   174→    description:
+   175→      "The world's largest academic search engine, indexing articles, theses, books, and conference papers across all disciplines.",
+   176→    category: "General",
+   177→    icon: "GraduationCap",
+   178→    isEnabled: true,
+   179→    selectors: {
+   180→      /** `#gs_hdr_tsi` — the central text input on the Scholar homepage. */
+   181→      search_input: "#gs_hdr_tsi",
+   182→      /** `.gs_cb_upd input[type="submit"]` or the `#gs_hdr_tsc` search icon button. */
+   183→      search_button: "#gs_hdr_tsc",
+   184→      /** `.gs_r` — each individual result block. */
+   185→      result_item: ".gs_r",
+   186→      /** `.gs_rt a` — the title link inside the result header. */
+   187→      result_title: ".gs_rt a",
+   188→      /** `.gs_a` — author names, venue, and snippet metadata line. */
+   189→      result_authors: ".gs_a",
+   190→      /** `.gs_a` again — the year is embedded within the author line text. */
+   191→      result_year: ".gs_a",
+   192→      /** `.gs_rs` — the snippet / abstract line below the title. */
+   193→      result_abstract: ".gs_rs",
+   194→      /** `.gs_or_ggsm a` — "PDF" or "[PDF]" link when available. */
+   195→      result_pdf_link: ".gs_or_ggsm a",
+   196→      /** `data-clk-doi` attribute on the result container, if present. */
+   197→      result_doi: "[data-clk-doi]",
+   198→      /** `.gs_fl a` — "Cited by N" link in the footer of each result. */
+   199→      result_citations: ".gs_fl a[href*='cites=']",
+   200→      /** `.gs_a` — journal/source name is part of the author metadata line. */
+   201→      result_journal: ".gs_a",
+   202→      /** `#pnnext` — the "Next >" page button at the bottom of results. */
+   203→      pagination_next: "#pnnext",
+   204→      /** `.gs_in_txt_gs` loading text, or check for absence of results. */
+   205→      loading_indicator: "#gs_res_ccl_mid",
+   206→    },
+   207→    behavior: {
+   208→      delay_min: 2000,
+   209→      delay_max: 5000,
+   210→      scroll_before_extract: true,
+   211→      max_results_per_page: 10,
+   212→      total_pages: 10,
+   213→      timeout_ms: 30000,
+   214→      rate_limit_ms: 1500,
+   215→      requires_login: false,
+   216→      login_url: "",
+   217→    },
+   218→  },
+   219→
+   220→  // =========================================================================
+   221→  // 2. Directory of Open Access Journals (DOAJ)
+   222→  // =========================================================================
+   223→  doaj: {
+   224→    id: "doaj",
+   225→    name: "Directory of Open Access Journals",
+   226→    url: "https://doaj.org",
+   227→    searchUrl: "https://doaj.org/search",
+   228→    description:
+   229→      "A community-curated directory of high-quality, open access, peer-reviewed journals and their articles.",
+   230→    category: "Open Access",
+   231→    icon: "Unlock",
+   232→    isEnabled: true,
+   233→    selectors: {
+   234→      /** `input[type="search"]` — the search box on the DOAJ search page. */
+   235→      search_input: "input[type='search']",
+   236→      /** `button[type="submit"]` — search submit button. */
+   237→      search_button: "button[type='submit']",
+   238→      /** `.search-result` — container for a single article result. */
+   239→      result_item: ".search-result",
+   240→      /** `.search-result .title a` — the article title link. */
+   241→      result_title: ".search-result .title a",
+   242→      /** `.search-result .biblio .authors` — comma-separated author list. */
+   243→      result_authors: ".search-result .biblio .authors",
+   244→      /** `.search-result .biblio .year` — publication year span. */
+   245→      result_year: ".search-result .biblio .year",
+   246→      /** `.search-result .abstract p` or `.search-result .text-over` — truncated abstract. */
+   247→      result_abstract: ".search-result .abstract",
+   248→      /** `.search-result .full-text a` — link to the full-text PDF. */
+   249→      result_pdf_link: ".search-result .full-text a",
+   250→      /** `.search-result .doi a` — DOI link. */
+   251→      result_doi: ".search-result .doi a",
+   252→      /** `.search-result .hits` — citation or hit count. */
+   253→      result_citations: ".search-result .hits",
+   254→      /** `.search-result .journal-title a` — source journal name. */
+   255→      result_journal: ".search-result .journal-title a",
+   256→      /** `.pagination .next a` — next page link in pagination. */
+   257→      pagination_next: ".pagination .next a",
+   258→      /** `.loading-spinner` or `.search-loading` — loading indicator. */
+   259→      loading_indicator: ".loading-spinner",
+   260→    },
+   261→    behavior: {
+   262→      delay_min: 1500,
+   263→      delay_max: 4000,
+   264→      scroll_before_extract: false,
+   265→      max_results_per_page: 10,
+   266→      total_pages: 5,
+   267→      timeout_ms: 25000,
+   268→      rate_limit_ms: 1000,
+   269→      requires_login: false,
+   270→      login_url: "",
+   271→    },
+   272→  },
+   273→
+   274→  // =========================================================================
+   275→  // 3. Garuda (Indonesian Journals)
+   276→  // =========================================================================
+   277→  garuda: {
+   278→    id: "garuda",
+   279→    name: "Garuda",
+   280→    url: "https://garuda.kemdikbud.go.id",
+   281→    searchUrl: "https://garuda.kemdikbud.go.id/journal",
+   282→    description:
+   283→      "Indonesia's national journal portal managed by Kemdikbud, providing access to accredited Indonesian academic journals.",
+   284→    category: "Indonesian",
+   285→    icon: "Landmark",
+   286→    isEnabled: true,
+   287→    selectors: {
+   288→      /** `#search-input` — the main search text field. */
+   289→      search_input: "#search-input",
+   290→      /** `.btn-search` — the search button. */
+   291→      search_button: ".btn-search",
+   292→      /** `.list-journal-item` or `.article-item` — each result container. */
+   293→      result_item: ".list-journal-item",
+   294→      /** `.list-journal-item .title a` — journal or article title. */
+   295→      result_title: ".list-journal-item .title a",
+   296→      /** `.list-journal-item .author` — author line. */
+   297→      result_authors: ".list-journal-item .author",
+   298→      /** `.list-journal-item .year` — publication year. */
+   299→      result_year: ".list-journal-item .year",
+   300→      /** `.list-journal-item .abstract` — abstract or summary text. */
+   301→      result_abstract: ".list-journal-item .abstract",
+   302→      /** `.list-journal-item .pdf a` — link to the PDF file. */
+   303→      result_pdf_link: ".list-journal-item .pdf a",
+   304→      /** `.list-journal-item .doi` — DOI field. */
+   305→      result_doi: ".list-journal-item .doi",
+   306→      /** `.list-journal-item .cited` — citations count if present. */
+   307→      result_citations: ".list-journal-item .cited",
+   308→      /** `.list-journal-item .journal-name` — journal name. */
+   309→      result_journal: ".list-journal-item .journal-name",
+   310→      /** `.pagination .next` — next-page button. */
+   311→      pagination_next: ".pagination .next",
+   312→      /** `.loading` — loading overlay / spinner. */
+   313→      loading_indicator: ".loading",
+   314→    },
+   315→    behavior: {
+   316→      delay_min: 2000,
+   317→      delay_max: 5000,
+   318→      scroll_before_extract: true,
+   319→      max_results_per_page: 10,
+   320→      total_pages: 5,
+   321→      timeout_ms: 30000,
+   322→      rate_limit_ms: 2000,
+   323→      requires_login: false,
+   324→      login_url: "",
+   325→    },
+   326→  },
+   327→
+   328→  // =========================================================================
+   329→  // 4. ResearchGate
+   330→  // =========================================================================
+   331→  researchgate: {
+   332→    id: "researchgate",
+   333→    name: "ResearchGate",
+   334→    url: "https://www.researchgate.net",
+   335→    searchUrl: "https://www.researchgate.net/search",
+   336→    description:
+   337→      "A professional network for scientists and researchers to share papers, ask questions, and find collaborators.",
+   338→    category: "Social/Network",
+   339→    icon: "Users",
+   340→    isEnabled: true,
+   341→    selectors: {
+   342→      /** `input[type="text"].search-input` — the search box in the header. */
+   343→      search_input: "input[type='text'].search-input",
+   344→      /** `.search-submit` — search button next to the input. */
+   345→      search_button: ".search-submit",
+   346→      /** `.nova-legacy-e-list__item` — each search result card. */
+   347→      result_item: ".nova-legacy-e-list__item",
+   348→      /** `.nova-legacy-e-link--theme-bare` or `.nova-legacy-v-publication-item__title` — result title. */
+   349→      result_title: ".nova-legacy-v-publication-item__title",
+   350→      /** `.nova-legacy-v-person-inline-item` — author chip / inline list. */
+   351→      result_authors: ".nova-legacy-v-person-inline-item",
+   352→      /** `.nova-legacy-v-publication-item__meta-date` — year / date. */
+   353→      result_year: ".nova-legacy-v-publication-item__meta-date",
+   354→      /** `.nova-legacy-v-publication-item__description` — abstract snippet. */
+   355→      result_abstract: ".nova-legacy-v-publication-item__description",
+   356→      /** `.nova-legacy-e-link--theme-display` with PDF text — PDF download link. */
+   357→      result_pdf_link: "a[href*='.pdf']",
+   358→      /** `.nova-legacy-e-link--color-green` — DOI link. */
+   359→      result_doi: "a[href*='doi.org']",
+   360→      /** `.nova-legacy-v-publication-item__metrics` — read/citation count. */
+   361→      result_citations: ".nova-legacy-v-publication-item__metrics",
+   362→      /** `.nova-legacy-v-publication-item__journal` — source journal. */
+   363→      result_journal: ".nova-legacy-v-publication-item__journal",
+   364→      /** `.nova-legacy-c-pagination__item--next a` — next page. */
+   365→      pagination_next: ".nova-legacy-c-pagination__item--next a",
+   366→      /** `.nova-legacy-c-spinner` — loading spinner. */
+   367→      loading_indicator: ".nova-legacy-c-spinner",
+   368→    },
+   369→    behavior: {
+   370→      delay_min: 3000,
+   371→      delay_max: 7000,
+   372→      scroll_before_extract: true,
+   373→      max_results_per_page: 10,
+   374→      total_pages: 5,
+   375→      timeout_ms: 35000,
+   376→      rate_limit_ms: 2500,
+   377→      requires_login: true,
+   378→      login_url: "https://www.researchgate.net/login",
+   379→    },
+   380→  },
+   381→
+   382→  // =========================================================================
+   383→  // 5. ScienceOpen
+   384→  // =========================================================================
+   385→  scienceopen: {
+   386→    id: "scienceopen",
+   387→    name: "ScienceOpen",
+   388→    url: "https://www.scienceopen.com",
+   389→    searchUrl: "https://www.scienceopen.com/search",
+   390→    description:
+   391→      "A research and publishing network offering open access to over 90 million articles with smart search and collection tools.",
+   392→    category: "Open Access",
+   393→    icon: "BookOpen",
+   394→    isEnabled: true,
+   395→    selectors: {
+   396→      /** `input.search-query` — the main search input field. */
+   397→      search_input: "input.search-query",
+   398→      /** `button.search-btn` — search trigger button. */
+   399→      search_button: "button.search-btn",
+   400→      /** `.result-item` — each article result card. */
+   401→      result_item: ".result-item",
+   402→      /** `.result-item .title a` — article title link. */
+   403→      result_title: ".result-item .title a",
+   404→      /** `.result-item .authors` — author name list. */
+   405→      result_authors: ".result-item .authors",
+   406→      /** `.result-item .year` — publication year badge. */
+   407→      result_year: ".result-item .year",
+   408→      /** `.result-item .abstract-text` — truncated abstract. */
+   409→      result_abstract: ".result-item .abstract-text",
+   410→      /** `.result-item .full-text-link` — link to the open-access full text. */
+   411→      result_pdf_link: ".result-item .full-text-link",
+   412→      /** `.result-item .doi-link` — DOI anchor tag. */
+   413→      result_doi: ".result-item .doi-link",
+   414→      /** `.result-item .citations-count` — number of citations. */
+   415→      result_citations: ".result-item .citations-count",
+   416→      /** `.result-item .journal-name` — journal or source. */
+   417→      result_journal: ".result-item .journal-name",
+   418→      /** `.pagination li.next a` — next page link. */
+   419→      pagination_next: ".pagination li.next a",
+   420→      /** `.loading-overlay` — loading indicator. */
+   421→      loading_indicator: ".loading-overlay",
+   422→    },
+   423→    behavior: {
+   424→      delay_min: 1500,
+   425→      delay_max: 4000,
+   426→      scroll_before_extract: true,
+   427→      max_results_per_page: 20,
+   428→      total_pages: 5,
+   429→      timeout_ms: 25000,
+   430→      rate_limit_ms: 1200,
+   431→      requires_login: false,
+   432→      login_url: "",
+   433→    },
+   434→  },
+   435→
+   436→  // =========================================================================
+   437→  // 6. PubMed
+   438→  // =========================================================================
+   439→  pubmed: {
+   440→    id: "pubmed",
+   441→    name: "PubMed",
+   442→    url: "https://pubmed.ncbi.nlm.nih.gov",
+   443→    searchUrl: "https://pubmed.ncbi.nlm.nih.gov",
+   444→    description:
+   445→      "A free resource from the US National Library of Medicine, indexing over 36 million citations for biomedical and life sciences literature.",
+   446→    category: "Specialized",
+   447→    icon: "HeartPulse",
+   448→    isEnabled: true,
+   449→    selectors: {
+   450→      /** `#id_term` or `input[id="term"]` — the PubMed search bar. */
+   451→      search_input: "#id_term",
+   452→      /** `.search-btn` or `button.search` — submit button. */
+   453→      search_button: "button.search",
+   454→      /** `.search-result-ct` or `article.search-result` — each result entry. */
+   455→      result_item: "article.search-result",
+   456→      /** `.doc-sum-title a` — the article title anchor. */
+   457→      result_title: ".doc-sum-title a",
+   458→      /** `.doc-sum-authors` — authors list. */
+   459→      result_authors: ".doc-sum-authors",
+   460→      /** `.doc-sum-journal-citation .citation-date` — publication year. */
+   461→      result_year: ".doc-sum-journal-citation .citation-date",
+   462→      /** `.full-view-snippet` — snippet / abstract preview. */
+   463→      result_abstract: ".full-view-snippet",
+   464→      /** `a[title="Free full text"]` — link to the free full text / PDF. */
+   465→      result_pdf_link: "a[title='Free full text']",
+   466→      /** `.doi a` — DOI link. */
+   467→      result_doi: ".doi a",
+   468→      /** `.citation-count` — "Cited by N" link. */
+   469→      result_citations: ".citation-count",
+   470→      /** `.doc-sum-journal-citation .journal` — journal name. */
+   471→      result_journal: ".doc-sum-journal-citation .journal",
+   472→      /** `a.pagination-next` — next-page button. */
+   473→      pagination_next: "a.pagination-next",
+   474→      /** `.loading-spinner` or `.search-msg` — loading / status indicator. */
+   475→      loading_indicator: ".search-msg",
+   476→    },
+   477→    behavior: {
+   478→      delay_min: 1000,
+   479→      delay_max: 3000,
+   480→      scroll_before_extract: false,
+   481→      max_results_per_page: 20,
+   482→      total_pages: 10,
+   483→      timeout_ms: 25000,
+   484→      rate_limit_ms: 1000,
+   485→      requires_login: false,
+   486→      login_url: "",
+   487→    },
+   488→  },
+   489→
+   490→  // =========================================================================
+   491→  // 7. IEEE Xplore
+   492→  // =========================================================================
+   493→  ieee_xplore: {
+   494→    id: "ieee_xplore",
+   495→    name: "IEEE Xplore",
+   496→    url: "https://ieeexplore.ieee.org",
+   497→    searchUrl: "https://ieeexplore.ieee.org/search/searchresult.jsp",
+   498→    description:
+   499→      "Delivering full-text access to the world's highest quality technical literature in engineering and technology from IEEE and IET.",
+   500→    category: "Specialized",
+   501→    icon: "Cpu",
+   502→    isEnabled: true,
+   503→    selectors: {
+   504→      /** `input#search-input` — the main IEEE Xplore search box. */
+   505→      search_input: "input#search-input",
+   506→      /** `button#search-button` — the search submit button. */
+   507→      search_button: "button#search-button",
+   508→      /** `.List-results-items .search-result` — each result card. */
+   509→      result_item: ".List-results-items .search-result",
+   510→      /** `.result-item h3 a` — article title link. */
+   511→      result_title: ".result-item h3 a",
+   512→      /** `.author-list a` — individual author links. */
+   513→      result_authors: ".author-list a",
+   514→      /** `.pub-delivery-date` or `.publisher-date` — publication year. */
+   515→      result_year: ".publisher-date",
+   516→      /** `.description` — abstract snippet. */
+   517→      result_abstract: ".description",
+   518→      /** `.stats-document-section a[href*='stamp.jsp']` — PDF link. */
+   519→      result_pdf_link: "a[href*='stamp.jsp']",
+   520→      /** `.doi a` or `a[href*='doi.org']` — DOI anchor. */
+   521→      result_doi: "a[href*='doi.org']",
+   522→      /** `.citation .stats-document` — citation count. */
+   523→      result_citations: ".citation .stats-document",
+   524→      /** `.publication-title a` — journal / conference name. */
+   525→      result_journal: ".publication-title a",
+   526→      /** `a.next-page` — next page link. */
+   527→      pagination_next: "a.next-page",
+   528→      /** `.loading-bar` — progress / loading indicator. */
+   529→      loading_indicator: ".loading-bar",
+   530→    },
+   531→    behavior: {
+   532→      delay_min: 2000,
+   533→      delay_max: 6000,
+   534→      scroll_before_extract: true,
+   535→      max_results_per_page: 25,
+   536→      total_pages: 5,
+   537→      timeout_ms: 35000,
+   538→      rate_limit_ms: 2000,
+   539→      requires_login: true,
+   540→      login_url: "https://ieeexplore.ieee.org/Xplore/login.jsp",
+   541→    },
+   542→  },
+   543→
+   544→  // =========================================================================
+   545→  // 8. Scopus
+   546→  // =========================================================================
+   547→  scopus: {
+   548→    id: "scopus",
+   549→    name: "Scopus",
+   550→    url: "https://www.scopus.com",
+   551→    searchUrl: "https://www.scopus.com/results/results.uri",
+   552→    description:
+   553→      "The largest abstract and citation database of peer-reviewed literature, covering scientific journals, books, and conference proceedings.",
+   554→    category: "General",
+   555→    icon: "Search",
+   556→    isEnabled: true,
+   557→    selectors: {
+   558→      /** `input#searchfield` — the Scopus search input. */
+   559→      search_input: "input#searchfield",
+   560→      /** `button#advSearch` or `#search` — search button. */
+   561→      search_button: "button#advSearch",
+   562→      /** `.searchResult` or `.docTile` — each result entry. */
+   563→      result_item: ".docTile",
+   564→      /** `.docTitle a` — result title link. */
+   565→      result_title: ".docTitle a",
+   566→      /** `.authorNames a` — author names. */
+   567→      result_authors: ".authorNames a",
+   568→      /** `.docYear` — publication year span. */
+   569→      result_year: ".docYear",
+   570→      /** `.docAbstract` or `.description` — abstract text. */
+   571→      result_abstract: ".docAbstract",
+   572→      /** `a[href*='pdf']` — PDF download link if available. */
+   573→      result_pdf_link: "a[href*='pdf']",
+   574→      /** `a[href*='doi.org']` — DOI link. */
+   575→      result_doi: "a[href*='doi.org']",
+   576→      /** `.citedByCount a` — "Cited by N" count. */
+   577→      result_citations: ".citedByCount a",
+   578→      /** `.sourceTitle a` — journal or source name. */
+   579→      result_journal: ".sourceTitle a",
+   580→      /** `a.nextPage` — next-page navigation link. */
+   581→      pagination_next: "a.nextPage",
+   582→      /** `.loadingIndicator` — loading spinner. */
+   583→      loading_indicator: ".loadingIndicator",
+   584→    },
+   585→    behavior: {
+   586→      delay_min: 2500,
+   587→      delay_max: 6000,
+   588→      scroll_before_extract: true,
+   589→      max_results_per_page: 20,
+   590→      total_pages: 5,
+   591→      timeout_ms: 35000,
+   592→      rate_limit_ms: 2000,
+   593→      requires_login: true,
+   594→      login_url: "https://www.scopus.com/search/form.uri?display=advanced",
+   595→    },
+   596→  },
+   597→
+   598→  // =========================================================================
+   599→  // 9. Dimensions
+   600→  // =========================================================================
+   601→  dimensions: {
+   602→    id: "dimensions",
+   603→    name: "Dimensions",
+   604→    url: "https://app.dimensions.ai",
+   605→    searchUrl: "https://app.dimensions.ai/discover/publication",
+   606→    description:
+   607→      "The most comprehensive research database, linking publications, datasets, grants, patents, clinical trials, and policy documents.",
+   608→    category: "General",
+   609→    icon: "LayoutGrid",
+   610→    isEnabled: true,
+   611→    selectors: {
+   612→      /** `input.search-input` — the Dimensions search field. */
+   613→      search_input: "input.search-input",
+   614→      /** `button.search-button` — search submit button. */
+   615→      search_button: "button.search-button",
+   616→      /** `.search-result` — each result card. */
+   617→      result_item: ".search-result",
+   618→      /** `.search-result .title a` — article title anchor. */
+   619→      result_title: ".search-result .title a",
+   620→      /** `.search-result .authors span` — author name spans. */
+   621→      result_authors: ".search-result .authors span",
+   622→      /** `.search-result .pub-year` — publication year. */
+   623→      result_year: ".search-result .pub-year",
+   624→      /** `.search-result .abstract-text` — abstract or snippet. */
+   625→      result_abstract: ".search-result .abstract-text",
+   626→      /** `.search-result .open-access-link` — link to the open-access PDF. */
+   627→      result_pdf_link: ".search-result .open-access-link",
+   628→      /** `.search-result .doi a` — DOI link. */
+   629→      result_doi: ".search-result .doi a",
+   630→      /** `.search-result .citation-count` — number of citations. */
+   631→      result_citations: ".search-result .citation-count",
+   632→      /** `.search-result .source-title` — journal or source. */
+   633→      result_journal: ".search-result .source-title",
+   634→      /** `.pagination .next a` — next-page button. */
+   635→      pagination_next: ".pagination .next a",
+   636→      /** `.search-loading` — loading indicator. */
+   637→      loading_indicator: ".search-loading",
+   638→    },
+   639→    behavior: {
+   640→      delay_min: 2000,
+   641→      delay_max: 5000,
+   642→      scroll_before_extract: true,
+   643→      max_results_per_page: 20,
+   644→      total_pages: 5,
+   645→      timeout_ms: 30000,
+   646→      rate_limit_ms: 1500,
+   647→      requires_login: false,
+   648→      login_url: "",
+   649→    },
+   650→  },
+   651→
+   652→  // =========================================================================
+   653→  // 10. Semantic Scholar
+   654→  // =========================================================================
+   655→  semanticscholar: {
+   656→    id: "semanticscholar",
+   657→    name: "Semantic Scholar",
+   658→    url: "https://www.semanticscholar.org",
+   659→    searchUrl: "https://www.semanticscholar.org/search",
+   660→    description:
+   661→      "An AI-powered research tool that uses natural language processing to help scholars find relevant papers, augmented with TLDR summaries.",
+   662→    category: "General",
+   663→    icon: "Brain",
+   664→    isEnabled: true,
+   665→    selectors: {
+   666→      /** `input#search-input` — the Semantic Scholar search bar. */
+   667→      search_input: "input#search-input",
+   668→      /** `button[type="submit"]` — search submit button. */
+   669→      search_button: "button[type='submit']",
+   670→      /** `.search-result` or `article.cla-card` — each result card. */
+   671→      result_item: "article.cla-card",
+   672→      /** `.cl-paper-title a` — paper title link. */
+   673→      result_title: ".cl-paper-title a",
+   674→      /** `.cl-authors span` — author name spans. */
+   675→      result_authors: ".cl-authors span",
+   676→      /** `.cl-paper-meta .cl-paper-pub-date` — publication year. */
+   677→      result_year: ".cl-paper-pub-date",
+   678→      /** `.cl-paper-abstract` — abstract text. */
+   679→      result_abstract: ".cl-paper-abstract",
+   680→      /** `.cl-pdf-link a` or `a[href*='.pdf']` — PDF download link. */
+   681→      result_pdf_link: "a[href*='.pdf']",
+   682→      /** `a[href*='doi.org']` — DOI link. */
+   683→      result_doi: "a[href*='doi.org']",
+   684→      /** `.cl-citation-count` — "Cited by N" number. */
+   685→      result_citations: ".cl-citation-count",
+   686→      /** `.cl-paper-venue` — journal or conference venue. */
+   687→      result_journal: ".cl-paper-venue",
+   688→      /** `a.pagination-next` — next page link. */
+   689→      pagination_next: "a.pagination-next",
+   690→      /** `.loading-spinner` — loading spinner / skeleton. */
+   691→      loading_indicator: ".loading-spinner",
+   692→    },
+   693→    behavior: {
+   694→      delay_min: 1500,
+   695→      delay_max: 4000,
+   696→      scroll_before_extract: true,
+   697→      max_results_per_page: 10,
+   698→      total_pages: 10,
+   699→      timeout_ms: 25000,
+   700→      rate_limit_ms: 1000,
+   701→      requires_login: false,
+   702→      login_url: "",
+   703→    },
+   704→  },
+   705→
+   706→  // =========================================================================
+   707→  // 11. CORE
+   708→  // =========================================================================
+   709→  core: {
+   710→    id: "core",
+   711→    name: "CORE",
+   712→    url: "https://core.ac.uk",
+   713→    searchUrl: "https://core.ac.uk/search",
+   714→    description:
+   715→      "The world's largest collection of open access research papers, aggregating metadata and full texts from data providers worldwide.",
+   716→    category: "Open Access",
+   717→    icon: "Database",
+   718→    isEnabled: true,
+   719→    selectors: {
+   720→      /** `input.search-input` — the CORE search field. */
+   721→      search_input: "input.search-input",
+   722→      /** `button.search-submit` — search trigger. */
+   723→      search_button: "button.search-submit",
+   724→      /** `.search-result-item` — each result entry. */
+   725→      result_item: ".search-result-item",
+   726→      /** `.search-result-item .title a` — result title link. */
+   727→      result_title: ".search-result-item .title a",
+   728→      /** `.search-result-item .authors` — author names. */
+   729→      result_authors: ".search-result-item .authors",
+   730→      /** `.search-result-item .year` — publication year. */
+   731→      result_year: ".search-result-item .year",
+   732→      /** `.search-result-item .abstract` — abstract snippet. */
+   733→      result_abstract: ".search-result-item .abstract",
+   734→      /** `.search-result-item .download-link` — PDF download link. */
+   735→      result_pdf_link: ".search-result-item .download-link",
+   736→      /** `.search-result-item .doi` — DOI field. */
+   737→      result_doi: ".search-result-item .doi",
+   738→      /** `.search-result-item .citations` — citation count. */
+   739→      result_citations: ".search-result-item .citations",
+   740→      /** `.search-result-item .publisher` — publisher / journal name. */
+   741→      result_journal: ".search-result-item .publisher",
+   742→      /** `.pagination .next a` — next-page link. */
+   743→      pagination_next: ".pagination .next a",
+   744→      /** `.search-loading` — loading indicator. */
+   745→      loading_indicator: ".search-loading",
+   746→    },
+   747→    behavior: {
+   748→      delay_min: 1500,
+   749→      delay_max: 4000,
+   750→      scroll_before_extract: false,
+   751→      max_results_per_page: 10,
+   752→      total_pages: 5,
+   753→      timeout_ms: 25000,
+   754→      rate_limit_ms: 1000,
+   755→      requires_login: false,
+   756→      login_url: "",
+   757→    },
+   758→  },
+   759→
+   760→  // =========================================================================
+   761→  // 12. BASE (Bielefeld Academic Search Engine)
+   762→  // =========================================================================
+   763→  base: {
+   764→    id: "base",
+   765→    name: "Bielefeld Academic Search Engine",
+   766→    url: "https://www.base-search.net",
+   767→    searchUrl: "https://www.base-search.net/Search/Results",
+   768→    description:
+   769→      "One of the world's most voluminous search engines for academic web resources, providing access to over 400 million documents.",
+   770→    category: "Open Access",
+   771→    icon: "Globe",
+   772→    isEnabled: true,
+   773→    selectors: {
+   774→      /** `input#searchinput` — BASE's main search input. */
+   775→      search_input: "input#searchinput",
+   776→      /** `button[type="submit"]` — search submit button. */
+   777→      search_button: "button[type='submit']",
+   778→      /** `.result` or `.search-result` — each result entry. */
+   779→      result_item: ".search-result",
+   780→      /** `.result-title a` — document title link. */
+   781→      result_title: ".result-title a",
+   782→      /** `.result-authors` — author name list. */
+   783→      result_authors: ".result-authors",
+   784→      /** `.result-year` — publication year. */
+   785→      result_year: ".result-year",
+   786→      /** `.result-abstract` — abstract snippet. */
+   787→      result_abstract: ".result-abstract",
+   788→      /** `.result-link-pdf a` — PDF download link (open-access). */
+   789→      result_pdf_link: ".result-link-pdf a",
+   790→      /** `.result-doi a` — DOI link. */
+   791→      result_doi: ".result-doi a",
+   792→      /** `.result-citations` — citation count if available. */
+   793→      result_citations: ".result-citations",
+   794→      /** `.result-journal` — journal / source name. */
+   795→      result_journal: ".result-journal",
+   796→      /** `.pagination .next a` — next-page link. */
+   797→      pagination_next: ".pagination .next a",
+   798→      /** `.loading` — loading spinner. */
+   799→      loading_indicator: ".loading",
+   800→    },
+   801→    behavior: {
+   802→      delay_min: 1500,
+   803→      delay_max: 4000,
+   804→      scroll_before_extract: false,
+   805→      max_results_per_page: 10,
+   806→      total_pages: 5,
+   807→      timeout_ms: 25000,
+   808→      rate_limit_ms: 1200,
+   809→      requires_login: false,
+   810→      login_url: "",
+   811→    },
+   812→  },
+   813→
+   814→  // =========================================================================
+   815→  // 13. Perpusnas (Indonesian National Library)
+   816→  // =========================================================================
+   817→  perpusnas: {
+   818→    id: "perpusnas",
+   819→    name: "Perpusnas",
+   820→    url: "https://opac.perpusnas.go.id",
+   821→    searchUrl: "https://opac.perpusnas.go.id",
+   822→    description:
+   823→      "The online public access catalog of the National Library of Indonesia, providing search across books, journals, and digital collections.",
+   824→    category: "Indonesian",
+   825→    icon: "Library",
+   826→    isEnabled: true,
+   827→    selectors: {
+   828→      /** `input#edit-keys` or `input[name="searchString"]` — the OPAC search input. */
+   829→      search_input: "input#edit-keys",
+   830→      /** `#edit-submit` — search submit button. */
+   831→      search_button: "#edit-submit",
+   832→      /** `.search-result` or `.item` — each catalog result. */
+   833→      result_item: ".search-result",
+   834→      /** `.search-result .title a` — title of the book/journal. */
+   835→      result_title: ".search-result .title a",
+   836→      /** `.search-result .author` — author name. */
+   837→      result_authors: ".search-result .author",
+   838→      /** `.search-result .year` — publication year. */
+   839→      result_year: ".search-result .year",
+   840→      /** `.search-result .summary` — brief summary. */
+   841→      result_abstract: ".search-result .summary",
+   842→      /** `.search-result .digital-link a` — link to digital version / PDF. */
+   843→      result_pdf_link: ".search-result .digital-link a",
+   844→      /** `.search-result .isbn` — ISBN / identifier field. */
+   845→      result_doi: ".search-result .isbn",
+   846→      /** `.search-result .citations` — citation count if available. */
+   847→      result_citations: ".search-result .citations",
+   848→      /** `.search-result .publisher` — publisher name. */
+   849→      result_journal: ".search-result .publisher",
+   850→      /** `.pager-next a` — next page link. */
+   851→      pagination_next: ".pager-next a",
+   852→      /** `.ajax-progress` — loading indicator. */
+   853→      loading_indicator: ".ajax-progress",
+   854→    },
+   855→    behavior: {
+   856→      delay_min: 2000,
+   857→      delay_max: 5000,
+   858→      scroll_before_extract: false,
+   859→      max_results_per_page: 10,
+   860→      total_pages: 5,
+   861→      timeout_ms: 30000,
+   862→      rate_limit_ms: 2000,
+   863→      requires_login: false,
+   864→      login_url: "",
+   865→    },
+   866→  },
+   867→
+   868→  // =========================================================================
+   869→  // 14. CrossRef
+   870→  // =========================================================================
+   871→  crossref: {
+   872→    id: "crossref",
+   873→    name: "CrossRef",
+   874→    url: "https://search.crossref.org",
+   875→    searchUrl: "https://search.crossref.org/search",
+   876→    description:
+   877→      "A not-for-profit membership organization providing DOI registration and metadata services for scholarly publications worldwide.",
+   878→    category: "General",
+   879→    icon: "Link",
+   880→    isEnabled: true,
+   881→    selectors: {
+   882→      /** `input.search-input` — the CrossRef search bar. */
+   883→      search_input: "input.search-input",
+   884→      /** `button[type="submit"]` — search button. */
+   885→      search_button: "button[type='submit']",
+   886→      /** `.search-result-item` — each result entry. */
+   887→      result_item: ".search-result-item",
+   888→      /** `.search-result-item .title a` — article / work title link. */
+   889→      result_title: ".search-result-item .title a",
+   890→      /** `.search-result-item .authors` — author list. */
+   891→      result_authors: ".search-result-item .authors",
+   892→      /** `.search-result-item .year` — publication year. */
+   893→      result_year: ".search-result-item .year",
+   894→      /** `.search-result-item .abstract` — abstract text (if available). */
+   895→      result_abstract: ".search-result-item .abstract",
+   896→      /** `.search-result-item .full-text-link` — link to full text or PDF. */
+   897→      result_pdf_link: ".search-result-item .full-text-link",
+   898→      /** `.search-result-item .doi a` — DOI link (CrossRef's primary identifier). */
+   899→      result_doi: ".search-result-item .doi a",
+   900→      /** `.search-result-item .citations` — citation count via Crossref cited-by. */
+   901→      result_citations: ".search-result-item .citations",
+   902→      /** `.search-result-item .container-title` — journal or container title. */
+   903→      result_journal: ".search-result-item .container-title",
+   904→      /** `.pagination .next a` — next-page link. */
+   905→      pagination_next: ".pagination .next a",
+   906→      /** `.loading-spinner` — loading indicator. */
+   907→      loading_indicator: ".loading-spinner",
+   908→    },
+   909→    behavior: {
+   910→      delay_min: 1000,
+   911→      delay_max: 3000,
+   912→      scroll_before_extract: false,
+   913→      max_results_per_page: 20,
+   914→      total_pages: 5,
+   915→      timeout_ms: 20000,
+   916→      rate_limit_ms: 800,
+   917→      requires_login: false,
+   918→      login_url: "",
+   919→    },
+   920→  },
+   921→
+   922→  // =========================================================================
+   923→  // 15. Microsoft Academic (archived)
+   924→  // =========================================================================
+   925→  microsoft_academic: {
+   926→    id: "microsoft_academic",
+   927→    name: "Microsoft Academic",
+   928→    url: "https://academic.microsoft.com",
+   929→    searchUrl: "https://academic.microsoft.com/search",
+   930→    description:
+   931→      "Previously a free academic search engine with citation data and entity recognition. Now archived; kept for historical reference and dataset access.",
+   932→    category: "General",
+   933→    icon: "Archive",
+   934→    isEnabled: false,
+   935→    selectors: {
+   936→      /** `input.mag-search-input` — the MA search field. */
+   937→      search_input: "input.mag-search-input",
+   938→      /** `button.mag-search-btn` — search button. */
+   939→      search_button: "button.mag-search-btn",
+   940→      /** `.paper-card` — each paper result card. */
+   941→      result_item: ".paper-card",
+   942→      /** `.paper-card .title a` — paper title link. */
+   943→      result_title: ".paper-card .title a",
+   944→      /** `.paper-card .authors a` — author name links. */
+   945→      result_authors: ".paper-card .authors a",
+   946→      /** `.paper-card .year` — publication year. */
+   947→      result_year: ".paper-card .year",
+   948→      /** `.paper-card .abstract` — abstract snippet. */
+   949→      result_abstract: ".paper-card .abstract",
+   950→      /** `.paper-card .pdf-link a` — PDF link. */
+   951→      result_pdf_link: ".paper-card .pdf-link a",
+   952→      /** `.paper-card .doi` — DOI field. */
+   953→      result_doi: ".paper-card .doi",
+   954→      /** `.paper-card .citation-count` — number of citations. */
+   955→      result_citations: ".paper-card .citation-count",
+   956→      /** `.paper-card .venue` — conference or journal name. */
+   957→      result_journal: ".paper-card .venue",
+   958→      /** `.page-next a` — next-page link. */
+   959→      pagination_next: ".page-next a",
+   960→      /** `.mag-spinner` — loading spinner. */
+   961→      loading_indicator: ".mag-spinner",
+   962→    },
+   963→    behavior: {
+   964→      delay_min: 2000,
+   965→      delay_max: 5000,
+   966→      scroll_before_extract: true,
+   967→      max_results_per_page: 10,
+   968→      total_pages: 5,
+   969→      timeout_ms: 30000,
+   970→      rate_limit_ms: 1500,
+   971→      requires_login: false,
+   972→      login_url: "",
+   973→    },
+   974→  },
+   975→};
+   976→
+   977→// ---------------------------------------------------------------------------
+   978→// Helper functions
+   979→// ---------------------------------------------------------------------------
+   980→
+   981→/**
+   982→ * Returns an array of all database configs that have `isEnabled` set to
+   983→ * `true`.  Useful for building UI selectors or driving bulk searches.
+   984→ *
+   985→ * @example
+   986→ * ```ts
+   987→ * const enabled = getEnabledDatabases();
+   988→ * // [{ id: 'google_scholar', ... }, { id: 'doaj', ... }, ...]
+   989→ * ```
+   990→ */
+   991→export function getEnabledDatabases(): DatabaseConfig[] {
+   992→  return Object.values(DATABASE_CONFIGS).filter((db) => db.isEnabled);
+   993→}
+   994→
+   995→/**
+   996→ * Groups enabled databases by their `category` field, returning a record
+   997→ * that maps each category to an array of matching configs.
+   998→ *
+   999→ * Only categories with at least one enabled database will appear in the
+  1000→ * returned object.
+  1001→ *
+  1002→ * @example
+  1003→ * ```ts
+  1004→ * const grouped = getDatabasesByCategory();
+  1005→ * // {
+  1006→ * //   General: [{ id: 'google_scholar', ... }, ...],
+  1007→ * //   "Open Access": [{ id: 'doaj', ... }, ...],
+  1008→ * //   ...
+  1009→ * // }
+  1010→ * ```
+  1011→ */
+  1012→export function getDatabasesByCategory(): Record<string, DatabaseConfig[]> {
+  1013→  const result: Record<string, DatabaseConfig[]> = {};
+  1014→
+  1015→  for (const db of getEnabledDatabases()) {
+  1016→    const cat = db.category;
+  1017→    if (!result[cat]) {
+  1018→      result[cat] = [];
+  1019→    }
+  1020→    result[cat].push(db);
+  1021→  }
+  1022→
+  1023→  return result;
+  1024→}
+  1025→
+  1026→/**
+  1027→ * Retrieves a single database configuration by its `id`.
+  1028→ *
+  1029→ * Returns `undefined` if no database with the given id exists.
+  1030→ *
+  1031→ * @param id - The unique slug of the database (e.g. `"pubmed"`).
+  1032→ * @returns The matching `DatabaseConfig`, or `undefined`.
+  1033→ *
+  1034→ * @example
+  1035→ * ```ts
+  1036→ * const pubmed = getDatabaseConfig("pubmed");
+  1037→ * // { id: 'pubmed', name: 'PubMed', ... }
+  1038→ *
+  1039→ * const missing = getDatabaseConfig("nonexistent");
+  1040→ * // undefined
+  1041→ * ```
+  1042→ */
+  1043→export function getDatabaseConfig(id: string): DatabaseConfig | undefined {
+  1044→  return DATABASE_CONFIGS[id];
+  1045→}
+  1046→
