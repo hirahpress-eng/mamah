@@ -395,6 +395,174 @@ function SocialProofSection() {
   );
 }
 
+// ─── How It Works Section ─────────────────────────────────────────
+
+function HowItWorksSection() {
+  const steps = [
+    {
+      number: '01',
+      icon: FileText,
+      title: 'Pilih Mode & Masukkan Topik',
+      description: 'Pilih dari 12 mode penulisan akademik — skripsi, tesis, buku, artikel jurnal, dan lainnya. Masukkan judul atau kata kunci penelitian Anda.',
+    },
+    {
+      number: '02',
+      icon: Search,
+      title: 'AI Cari & Analisis Referensi',
+      description: 'Sistem AI menemukan hingga 50 referensi ilmiah relevan, menerjemahkan kata kunci, dan menyusun daftar pustaka APA 7th edition.',
+    },
+    {
+      number: '03',
+      icon: Wand2,
+      title: 'Generate & Export Karya',
+      description: 'AI menulis konten akademik berkualitas tinggi — Bab per Bab untuk karya panjang, atau full artikel IMRAD. Export ke PDF atau DOCX.',
+    },
+  ];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.6 }}
+      className="max-w-4xl mx-auto mt-12 sm:mt-16"
+    >
+      <div className="text-center mb-10">
+        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 mb-3">
+          Cara Kerja
+        </Badge>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+          3 Langkah Mudah
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2 max-w-lg mx-auto">
+          Dari ide penelitian hingga karya akademik siap publikasi — semudah 1-2-3
+        </p>
+      </div>
+
+      <div className="relative">
+        {/* Vertical connector line (desktop only) */}
+        <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-emerald-500/40 via-teal-500/30 to-transparent -translate-x-1/2" />
+
+        <div className="space-y-8 md:space-y-12">
+          {steps.map((step, index) => {
+            const StepIcon = step.icon;
+            const isLeft = index % 2 === 0;
+
+            return (
+              <motion.div
+                key={step.number}
+                initial={{ opacity: 0, x: isLeft ? -30 : 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.15 }}
+                className="relative"
+              >
+                {/* Center dot on desktop */}
+                <div className="hidden md:flex absolute left-1/2 top-6 -translate-x-1/2 size-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 items-center justify-center shadow-lg shadow-emerald-500/25 z-10">
+                  <span className="text-white text-xs font-bold">{step.number}</span>
+                </div>
+
+                <div className={`md:w-[calc(50%-2.5rem)] ${isLeft ? 'md:mr-auto md:pr-0 md:text-right' : 'md:ml-auto md:pl-0 md:text-left'}`}>
+                  <div className="glass-card rounded-2xl p-5 sm:p-6 group hover:shadow-lg hover:shadow-emerald-500/10 transition-shadow duration-300">
+                    <div className={`flex items-center gap-3 mb-3 ${isLeft ? 'md:flex-row-reverse md:text-right' : ''}`}>
+                      {/* Mobile number badge */}
+                      <div className="md:hidden flex items-center justify-center size-9 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <StepIcon className="size-4" />
+                      </div>
+                      <h3 className="text-base font-bold text-foreground">{step.title}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+// ─── FAQ Section ──────────────────────────────────────────────────
+
+function FAQSection() {
+  const faqs = [
+    {
+      question: 'Apakah Mamah gratis digunakan?',
+      answer: 'Ya! Mamah menyediakan paket gratis dengan batas generate per hari. Untuk kebutuhan lebih intensif, tersedia paket Pro dengan unlimited generation, prioritas AI engine, dan fitur eksklusif lainnya.',
+    },
+    {
+      question: 'Berapa lama waktu yang dibutuhkan untuk generate satu artikel?',
+      answer: 'Artikel jurnal IMRAD biasanya selesai dalam 1-3 menit, tergantung panjang dan kompleksitas topik. Untuk karya lebih panjang seperti skripsi atau buku, mode penulisan cicil memungkinkan Anda menulis Bab per Bab dengan kontrol penuh.',
+    },
+    {
+      question: 'Apakah referensi yang dihasilkan valid dan bisa dipertanggungjawabkan?',
+      answer: 'Mamah mencari referensi dari sumber ilmiah terpercaya. Namun, kami sangat menyarankan untuk selalu memverifikasi setiap referensi yang digunakan. Hasil generate sebaiknya ditinjau dan disesuaikan oleh penulis sebelum dipublikasikan.',
+    },
+    {
+      question: 'Format apa saja yang didukung untuk export?',
+      answer: 'Saat ini Mamah mendukung export ke PDF (dengan layout publikasi siap cetak) dan DOCX (format Microsoft Word yang mudah diedit lebih lanjut). Format APA 7th edition digunakan untuk sitasi dan daftar pustaka.',
+    },
+    {
+      question: 'Apa perbedaan mode Artikel Jurnal dan mode Cicil (Skripsi/Tesis/Buku)?',
+      answer: 'Mode Artikel Jurnal menggunakan alur 5 langkah (definisi riset → referensi → generate → review → polish) yang cocok untuk artikel IMRAD singkat. Mode Cicil dirancang untuk karya panjang — Anda menulis Bab per Bab secara berurutan dengan referensi yang konsisten di setiap bagian.',
+    },
+    {
+      question: 'Apakah data dan konten saya aman?',
+      answer: 'Keamanan data pengguna adalah prioritas kami. Semua data dienkripsi dan disimpan dengan aman. Konten yang Anda buat sepenuhnya milik Anda. Baca kebijakan privasi kami untuk informasi lengkap.',
+    },
+    {
+      question: 'Bisakah saya menggunakan Mamah untuk bahasa selain Indonesia?',
+      answer: 'Tentu! Mamah mendukung mode penulisan dalam Bahasa Indonesia, Bahasa Inggris, dan Bahasa Arab. Anda bisa memilih mode Buku Ilmiah English atau Buku Bahasa Arab untuk karya dalam bahasa tersebut.',
+    },
+  ];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{ duration: 0.6 }}
+      className="max-w-3xl mx-auto mt-12 sm:mt-16"
+    >
+      <div className="text-center mb-8">
+        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 mb-3">
+          FAQ
+        </Badge>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+          Pertanyaan yang Sering Diajukan
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2">
+          Temukan jawaban untuk pertanyaan umum tentang Mamah
+        </p>
+      </div>
+
+      <Accordion type="single" collapsible className="w-full space-y-0">
+        {faqs.map((faq, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.35, delay: index * 0.06 }}
+          >
+            <AccordionItem value={`faq-${index}`} className="border-border/50">
+              <AccordionTrigger className="text-left text-sm sm:text-base font-semibold text-foreground hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors py-4 sm:py-5 gap-3">
+                {faq.question}
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-5">
+                {faq.answer}
+              </AccordionContent>
+            </AccordionItem>
+          </motion.div>
+        ))}
+      </Accordion>
+    </motion.section>
+  );
+}
+
 // ─── Welcome Banner Component (Premium Hero Section) ───────────────
 
 function WelcomeBanner() {
@@ -1375,6 +1543,12 @@ export default function ArticleGeneratorApp() {
 
       {/* ── Social Proof Section (landing page only) ── */}
       {selectedMode === null && <SocialProofSection />}
+
+      {/* ── How It Works Section (landing page only) ── */}
+      {selectedMode === null && <HowItWorksSection />}
+
+      {/* ── FAQ Section (landing page only) ── */}
+      {selectedMode === null && <FAQSection />}
 
       {/* ── Word Count Goal Progress (footer, when article exists, article mode only) ── */}
       {selectedMode === 'article' && generatedArticle && (
