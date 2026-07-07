@@ -773,3 +773,31 @@ Stage Summary:
 - Landing page now has: Writing Mode Selector → Social Proof → How It Works → FAQ → Footer
 - GEMINI_API_KEY confirmed added by user to Vercel env vars
 - Next: Continue Sprint 2 with more features (pricing, floating hero elements, etc.)
+
+---
+Task ID: s2-batch2
+Agent: Auto-Recovery Monitor (Z.ai Chat)
+Task: Sprint 2 Batch 2 — Pricing section + floating hero elements
+
+Work Log:
+- Added PricingSection component with 3 pricing tiers:
+  - Gratis (Rp 0): 5 features, outline CTA
+  - Pro (Rp 99K/bulan): 8 features, gradient CTA, "Paling Populer" badge, emerald ring highlight
+  - Institusi (Custom): 7 features, outline CTA
+- All tiers use glass-card styling, Check icons, emerald theme
+- CTA buttons show toast "Fitur pembayaran akan segera tersedia!"
+- Added 6 floating animated icons to WelcomeBanner hero:
+  - BookOpen (top-left), GraduationCap (top-right), PenTool (mid-left)
+  - Sparkles (mid-right), Globe (bottom-left), Shield (bottom-right)
+- Added 5 subtle particle dots with opacity/scale pulse animations
+- All animations: framer-motion, staggered delays, easeInOut, infinite repeat
+- Responsive: sm: breakpoints for icon sizing and positioning
+- Version bumped to v2.3.0
+- Lint: 0 errors
+- Pushed to GitHub (e231c47) — Vercel auto-deploying
+
+Stage Summary:
+- Landing page flow now: Hero → Social Proof → How It Works → Pricing → FAQ → Footer
+- 1 file modified: page.tsx (+275 lines)
+- No code deleted — only additions
+- Dev server: clean compilation, no errors
