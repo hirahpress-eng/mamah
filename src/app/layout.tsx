@@ -58,6 +58,42 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
+      {/* Auto-reload on Turbopack HMR chunk failure */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            (function(){
+              var RETRY_KEY = 'mamah_chunk_retry';
+              var lastRetry = parseInt(sessionStorage.getItem(RETRY_KEY) || '0', 10);
+              if (Date.now() - lastRetry < 30000) return;
+
+              function isChunkError(msg) {
+                return typeof msg === 'string' && (
+                  msg.indexOf('Failed to load chunk') !== -1 ||
+                  msg.indexOf('Loading chunk') !== -1 ||
+                  msg.indexOf('ChunkLoadError') !== -1 ||
+                  msg.indexOf('turbopack') !== -1 && msg.indexOf('chunk') !== -1
+                );
+              }
+
+              window.addEventListener('error', function(e) {
+                if (isChunkError(e.message || '')) {
+                  sessionStorage.setItem(RETRY_KEY, Date.now().toString());
+                  window.location.reload();
+                }
+              });
+
+              window.addEventListener('unhandledrejection', function(e) {
+                var msg = e.reason && (e.reason.message || e.reason || '');
+                if (isChunkError(String(msg))) {
+                  sessionStorage.setItem(RETRY_KEY, Date.now().toString());
+                  window.location.reload();
+                }
+              });
+            })();
+          `,
+        }}
+      />
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased bg-background text-foreground body-gradient`}
       >
