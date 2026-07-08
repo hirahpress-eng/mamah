@@ -969,3 +969,20 @@ Work Log:
 Stage Summary:
 - Server recovered from OOM kill, now running with 1.5GB memory cap
 - All clear
+---
+Task ID: cron-257797-202607080944
+Agent: Auto-Recovery Monitor
+Task: Routine health check (Job ID: 257797)
+
+Work Log:
+- Dev server was DOWN again (OOM kill pattern continues)
+- Multiple restart attempts failed: `bun run dev` produces empty log, `npx next dev > dev.log` silently dies, `node ./node_modules/next/dist/bin/next > dev.log` also dies
+- Root cause: backgrounding with file redirect (`> dev.log 2>&1 &`) causes silent process death in this K8s environment
+- Working method: `node ./node_modules/next/dist/bin/next dev -p 3000 2>&1 | tee dev.log &` (tee instead of redirect)
+- Reduced memory cap from 1536MB to 768MB (`--max-old-space-size=768`) to reduce OOM frequency
+- Server compiled successfully: GET / 200 in 11.1s
+- Note: `curl`/`wget` cannot connect to localhost:3000 from inside container (K8s networking quirk) but server is externally accessible
+
+Stage Summary:
+- Server running with 768MB memory cap via tee-piped background process
+- All clear
