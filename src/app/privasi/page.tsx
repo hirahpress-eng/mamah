@@ -67,7 +67,7 @@ export default function PrivasiPage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">4. Pembagian Informasi</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Kami tidak menjual, memperdagangkan, atau menyewakan informasi pribadi Anda kepada pihak ketiga. Kami dapat membagikan informasi Anda dengan penyedia layanan AI (seperti Google Gemini) yang membantu kami memproses permintaan konten. Informasi yang dibagikan dibatasi hanya pada data yang diperlukan untuk memproses permintaan Anda. Kami juga dapat mengungkapkan informasi jika diwajibkan oleh hukum atau untuk melindungi hak, properti, atau keselamatan Mamah dan penggunanya.
+              Kami tidak menjual, memperdagangkan, atau menyewakan informasi pribadi Anda kepada pihak ketiga. Kami dapat membagikan informasi Anda dengan penyedia layanan penulisan yang membantu kami memproses permintaan konten. Informasi yang dibagikan dibatasi hanya pada data yang diperlukan untuk memproses permintaan Anda. Kami juga dapat mengungkapkan informasi jika diwajibkan oleh hukum atau untuk melindungi hak, properti, atau keselamatan Mamah dan penggunanya.
             </p>
           </section>
 

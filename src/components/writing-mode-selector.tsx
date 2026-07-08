@@ -4,20 +4,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
-  BookOpen,
-  Target,
-  GraduationCap,
-  Award,
-  ScrollText,
-  Sparkles,
-  Globe,
-  Calculator,
-  Library,
-  Languages,
-  BookMarked,
   PenLine,
-  BookCopy,
-  Lightbulb,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,41 +50,20 @@ const CATEGORIES: CategoryConfig[] = [
     description: 'Artikel ilmiah & jurnal',
     badgeGradient: 'from-emerald-500/10 to-teal-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 dark:border-emerald-500/15',
   },
-  {
-    key: 'Akademik',
-    label: 'Akademik',
-    icon: GraduationCap,
-    description: 'Skripsi, tesis & disertasi',
-    badgeGradient: 'from-amber-500/10 to-orange-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 dark:border-amber-500/15',
-  },
-  {
-    key: 'Buku',
-    label: 'Buku',
-    icon: BookCopy,
-    description: 'Buku ilmiah & akademik',
-    badgeGradient: 'from-blue-500/10 to-sky-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20 dark:border-blue-500/15',
-  },
-  {
-    key: 'Lainnya',
-    label: 'Lainnya',
-    icon: Lightbulb,
-    description: 'Proposal, esai & makalah',
-    badgeGradient: 'from-rose-500/10 to-pink-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20 dark:border-rose-500/15',
-  },
 ];
 
 // ─── Mode Definitions ──────────────────────────────────────────────
 
 const WRITING_MODES: WritingMode[] = [
-  // ── ARTIKEL (Preserved — uses 5-step article flow) ──
+  // ── ARTIKEL ILMIAH (only mode shown for now) ──
   {
     id: 'article',
-    title: 'Artikel Jurnal',
+    title: 'Artikel Ilmiah',
     description:
       'Artikel ilmiah dengan struktur IMRAD lengkap, referensi Scopus, siap publikasi. Mencicil: Abstrak → Pendahuluan → Metode → Hasil & Diskusi → Kesimpulan → Bibliografi',
     shortDesc: 'Artikel ilmiah IMRAD, siap publikasi jurnal',
     icon: FileText,
-    badge: { label: 'Popular', variant: 'popular' },
+    badge: { label: 'Utama', variant: 'popular' },
     gradient:
       'from-emerald-50 via-emerald-50/50 to-teal-50/40 dark:from-emerald-950/30 dark:via-emerald-950/15 dark:to-teal-950/20',
     iconBg:
@@ -106,180 +73,11 @@ const WRITING_MODES: WritingMode[] = [
     featured: true,
     category: 'Artikel',
   },
-  // ── SKRIPSI / TESIS / DISERTASI ──
-  {
-    id: 'skripsi',
-    title: 'Skripsi (S1)',
-    description:
-      'BAB 1-5 + Referensi, 5-7 sub-tahapan per BAB. Latar belakang, tinjauan pustaka, metodologi, hasil, kesimpulan.',
-    shortDesc: 'Skripsi S1 dengan BAB 1-5 lengkap',
-    icon: GraduationCap,
-    badge: { label: 'Baru', variant: 'new' },
-    gradient:
-      'from-amber-50 via-amber-50/50 to-orange-50/40 dark:from-amber-950/30 dark:via-amber-950/15 dark:to-orange-950/20',
-    iconBg:
-      'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/25',
-    iconColor: 'text-white',
-    borderHover:
-      'hover:border-amber-400/60 dark:hover:border-amber-600/60',
-    category: 'Akademik',
-  },
-  {
-    id: 'tesis',
-    title: 'Tesis (S2)',
-    description:
-      'BAB 1-5 + Referensi, 5-8 sub-tahapan per BAB. Lebih mendalam dari skripsi dengan analisis model dan studi literatur sistematis.',
-    shortDesc: 'Tesis S2 dengan analisis mendalam',
-    icon: GraduationCap,
-    gradient:
-      'from-orange-50 via-orange-50/50 to-red-50/40 dark:from-orange-950/30 dark:via-orange-950/15 dark:to-red-950/20',
-    iconBg:
-      'bg-gradient-to-br from-orange-500 to-red-600 shadow-orange-500/25',
-    iconColor: 'text-white',
-    borderHover:
-      'hover:border-orange-400/60 dark:hover:border-orange-600/60',
-    category: 'Akademik',
-  },
-  {
-    id: 'disertasi',
-    title: 'Disertasi (S3)',
-    description:
-      'BAB 1-5 + Referensi, 8-11 sub-tahapan per BAB. Penelitian orisinal paling komprehensif dengan analisis mediasi/moderasi.',
-    shortDesc: 'Disertasi S3, penelitian orisinal komprehensif',
-    icon: BookMarked,
-    gradient:
-      'from-red-50 via-red-50/50 to-rose-50/40 dark:from-red-950/30 dark:via-red-950/15 dark:to-rose-950/20',
-    iconBg:
-      'bg-gradient-to-br from-red-500 to-rose-600 shadow-red-500/25',
-    iconColor: 'text-white',
-    borderHover:
-      'hover:border-red-400/60 dark:hover:border-red-600/60',
-    category: 'Akademik',
-  },
-  // ── BUKU ──
-  {
-    id: 'buku-id',
-    title: 'Buku Ilmiah Indonesia',
-    description:
-      'Buku akademik berbahasa Indonesia. Kata pengantar, BAB 1-5, daftar pustaka. Mencicil per sub-bab maks 1500 kata.',
-    shortDesc: 'Buku akademik berbahasa Indonesia',
-    icon: BookOpen,
-    gradient:
-      'from-blue-50 via-blue-50/50 to-sky-50/40 dark:from-blue-950/30 dark:via-blue-950/15 dark:to-sky-950/20',
-    iconBg:
-      'bg-gradient-to-br from-blue-500 to-sky-600 shadow-blue-500/25',
-    iconColor: 'text-white',
-    borderHover: 'hover:border-blue-400/60 dark:hover:border-blue-600/60',
-    category: 'Buku',
-  },
-  {
-    id: 'buku-en',
-    title: 'Buku Ilmiah English',
-    description:
-      'Academic book in English. Preface, Chapters 1-5, References. Professional English academic writing.',
-    shortDesc: 'Academic book in English, profesional',
-    icon: Globe,
-    gradient:
-      'from-sky-50 via-sky-50/50 to-cyan-50/40 dark:from-sky-950/30 dark:via-sky-950/15 dark:to-cyan-950/20',
-    iconBg:
-      'bg-gradient-to-br from-sky-500 to-cyan-600 shadow-sky-500/25',
-    iconColor: 'text-white',
-    borderHover: 'hover:border-sky-400/60 dark:hover:border-sky-600/60',
-    category: 'Buku',
-  },
-  {
-    id: 'buku-arab',
-    title: 'Buku Bahasa Arab',
-    description:
-      'كتاب باللغة العربية — Arabic academic book. Pendahuluan, al-Fashl, al-Khatimah.',
-    shortDesc: 'كتاب باللغة العربية — Arabic academic book',
-    icon: Languages,
-    gradient:
-      'from-teal-50 via-teal-50/50 to-emerald-50/40 dark:from-teal-950/30 dark:via-teal-950/15 dark:to-emerald-950/20',
-    iconBg:
-      'bg-gradient-to-br from-teal-500 to-emerald-600 shadow-teal-500/25',
-    iconColor: 'text-white',
-    borderHover: 'hover:border-teal-400/60 dark:hover:border-teal-600/60',
-    category: 'Buku',
-  },
-  {
-    id: 'buku-eksakta',
-    title: 'Buku Eksakta/Matematika',
-    description:
-      'Buku sains, matematika, bidang eksakta. Definisi, teorema, proof, contoh numerik. Notasi matematika formal.',
-    shortDesc: 'Buku sains & matematika dengan notasi formal',
-    icon: Calculator,
-    gradient:
-      'from-violet-50 via-violet-50/50 to-purple-50/40 dark:from-violet-950/30 dark:via-violet-950/15 dark:to-purple-950/20',
-    iconBg:
-      'bg-gradient-to-br from-violet-500 to-purple-600 shadow-violet-500/25',
-    iconColor: 'text-white',
-    borderHover:
-      'hover:border-violet-400/60 dark:hover:border-violet-600/60',
-    category: 'Buku',
-  },
-  {
-    id: 'buku-keislaman',
-    title: 'Buku Keislaman',
-    description:
-      'Kajian keislaman: Al-Quran, Hadits, Fiqih, perspektif ulama & mazhab. Tafsir tematik dan analisis komparatif.',
-    shortDesc: 'Kajian keislaman, Al-Quran, Hadits & Fiqih',
-    icon: Library,
-    gradient:
-      'from-emerald-50 via-emerald-50/50 to-green-50/40 dark:from-emerald-950/30 dark:via-emerald-950/15 dark:to-green-950/20',
-    iconBg:
-      'bg-gradient-to-br from-green-500 to-emerald-600 shadow-green-500/25',
-    iconColor: 'text-white',
-    borderHover:
-      'hover:border-green-400/60 dark:hover:border-green-600/60',
-    category: 'Buku',
-  },
-  // ── LAINNYA ──
-  {
-    id: 'proposal',
-    title: 'Proposal Penelitian',
-    description:
-      'BAB I-III + Referensi. Latar belakang, tinjauan pustaka, metodologi, jadwal Gantt chart, anggaran biaya.',
-    shortDesc: 'Proposal penelitian lengkap dengan Gantt chart',
-    icon: Target,
-    gradient:
-      'from-rose-50 via-rose-50/50 to-pink-50/40 dark:from-rose-950/30 dark:via-rose-950/15 dark:to-pink-950/20',
-    iconBg: 'bg-gradient-to-br from-rose-500 to-pink-600 shadow-rose-500/25',
-    iconColor: 'text-white',
-    borderHover: 'hover:border-rose-400/60 dark:hover:border-rose-600/60',
-    category: 'Lainnya',
-  },
-  {
-    id: 'scholarship',
-    title: 'Esai Beasiswa',
-    description:
-      'Personal statement, motivasi, visi, kontribusi masa depan. Persuasif dan memikat untuk pengajuan beasiswa.',
-    shortDesc: 'Esai persuasif untuk pengajuan beasiswa',
-    icon: Award,
-    gradient:
-      'from-pink-50 via-pink-50/50 to-fuchsia-50/40 dark:from-pink-950/30 dark:via-pink-950/15 dark:to-fuchsia-950/20',
-    iconBg:
-      'bg-gradient-to-br from-pink-500 to-fuchsia-600 shadow-pink-500/25',
-    iconColor: 'text-white',
-    borderHover:
-      'hover:border-pink-400/60 dark:hover:border-pink-600/60',
-    category: 'Lainnya',
-  },
-  {
-    id: 'paper',
-    title: 'Makalah',
-    description:
-      'BAB I-III + Referensi. Pendahuluan, pembahasan, kesimpulan. Format rapi untuk tugas akademik.',
-    shortDesc: 'Makalah akademik rapi untuk tugas kuliah',
-    icon: ScrollText,
-    gradient:
-      'from-cyan-50 via-cyan-50/50 to-teal-50/40 dark:from-cyan-950/30 dark:via-cyan-950/15 dark:to-teal-950/20',
-    iconBg: 'bg-gradient-to-br from-cyan-500 to-teal-600 shadow-cyan-500/25',
-    iconColor: 'text-white',
-    borderHover: 'hover:border-cyan-400/60 dark:hover:border-teal-600/60',
-    category: 'Lainnya',
-  },
 ];
+
+// ── HIDDEN MODES (preserved for future use, not shown in UI) ──
+// skripsi, tesis, disertasi, buku-id, buku-en, buku-arab, buku-eksakta,
+// buku-keislaman, proposal, scholarship, paper — will be re-enabled later
 
 // ─── Badge Component ───────────────────────────────────────────────
 
@@ -486,15 +284,15 @@ export default function WritingModeSelector({
         className="text-center space-y-2"
       >
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-          Pilih Jenis Penulisan
+          Buat Artikel Ilmiah
         </h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
-          Pilih format tulisan akademik yang sesuai dengan kebutuhan Anda.
-          Semua mode menggunakan sistem{' '}
+          Artikel ilmiah dengan struktur IMRAD lengkap, referensi akademik,
+          dan sistem{' '}
           <span className="font-semibold text-gradient-emerald">
             penulisan mencicil
           </span>{' '}
-          per tahapan.
+          per tahapan oleh tim penulis profesional.
         </p>
       </motion.div>
 
@@ -542,7 +340,7 @@ export function WritingModeSelectorSkeleton() {
       </div>
       {/* Category groups skeleton */}
       <div className="space-y-6 sm:space-y-8">
-        {Array.from({ length: 4 }).map((_, catIdx) => (
+        {Array.from({ length: 1 }).map((_, catIdx) => (
           <div key={catIdx} className="space-y-3 sm:space-y-4">
             {/* Category header */}
             <div className="flex items-center gap-3 pt-4 sm:pt-6">
@@ -554,7 +352,7 @@ export function WritingModeSelectorSkeleton() {
             </div>
             {/* Cards grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {Array.from({ length: catIdx === 0 ? 1 : catIdx === 1 ? 3 : catIdx === 2 ? 5 : 3 }).map((_, i) => (
+              {Array.from({ length: 1 }).map((_, i) => (
                 <div
                   key={i}
                   className="rounded-xl border p-4 sm:p-5 space-y-3"

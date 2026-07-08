@@ -18,38 +18,40 @@ const IS_PROD = typeof process !== 'undefined' && process.env.NODE_ENV === 'prod
 export const AI_ENGINES: AIEngineConfig[] = [
   {
     id: 'zai',
-    name: 'Tim 1 (Z.ai)',
+    name: IS_PROD ? 'Tim 1' : 'Tim 1',
     description: IS_PROD
       ? 'Tidak tersedia di server publik'
-      : 'Tim utama, andal dan terintegrasi penuh',
+      : 'Tim penulis utama, andal dan terintegrasi penuh',
     bestFor: IS_PROD ? '—' : 'Pembuatan artikel, judul & kata kunci',
     isDefault: !IS_PROD,
     icon: '🟢',
   },
   {
     id: 'gemini',
-    name: IS_PROD ? 'Tim 1 (Default)' : 'Tim 2 (Gemini)',
-    description: 'Google Gemini 2.5 Flash — konteks panjang, akurat',
+    name: 'Tim 2',
+    description: IS_PROD
+      ? 'Tim penulis default, konteks panjang & akurat'
+      : 'Tim penulis cadangan, konteks panjang & akurat',
     bestFor: 'Pembuatan artikel, judul, kata kunci, konten panjang',
     isDefault: IS_PROD,
     icon: '🔵',
   },
   {
     id: 'grok',
-    name: IS_PROD ? 'Tim 2 (Groq) — Tidak tersedia' : 'Tim 2 (Groq)',
+    name: 'Tim 3',
     description: IS_PROD
       ? 'Tidak tersedia di server publik'
-      : 'Groq Llama 3.3 70B — inferensi super cepat',
+      : 'Tim penulis cepat, inferensi super cepat',
     bestFor: IS_PROD ? '—' : 'Draf cepat, generasi ringkas, mesin alternatif',
     isDefault: false,
     icon: '🟠',
   },
   {
     id: 'cloudflare',
-    name: 'Tim 3 (Llama)',
+    name: 'Tim 4',
     description: IS_PROD
       ? 'Tidak tersedia di server publik'
-      : 'Meta Llama 3.1 70B — model open-source besar',
+      : 'Tim penulis besar, model open-source',
     bestFor: IS_PROD ? '—' : 'Generasi cadangan, distribusi beban',
     isDefault: false,
     icon: '🟡',

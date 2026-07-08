@@ -274,7 +274,7 @@ function StepHeader({
 
 function SocialProofSection() {
   const stats = [
-    { value: 11, suffix: '+', label: 'Mode Penulisan', display: '11+' },
+    { value: 4, suffix: '', label: 'Tim Penulis', display: '4' },
     { value: 8, suffix: '+', label: 'Database Akademik', display: '8+' },
     { value: 7, suffix: 'th', label: 'Edition', display: 'APA 7th', prefix: 'Format ' },
     { value: 3, suffix: '', label: 'Export Format', display: 'PDF, DOCX, MD' },
@@ -282,7 +282,7 @@ function SocialProofSection() {
 
   const testimonials = [
     {
-      text: 'Mamah sangat membantu saya menyelesaikan skripsi dalam 2 minggu. Referensi yang dihasilkan sangat relevan dan artikelnya sudah siap publikasi.',
+      text: 'Mamah sangat membantu saya menulis artikel ilmiah untuk jurnal. Referensi yang dihasilkan relevan dan tulisan sudah siap dipublikasikan.',
       author: 'Dr. Siti Nurhaliza',
       title: 'Dosen Universitas Indonesia',
       stars: 5,
@@ -294,9 +294,9 @@ function SocialProofSection() {
       stars: 5,
     },
     {
-      text: 'Fitur penulisan cicil untuk buku sangat luar biasa. Setiap bab ditulis dengan konsisten dan sesuai standar penerbitan.',
+      text: 'Dengan 4 tim penulis AI, saya bisa memilih tim terbaik untuk topik penelitian saya. Hasilnya sangat akademis dan terstruktur sesuai standar jurnal.',
       author: 'Prof. Budi Santoso',
-      title: 'Penerbit Buku Akademik',
+      title: 'Peneliti & Dosen',
       stars: 5,
     },
   ];
@@ -403,20 +403,20 @@ function HowItWorksSection() {
     {
       number: '01',
       icon: FileText,
-      title: 'Pilih Mode & Masukkan Topik',
-      description: 'Pilih dari 12 mode penulisan akademik — skripsi, tesis, buku, artikel jurnal, dan lainnya. Masukkan judul atau kata kunci penelitian Anda.',
+      title: 'Masukkan Topik & Pilih Tim',
+      description: 'Masukkan judul atau kata kunci penelitian Anda, pilih salah satu dari 4 tim penulis, dan tentukan metode penelitian.'
     },
     {
       number: '02',
       icon: Search,
-      title: 'AI Cari & Analisis Referensi',
-      description: 'Sistem AI menemukan hingga 50 referensi ilmiah relevan, menerjemahkan kata kunci, dan menyusun daftar pustaka APA 7th edition.',
+      title: 'Cari & Analisis Referensi',
+      description: 'Sistem menemukan hingga 50 referensi ilmiah relevan, menerjemahkan kata kunci, dan menyusun daftar pustaka APA 7th edition.',
     },
     {
       number: '03',
       icon: Wand2,
-      title: 'Generate & Export Karya',
-      description: 'AI menulis konten akademik berkualitas tinggi — Bab per Bab untuk karya panjang, atau full artikel IMRAD. Export ke PDF atau DOCX.',
+      title: 'Generate & Export Artikel',
+      description: 'Tim AI menulis artikel IMRAD lengkap — abstrak, pendahuluan, metode, hasil & diskusi, kesimpulan. Export ke PDF atau DOCX.',
     },
   ];
 
@@ -492,11 +492,11 @@ function FAQSection() {
   const faqs = [
     {
       question: 'Apakah Mamah gratis digunakan?',
-      answer: 'Ya! Mamah menyediakan paket gratis dengan batas generate per hari. Untuk kebutuhan lebih intensif, tersedia paket Pro dengan unlimited generation, prioritas AI engine, dan fitur eksklusif lainnya.',
+      answer: 'Ya! Mamah menyediakan paket gratis dengan batas generate per hari. Untuk kebutuhan lebih intensif, tersedia paket Pro dengan unlimited generation, prioritas tim penulis, dan fitur eksklusif lainnya.',
     },
     {
       question: 'Berapa lama waktu yang dibutuhkan untuk generate satu artikel?',
-      answer: 'Artikel jurnal IMRAD biasanya selesai dalam 1-3 menit, tergantung panjang dan kompleksitas topik. Untuk karya lebih panjang seperti skripsi atau buku, mode penulisan cicil memungkinkan Anda menulis Bab per Bab dengan kontrol penuh.',
+      answer: 'Artikel ilmiah IMRAD biasanya selesai dalam 1-3 menit, tergantung panjang dan kompleksitas topik. Anda bisa memilih dari 4 tim penulis dan menyesuaikan setiap bagian sebelum export.',
     },
     {
       question: 'Apakah referensi yang dihasilkan valid dan bisa dipertanggungjawabkan?',
@@ -507,16 +507,16 @@ function FAQSection() {
       answer: 'Saat ini Mamah mendukung export ke PDF (dengan layout publikasi siap cetak) dan DOCX (format Microsoft Word yang mudah diedit lebih lanjut). Format APA 7th edition digunakan untuk sitasi dan daftar pustaka.',
     },
     {
-      question: 'Apa perbedaan mode Artikel Jurnal dan mode Cicil (Skripsi/Tesis/Buku)?',
-      answer: 'Mode Artikel Jurnal menggunakan alur 5 langkah (definisi riset → referensi → generate → review → polish) yang cocok untuk artikel IMRAD singkat. Mode Cicil dirancang untuk karya panjang — Anda menulis Bab per Bab secara berurutan dengan referensi yang konsisten di setiap bagian.',
+      question: 'Apa saja langkah dalam membuat artikel ilmiah?',
+      answer: 'Mamah menggunakan alur 5 langkah: (1) Definisi riset — masukkan judul, kata kunci, dan pilih tim penulis. (2) Referensi — cari dan pilih dari 50+ referensi ilmiah. (3) Generate — tim AI menulis setiap bagian artikel. (4) Review — tinjau dan beri catatan per bagian. (5) Polish — perbaiki dan finalisasi sebelum export.',
     },
     {
       question: 'Apakah data dan konten saya aman?',
       answer: 'Keamanan data pengguna adalah prioritas kami. Semua data dienkripsi dan disimpan dengan aman. Konten yang Anda buat sepenuhnya milik Anda. Baca kebijakan privasi kami untuk informasi lengkap.',
     },
     {
-      question: 'Bisakah saya menggunakan Mamah untuk bahasa selain Indonesia?',
-      answer: 'Tentu! Mamah mendukung mode penulisan dalam Bahasa Indonesia, Bahasa Inggris, dan Bahasa Arab. Anda bisa memilih mode Buku Ilmiah English atau Buku Bahasa Arab untuk karya dalam bahasa tersebut.',
+      question: 'Bahasa apa saja yang didukung untuk artikel?',
+      answer: 'Saat ini Mamah fokus pada artikel ilmiah berbahasa Indonesia. Tim penulis AI kami dioptimalkan untuk menghasilkan artikel jurnal dengan bahasa akademik Indonesia yang baik dan benar.',
     },
   ];
 
@@ -577,7 +577,7 @@ function PricingSection() {
       popular: false,
       features: [
         '3 generate per hari',
-        'Mode Artikel Jurnal',
+        'Artikel Ilmiah IMRAD',
         'Pencarian referensi dasar',
         'Export PDF',
         'Format APA 7th Edition',
@@ -594,10 +594,10 @@ function PricingSection() {
       popular: true,
       features: [
         'Generate unlimited',
-        'Semua 11 mode penulisan',
+        'Semua 4 tim penulis',
         '50 referensi per pencarian',
         'Export PDF, DOCX & Markdown',
-        'Mode Cicil (Bab per Bab)',
+        'Polish otomatis',
         'Prioritas processing',
         'Fitur Reviewer Notes',
         'Export CSV referensi (SLR)',
@@ -767,10 +767,10 @@ function WelcomeBanner() {
   ];
 
   const trustBadges = [
-    { label: '12+ Mode Penulisan', icon: BookOpen },
+    { label: '4 Tim Penulis', icon: BookOpen },
     { label: 'Format APA 7th', icon: Shield },
     { label: 'Export DOCX & PDF', icon: FileCheck },
-    { label: 'AI Multi-Engine', icon: Zap },
+    { label: 'Multi-Tim Penulis', icon: Zap },
   ];
 
   const containerVariants = {
@@ -903,7 +903,7 @@ function WelcomeBanner() {
           variants={fadeUp}
           className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gradient-emerald leading-tight"
         >
-          Tulis Karya Akademik dengan AI
+          Tulis Artikel Ilmiah dengan Mamah
         </motion.h2>
 
         {/* Subheading */}
@@ -911,7 +911,7 @@ function WelcomeBanner() {
           variants={fadeUp}
           className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
         >
-          Dari ide hingga publikasi — 12 mode penulisan akademik yang didukung kecerdasan buatan
+          Dari ide hingga publikasi — artikel ilmiah berkualitas oleh tim penulis profesional
         </motion.p>
 
         {/* Feature cards */}
@@ -1711,12 +1711,12 @@ export default function ArticleGeneratorApp() {
                             className={!showSuperBot ? 'gap-1.5 bg-emerald-600 text-white' : 'gap-1.5 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700'}
                           >
                             <Library className="size-4" />
-                            <span className="hidden sm:inline">AI Search</span>
+                            <span className="hidden sm:inline">Pencarian</span>
                           </Button>
                           {showSuperBot && (
                             <Badge variant="outline" className="border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-300">
                               <Zap className="size-3 mr-1" />
-                              Mesin Kustom — Tanpa AI per klik
+                              Mesin Kustom — Tanpa batas per klik
                             </Badge>
                           )}
                         </div>

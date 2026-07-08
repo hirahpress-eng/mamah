@@ -1050,8 +1050,8 @@ export default function Step3Method() {
           <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><Sparkles className="w-5 h-5" /></div>
             <div>
-              <h3 className="text-base font-semibold text-foreground">AI Engine</h3>
-              <p className="text-sm text-muted-foreground">Select the AI model for generation</p>
+              <h3 className="text-base font-semibold text-foreground">Pilih Tim Penulis</h3>
+              <p className="text-sm text-muted-foreground">Pilih tim yang akan menulis artikel ilmiah Anda</p>
             </div>
           </div>
           <Card className="relative overflow-hidden">
@@ -1059,7 +1059,7 @@ export default function Step3Method() {
             <CardContent className="relative py-4">
               <Select value={selectedEngine} onValueChange={(val) => setSelectedEngine(val as AIEngineId)}>
                 <SelectTrigger className="w-full sm:w-[320px] bg-background border-emerald-200 dark:border-emerald-800 focus:ring-emerald-500 focus:border-emerald-500">
-                  <SelectValue placeholder="Select an AI engine" />
+                  <SelectValue placeholder="Pilih tim penulis" />
                 </SelectTrigger>
                 <SelectContent>
                   {AI_ENGINES.map((engine) => (
@@ -1074,7 +1074,7 @@ export default function Step3Method() {
               </Select>
               <AnimatePresence mode="wait">
                 <motion.p key={selectedEngine} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.2 }} className="mt-2.5 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                  <Sparkles className="w-3 h-3" /> Selected engine: {AI_ENGINES.find((e) => e.id === selectedEngine)?.bestFor}
+                  <Sparkles className="w-3 h-3" /> {AI_ENGINES.find((e) => e.id === selectedEngine)?.bestFor}
                 </motion.p>
               </AnimatePresence>
             </CardContent>
@@ -1087,13 +1087,13 @@ export default function Step3Method() {
           <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><Settings className="w-5 h-5" /></div>
             <div>
-              <h3 className="text-base font-semibold text-foreground">Additional Instructions</h3>
-              <p className="text-sm text-muted-foreground">Provide specific requirements (optional)</p>
+              <h3 className="text-base font-semibold text-foreground">Instruksi Tambahan</h3>
+              <p className="text-sm text-muted-foreground">Tambahkan persyaratan khusus (opsional)</p>
             </div>
           </div>
           <Card><CardContent className="pt-0">
-            <Textarea value={additionalInstructions} onChange={(e) => useArticleStore.getState().setAdditionalInstructions(e.target.value)} placeholder="Specify additional requirements such as target journal, focus areas, theoretical framework, citation style..." className="min-h-[100px] resize-y text-sm leading-relaxed" />
-            <p className="text-xs text-muted-foreground mt-2">{additionalInstructions.length > 0 ? `${additionalInstructions.length} characters` : 'Optional — leave blank for auto-generation'}</p>
+            <Textarea value={additionalInstructions} onChange={(e) => useArticleStore.getState().setAdditionalInstructions(e.target.value)} placeholder="Tulis persyaratan tambahan seperti jurnal tujuan, fokus penelitian, kerangka teori, gaya sitasi..." className="min-h-[100px] resize-y text-sm leading-relaxed" />
+            <p className="text-xs text-muted-foreground mt-2">{additionalInstructions.length > 0 ? `${additionalInstructions.length} karakter` : 'Opsional — biarkan kosong untuk auto-generasi'}</p>
           </CardContent></Card>
         </section>
         <Separator />

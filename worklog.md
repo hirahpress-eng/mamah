@@ -903,3 +903,21 @@ Work Log:
 Stage Summary:
 - Server healthy, no action taken
 - All clear
+
+---
+Task ID: rebrand-ai-to-tim
+Agent: Main Agent
+Task: Ganti semua referensi model AI dengan Tim 1-4, hide semua jenis penulisan kecuali Artikel Ilmiah
+
+Work Log:
+- ai-engine-config.ts: Semua engine diganti nama → Tim 1 (zai), Tim 2 (gemini), Tim 3 (grok), Tim 4 (cloudflare). Deskripsi diindonesiakan, tidak ada nama model (Gemini/Groq/Llama) yang tampil di UI
+- step3-method.tsx: "AI Engine" → "Pilih Tim Penulis", placeholder → "Pilih tim penulis", "Select the AI model" → Indonesian, "Selected engine:" dihapus, "Additional Instructions" → "Instruksi Tambahan", placeholder & counter diindonesiakan
+- writing-mode-selector.tsx: HIDE semua mode kecuali Artikel Ilmiah (skripsi, tesis, buku, dll dipreservasi sebagai komentar). CATEGORIES hanya "Artikel" saja. Header: "Pilih Jenis Penulisan" → "Buat Artikel Ilmiah". Badge "Popular" → "Utama". Title "Artikel Jurnal" → "Artikel Ilmiah". Unused imports dibersihkan
+- page.tsx: Stats "11+ Mode Penulisan" → "4 Tim Penulis". How-it-works step 1 diupdate. "AI Cari & Analisis Referensi" → "Cari & Analisis Referensi". "AI menulis konten..." → "Tim penulis menyusun konten...". Tutorial heading "Tulis Karya Akademik dengan AI" → "Tulis Artikel Ilmiah dengan Mamah". Trust badges "12+ Mode Penulisan" → "4 Tim Penulis", "AI Multi-Engine" → "Multi-Tim Penulis". FAQ: "prioritas AI engine" → "prioritas tim penulis", "4 tim penulis AI" → "4 tim penulis". "AI Search" → "Pencarian". "Tanpa AI per klik" → "Tanpa batas per klik". Pricing "Semua 11 mode penulisan" → "Semua 4 tim penulis"
+- privasi/page.tsx: "penyedia layanan AI (seperti Google Gemini)" → "penyedia layanan penulisan"
+
+Stage Summary:
+- 5 file diubah, 0 lint errors, HMR compiled clean
+- Browser verified: hanya Artikel Ilmiah yang tampil, semua "AI model" referensi di UI diganti "Tim"
+- Backend engine ID tetap sama (zai/gemini/grok/cloudflare) — hanya nama tampilan yang berubah
+- Writing flows, API routes, dan semua logic TIDAK diubah — hanya UI/UX layer
