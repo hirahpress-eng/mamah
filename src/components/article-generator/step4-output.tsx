@@ -474,10 +474,10 @@ function SectionCard({
     try {
       await navigator.clipboard.writeText(section.content);
       setCopied(true);
-      toast.success(`${meta.label} copied to clipboard`);
+      toast.success(`${meta.label} disalin ke clipboard`);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Failed to copy section');
+      toast.error('Gagal menyalin bagian');
     }
   }, [section.content, meta.label]);
 
@@ -613,7 +613,7 @@ function ReferencesCard({
       toast.success('Referensi disalin ke clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Failed to copy references');
+      toast.error('Gagal menyalin referensi');
     }
   }, [references]);
 
@@ -1572,7 +1572,7 @@ export default function Step4Output() {
                 ) : (
                   <Copy className="size-4" />
                 )}
-                <span className="hidden sm:inline">Copy Semua</span>
+                <span className="hidden sm:inline">Salin Semua</span>
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>

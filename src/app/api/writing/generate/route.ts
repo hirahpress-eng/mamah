@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { generateWithEngine } from '@/lib/ai-engine';
 import { AI_ENGINES, type AIEngineId } from '@/lib/ai-engine-config';
 
@@ -19,6 +20,14 @@ const MODE_PROMPTS: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  // Rate limit check
+  const { allowed, retryAfter } = rateLimit(req, RATE_LIMITS.generation);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+    );
+  }
   try {
     const body = await req.json();
     const { mode, title, description, keyPoints, engine, targetWords } = body;

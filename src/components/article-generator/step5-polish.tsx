@@ -909,7 +909,7 @@ export default function Step5Polish() {
       });
       if (!postRes.ok) throw new Error(`Reviewer notes API returned ${postRes.status}`);
       const postData = await postRes.json();
-      if (!postData.success) throw new Error(postData.error || 'Failed to generate reviewer notes');
+      if (!postData.success) throw new Error(postData.error || 'Gagal membuat catatan reviewer');
 
       // Synchronous mode: result is directly in the response
       if (postData.result) {
@@ -1194,9 +1194,9 @@ export default function Step5Polish() {
 
     try {
       await navigator.clipboard.writeText(text);
-      toast.success('Article copied to clipboard');
+      toast.success('Artikel disalin ke clipboard');
     } catch {
-      toast.error('Failed to copy to clipboard');
+      toast.error('Gagal menyalin ke clipboard');
     }
   }, [article]);
 
@@ -1236,7 +1236,7 @@ export default function Step5Polish() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Article downloaded');
+    toast.success('Artikel berhasil diunduh');
   }, [article]);
 
   // ── Confetti state ──
@@ -1249,10 +1249,10 @@ export default function Step5Polish() {
     setIsExportingPdf(true);
     try {
       await exportToPdf(article);
-      toast.success('Article downloaded as PDF');
+      toast.success('Artikel berhasil diunduh sebagai PDF');
     } catch (err) {
       console.error('PDF export error:', err);
-      toast.error('Failed to generate PDF. Please try again.');
+      toast.error('Gagal membuat PDF. Silakan coba lagi.');
     } finally {
       setIsExportingPdf(false);
     }
@@ -1493,7 +1493,7 @@ export default function Step5Polish() {
                 {/* Progress steps */}
                 <div className="space-y-3 text-left bg-card rounded-xl border p-5 shadow-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">Section Progress</span>
+                    <span className="text-xs font-medium text-muted-foreground">Progres Bagian</span>
                     <span className="text-xs tabular-nums text-muted-foreground">
                       {Math.min(upgradeStepIndex + 1, UPGRADE_SECTION_STEPS.length)} / {UPGRADE_SECTION_STEPS.length}
                     </span>
@@ -1531,7 +1531,7 @@ export default function Step5Polish() {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Please do not close this tab while the upgrade is in progress
+                  Jangan tutup tab ini saat proses peningkatan sedang berjalan
                 </p>
               </div>
             </motion.div>

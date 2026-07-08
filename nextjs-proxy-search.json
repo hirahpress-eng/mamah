@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.reddit.com/r/nextjs/comments/1o4me50/nextjs_16_beta_replaces_middlewarets_with_proxyts",
+    "name": "Next.js 16 Beta replaces middleware.ts with proxy.ts - Reddit",
+    "snippet": "So, in the Next.js 16 Beta, the team officially deprecated middleware.ts and replaced it with a new file called proxy.ts . r/Supabase on Reddit: Next.js 16 replaces middleware.ts with proxy.ts Wasted 2 hours figuring out why my proxy/middleware file didn't ... More results from www.reddit.com",
+    "host_name": "www.reddit.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://nextjs.org/docs/messages/middleware-to-proxy",
+    "name": "Renaming Middleware to Proxy - Next.js",
+    "snippet": "To clarify our direction, we are renaming the file convention to “proxy.” This highlights that we are moving away from Middleware, breaking down its overloaded ...",
+    "host_name": "nextjs.org",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://nextjs.org/docs/app/api-reference/file-conventions/proxy",
+    "name": "File-system conventions: proxy.js | Next.js",
+    "snippet": "proxy.js ... Note: The middleware file convention is deprecated and has been renamed to proxy . See Migration to Proxy for more details. The proxy ...",
+    "host_name": "nextjs.org",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=zNgCFXZLoRk",
+    "name": "Next.js 16 Middleware DEPRECATED - Authentication In Proxy Or",
+    "snippet": "What to do with \"middleware\" in Next.js... Get $50 Kinde credit (sponsored): https://kinde.com/r?kinde_ref=e95bc6f8f17eda7c React ...",
+    "host_name": "www.youtube.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://u11d.com/blog/nextjs-16-proxy-vs-middleware-bff-guide",
+    "name": "How to Use Proxy in Next.js 16 (Replacing Middleware) - u11d",
+    "snippet": "Next.js 16 introduces a powerful new feature: the proxy.js / proxy.ts convention that replaces the old middleware.js pattern.",
+    "host_name": "u11d.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/vercel/next.js/discussions/84842",
+    "name": "Rename middleware.ts in NextJs 16 Beta #84842 - GitHub",
+    "snippet": "The rename from middleware.ts to proxy.ts in Next.js 16 Beta is meant to clarify its role at the network boundary, focusing on request ...",
+    "host_name": "github.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://medium.com/@amitupadhyay878/next-js-16-update-middleware-js-5a020bdf9ca7",
+    "name": "Next.js 16 Update: middleware Is Now proxy - Medium",
+    "snippet": "... middleware.js / middleware.ts has been replaced by proxy.js / proxy.ts. This is not a small rename. It represents a major shift in how Next.",
+    "host_name": "medium.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://nextjs.org/docs/app/guides/upgrading/version-16",
+    "name": "Upgrading: Version 16 - Next.js",
+    "snippet": "We recommend changing the function name to proxy , even if you are using a default export. Configuration flags that contained the middleware ... Using the Codemod · Async parameters for icon, and... · middleware to proxy",
+    "host_name": "nextjs.org",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=QKzWMdve6oY",
+    "name": "Next.js Middleware Is DEPRECATED! (Here is why) - YouTube",
+    "snippet": "Next.js 16 has deprecated the middleware and gave it a new name, here is all you need to know... Next.js 16 Video: ...",
+    "host_name": "www.youtube.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dev.to/aakash_shrivas_0806333bbe/nextjs-middleware-is-changing-what-you-need-to-know-about-the-move-toward-proxies-3ndk",
+    "name": "Next.js Middleware Is Changing: What You Need to Know About the",
+    "snippet": "He mentioned that Next.js Middleware is being deprecated, with the framework shifting toward Proxy routes/files instead. That caught my ...",
+    "host_name": "dev.to",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

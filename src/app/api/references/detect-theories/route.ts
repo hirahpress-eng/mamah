@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { generateWithEngine, DEFAULT_ENGINE, UNAVAILABLE_PATTERNS } from '@/lib/ai-engine';
 import type { AIEngineId } from '@/lib/ai-engine';
 import { extractJson } from '@/lib/extract-json';
@@ -72,6 +74,14 @@ function buildReferencesText(references: ReferenceInput[]): string {
 
 export const maxDuration = 300;
 export async function POST(request: Request) {
+  // Rate limit check
+  const { allowed, retryAfter } = rateLimit(request, RATE_LIMITS.generation);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+    );
+  }
   try {
     const body = await request.json();
     const { references, engineId = DEFAULT_ENGINE } = body as {

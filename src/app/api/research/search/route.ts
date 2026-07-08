@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { unifiedSearch } from '@/lib/unified-research-engine';
 import { uploadToTelegram } from '@/lib/telegram-storage';
 import { downloadPdfFromUrl } from '@/lib/unified-research-engine';
@@ -6,6 +7,14 @@ import { createSupabaseServerClient } from '@/lib/supabase';
 
 export const maxDuration = 300;
 export async function POST(request: Request) {
+  // Rate limit check
+  const { allowed, retryAfter } = rateLimit(request, RATE_LIMITS.search);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+    );
+  }
   try {
     const body = await request.json();
     const { keywords, title, maxResults = 50, yearFrom, yearTo, openAccessOnly, autoUploadPdf } = body;

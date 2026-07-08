@@ -2,13 +2,28 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
 import { createSession, getSessionCookieName } from '@/lib/session';
 import { db } from '@/lib/db';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 8;
+
+/** Validate password has at least 1 letter and 1 number */
+function isPasswordStrong(password: string): boolean {
+  return /[a-zA-Z]/.test(password) && /[0-9]/.test(password);
+}
 
 export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
+    // Rate limit: 5 attempts per minute (anti-abuse)
+    const { allowed, retryAfter } = rateLimit(request, RATE_LIMITS.auth);
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Terlalu banyak percobaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
+
     const { email, password, fullName } = await request.json();
 
     // Server-side validation
@@ -29,6 +44,13 @@ export async function POST(request: Request) {
     if (password.length < MIN_PASSWORD_LENGTH) {
       return NextResponse.json(
         { success: false, error: `Kata sandi minimal ${MIN_PASSWORD_LENGTH} karakter` },
+        { status: 400 }
+      );
+    }
+
+    if (!isPasswordStrong(password)) {
+      return NextResponse.json(
+        { success: false, error: 'Kata sandi harus mengandung huruf dan angka' },
         { status: 400 }
       );
     }

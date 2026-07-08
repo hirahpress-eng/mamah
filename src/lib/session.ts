@@ -13,6 +13,8 @@ const JWT_SECRET = new TextEncoder().encode(_jwtSecret || 'mamah-dev-only-fallba
 
 const SESSION_COOKIE_NAME = 'mamah_session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const SESSION_MAX_AGE_SECONDS = `${SESSION_MAX_AGE}s`;
+const ISSUER = 'mamah-app';
 
 export interface SessionPayload {
   userId: string;
@@ -43,7 +45,8 @@ export async function createSession(user: {
   const token = await new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(`${SESSION_MAX_AGE}s`)
+    .setIssuer(ISSUER)
+    .setExpirationTime(SESSION_MAX_AGE_SECONDS)
     .sign(JWT_SECRET);
 
   return token;
@@ -51,7 +54,9 @@ export async function createSession(user: {
 
 export async function verifySession(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, JWT_SECRET, {
+      issuer: ISSUER,
+    });
     return payload as unknown as SessionPayload;
   } catch {
     return null;

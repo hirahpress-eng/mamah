@@ -4,7 +4,7 @@ import { jwtVerify } from 'jose';
 const SESSION_COOKIE_NAME = 'mamah_session';
 
 // Routes that skip auth check (glob-style matching)
-const PUBLIC_API_PREFIXES = ['/api/auth'];
+const PUBLIC_API_PREFIXES = ['/api/auth', '/api/health'];
 
 function isPublicApi(pathname: string): boolean {
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -43,7 +43,9 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    await jwtVerify(token, new TextEncoder().encode(jwtSecret));
+    await jwtVerify(token, new TextEncoder().encode(jwtSecret), {
+      issuer: 'mamah-app',
+    });
     return NextResponse.next();
   } catch {
     return NextResponse.json(

@@ -22,10 +22,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://mamah.app'),
-  title: "Mamah — AI Academic Writing Assistant",
+  title: "Mamah \u2014 Asisten Penulis Akademik AI",
   description:
-    "Generate publication-ready academic articles with AI. Define research topics, find references, and create IMRAD-formatted papers with professional academic writing.",
-    keywords: [
+    "Hasilkan artikel akademik siap publikasi dengan AI. Mendukung 12 mode penulisan: artikel ilmiah, skripsi, tesis, disertasi, buku, proposal, dan lainnya. Temukan referensi dari 11 database, tulis dengan format IMRAD, dan ekspor ke PDF/DOCX.",
+  keywords: [
     "academic writing",
     "literature generator",
     "research article",
@@ -36,6 +36,10 @@ export const metadata: Metadata = {
     "asisten penulis akademik",
     "penulisan skripsi",
     "penulisan tesis",
+    "penulisan disertasi",
+    "penulisan buku",
+    "generator artikel ilmiah",
+    "pencarian referensi akademik",
   ],
   authors: [{ name: "Mamah" }],
   icons: {
@@ -43,11 +47,30 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
   openGraph: {
-    title: "Mamah — AI Academic Writing Assistant",
+    title: "Mamah \u2014 Asisten Penulis Akademik AI",
     description:
-      "Generate publication-ready academic articles with AI-powered research assistance. Supports 12 writing modes: articles, theses, books, and more.",
+      "Hasilkan artikel akademik siap publikasi dengan bantuan AI. 12 mode penulisan, pencarian referensi 11 database, dan ekspor profesional ke PDF/DOCX.",
     type: "website",
+    siteName: "Mamah",
+    locale: "id_ID",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Mamah \u2014 AI Academic Writing Assistant" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mamah \u2014 Asisten Penulis Akademik AI",
+    description: "Hasilkan artikel akademik siap publikasi dengan bantuan AI.",
     images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -93,6 +116,32 @@ export default function RootLayout({
                 });
               })();
             `,
+          }}
+        />
+        {/* JSON-LD Structured Data for SEO */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'Mamah',
+              description: 'Asisten Penulis Akademik AI \u2014 Hasilkan artikel akademik siap publikasi dengan 12 mode penulisan.',
+              applicationCategory: 'EducationalApplication',
+              operatingSystem: 'Web',
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'IDR',
+                description: 'Free tier available',
+              },
+              inLanguage: 'id',
+              author: {
+                '@type': 'Organization',
+                name: 'Mamah',
+                url: 'https://mamah.app',
+              },
+            }),
           }}
         />
       </head>

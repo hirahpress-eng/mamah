@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
 import { AI_ENGINES, type AIEngineId } from '@/lib/ai-engine-config';
 
@@ -469,6 +471,14 @@ function buildReviewerContext(reviewerNotes: any): string {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
+  // Rate limit check
+  const { allowed, retryAfter } = rateLimit(request, RATE_LIMITS.generation);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+    );
+  }
   try {
     const body = await request.json();
     const { article, options, engineId, reviewerNotes } = body;

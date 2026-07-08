@@ -2,12 +2,22 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
 import { createSession, getSessionCookieName } from '@/lib/session';
 import { db } from '@/lib/db';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
+    // Rate limit: 5 attempts per minute (brute force protection)
+    const { allowed, retryAfter } = rateLimit(request, RATE_LIMITS.auth);
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Terlalu banyak percobaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (!email || !password) {

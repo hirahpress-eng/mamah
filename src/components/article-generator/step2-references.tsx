@@ -511,7 +511,7 @@ function ReferenceDetailModal({
               className="space-y-2"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Relevance Score</span>
+                <span className="text-xs font-medium text-muted-foreground">Skor Relevansi</span>
                 <span className="text-sm font-bold tabular-nums text-foreground">{relevancePct}%</span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
@@ -533,7 +533,7 @@ function ReferenceDetailModal({
               transition={{ duration: 0.3, delay: 0.15 }}
               className="space-y-2"
             >
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Abstract</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Abstrak</h4>
               <div className="max-h-60 overflow-y-auto rounded-lg border border-border/50 bg-muted/30 p-4">
                 <p className="text-sm leading-relaxed text-foreground/90">{reference.abstract}</p>
               </div>
@@ -1731,7 +1731,7 @@ export default function Step2References() {
                         <label className="text-xs font-medium text-muted-foreground">Urutkan</label>
                         <Select value={sortBy} onValueChange={setSortBy}>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Relevance" />
+                            <SelectValue placeholder="Relevansi" />
                           </SelectTrigger>
                           <SelectContent>
                             {SORT_OPTIONS.map((opt) => (
@@ -2225,7 +2225,7 @@ export default function Step2References() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-1.5">
                           <AlertTriangle className="size-3.5 text-amber-500" />
-                          <span className="text-xs font-semibold text-foreground">Theoretical Gaps</span>
+                          <span className="text-xs font-semibold text-foreground">Celah Teoritis</span>
                         </div>
                         <ul className="space-y-1">
                           {theories.theoreticalGaps.map((gap: string, i: number) => (

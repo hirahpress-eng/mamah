@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import type { GeneratedArticle } from '@/store/article-store';
 import { buildMarkdown } from '@/lib/export-markdown';
 
@@ -17,6 +18,14 @@ interface ExportArticle {
 
 export const maxDuration = 300;
 export async function POST(request: NextRequest) {
+  // Rate limit check
+  const { allowed, retryAfter } = rateLimit(request, RATE_LIMITS.export);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+    );
+  }
   try {
     const body: ExportArticle = await request.json();
 

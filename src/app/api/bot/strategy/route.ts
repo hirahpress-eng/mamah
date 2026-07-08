@@ -8,7 +8,8 @@
  * Uses z-ai-web-dev-sdk for the LLM call (server-side only).
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import ZAI from 'z-ai-web-dev-sdk';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -89,6 +90,14 @@ function safeBoolean(value: unknown, fallback: boolean): boolean {
 
 export const maxDuration = 300;
 export async function POST(request: NextRequest) {
+  // Rate limit check
+  const { allowed, retryAfter } = rateLimit(request, RATE_LIMITS.search);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + retryAfter + ' detik.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+    );
+  }
   try {
     // ── Parse & validate ───────────────────────────────────────────────
     const body = (await request.json()) as { topic?: string };
