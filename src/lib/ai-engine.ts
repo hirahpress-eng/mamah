@@ -88,11 +88,11 @@ let cachedZAI: InstanceType<typeof ZAI> | null = null;
 
 // Default config — same values used by the z.ai platform
 const DEFAULT_ZAI_CONFIG = {
-  baseUrl: 'https://internal-api.z.ai/v1',
-  apiKey: 'Z.ai',
-  chatId: 'chat-25294527-e9a0-464d-8fa1-fd96b55b5553',
-  userId: '2fe71c9b-9e4d-4011-b6fc-28d5b620d875',
-  token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMmZlNzFjOWItOWU0ZC00MDExLWI2ZmMtMjhkNWI2MjBkODc1IiwiY2hhdF9pZCI6ImNoYXQtMjUyOTQ1MjctZTlhMC00NjRkLThmYTEtZmQ5NmI1NWI1NTUzIiwicGxhdGZvcm0iOiJ6YWkifQ.EhizH5G9FdN9mwa4d3BW5dfguy_9zRxpmyXxQi9K3M8',
+  baseUrl: process.env.ZAI_BASE_URL || 'https://internal-api.z.ai/v1',
+  apiKey: process.env.ZAI_API_KEY || 'Z.ai',
+  chatId: process.env.ZAI_CHAT_ID || '',
+  userId: process.env.ZAI_USER_ID || '',
+  token: process.env.ZAI_TOKEN || '',
 };
 
 async function getZAI() {
@@ -165,7 +165,7 @@ async function executeGemini(
       });
       return completion.choices[0]?.message?.content || '';
     } catch (sdkErr: any) {
-      throw new Error(`Gemini: no API key and SDK failed: ${sdkErr?.message?.substring(0, 100)}`);
+      throw new Error('Gemini tidak tersedia: konfigurasi API tidak ditemukan');
     }
   }
 
@@ -413,6 +413,13 @@ export async function chatCompletion(
  *
  * Constructs a system + user message pair and delegates to `chatCompletion`.
  */
+export const UNAVAILABLE_PATTERNS = [
+  /all ai engines are currently unavailable/i,
+  /engines are currently unavailable/i,
+  /api key not valid/i,
+  /try again later/i,
+];
+
 export async function generateWithEngine(
   engineId: AIEngineId,
   systemPrompt: string,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionCookieName } from '@/lib/session';
 
+export const maxDuration = 300;
 export async function POST() {
   try {
     const response = NextResponse.json({ success: true, message: 'Logged out successfully' });

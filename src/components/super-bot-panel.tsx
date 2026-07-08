@@ -112,13 +112,13 @@ const PHASES: Array<{
   icon: React.ElementType;
   description: string;
 }> = [
-  { key: 'init', label: 'Initialize', icon: Zap, description: 'Setting up engine' },
-  { key: 'strategy', label: 'Strategy', icon: Brain, description: 'AI planning' },
-  { key: 'searching', label: 'Searching', icon: Search, description: 'Querying databases' },
-  { key: 'scoring', label: 'Scoring', icon: Target, description: 'Ranking results' },
-  { key: 'downloading', label: 'Downloading', icon: Download, description: 'Fetching PDFs' },
-  { key: 'uploading', label: 'Uploading', icon: UploadIcon, description: 'Cloud storage' },
-  { key: 'complete', label: 'Complete', icon: CheckCircle2, description: 'Done!' },
+  { key: 'init', label: 'Inisialisasi', icon: Zap, description: 'Menyiapkan mesin' },
+  { key: 'strategy', label: 'Strategi', icon: Brain, description: 'Perencanaan AI' },
+  { key: 'searching', label: 'Mencari', icon: Search, description: 'Menelusuri database' },
+  { key: 'scoring', label: 'Menilai', icon: Target, description: 'Mengurutkan hasil' },
+  { key: 'downloading', label: 'Mengunduh', icon: Download, description: 'Mengambil PDF' },
+  { key: 'uploading', label: 'Mengunggah', icon: UploadIcon, description: 'Penyimpanan awan' },
+  { key: 'complete', label: 'Selesai', icon: CheckCircle2, description: 'Selesai!' },
 ];
 
 // Placeholder for the Upload icon (not in lucide default, using a div)
@@ -160,8 +160,8 @@ function convertBotResultsToReferences(
     .filter((r) => selectedIds.has(r.id))
     .map((r, index) => ({
       id: r.id,
-      authors: r.authors || 'Unknown Author',
-      title: r.title || 'Untitled',
+      authors: r.authors || 'Penulis Tidak Diketahui',
+      title: r.title || 'Tanpa Judul',
       year: r.year ?? new Date().getFullYear(),
       journal: r.journal ?? undefined,
       doi: r.doi ?? undefined,
@@ -271,7 +271,7 @@ function KeywordChip({
       <button
         onClick={onRemove}
         className="ml-0.5 hover:text-emerald-900 dark:hover:text-emerald-100 transition-colors"
-        aria-label={`Remove keyword "${keyword}"`}
+        aria-label={`Hapus kata kunci "${keyword}"`}
       >
         <XCircle className="size-3.5" />
       </button>
@@ -369,7 +369,7 @@ function DatabaseSearchStatus({
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Database Search Progress
+        Progres Pencarian Database
       </p>
       <div className="flex flex-wrap gap-1.5">
         {databaseList.map((db) => {
@@ -499,7 +499,7 @@ function ResultCard({
                     rel="noopener noreferrer"
                     className="shrink-0 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors mt-0.5"
                     onClick={(e) => e.stopPropagation()}
-                    aria-label="Open DOI"
+                    aria-label="Buka DOI"
                   >
                     <ExternalLink className="size-3.5" />
                   </a>
@@ -536,7 +536,7 @@ function ResultCard({
                     className="text-[10px] px-1.5 py-0 gap-0.5 bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"
                   >
                     <BarChart3 className="size-2.5" />
-                    {result.citations} citations
+                    {result.citations} sitasi
                   </Badge>
                 )}
                 {result.isOpenAccess && (
@@ -665,17 +665,17 @@ function BotControlPanel({
       <div className="space-y-2">
         <label className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Bot className="size-4 text-emerald-600" />
-          Research Topic
+          Topik Penelitian
         </label>
         <textarea
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          placeholder="e.g., The impact of artificial intelligence on higher education learning outcomes in Southeast Asia"
+          placeholder="Contoh: Dampak kecerdasan buatan terhadap hasil belajar pendidikan tinggi di Asia Tenggara"
           className="w-full min-h-[100px] rounded-lg border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 resize-y transition-all"
           rows={3}
         />
         <p className="text-xs text-muted-foreground">
-          Describe your research topic. The bot will use AI to generate an optimal search strategy.
+          Jelaskan topik penelitian Anda. Bot akan menggunakan AI untuk menghasilkan strategi pencarian yang optimal.
         </p>
       </div>
 
@@ -685,7 +685,7 @@ function BotControlPanel({
       <div className="space-y-2">
         <label className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Search className="size-4 text-emerald-600" />
-          Keywords
+          Kata Kunci
         </label>
         <div className="flex gap-2">
           <Input
@@ -697,7 +697,7 @@ function BotControlPanel({
                 addKeyword();
               }
             }}
-            placeholder="Add a keyword and press Enter"
+            placeholder="Tambahkan kata kunci dan tekan Enter"
             className="flex-1"
           />
           <Button
@@ -706,7 +706,7 @@ function BotControlPanel({
             onClick={addKeyword}
             disabled={!newKeyword.trim()}
           >
-            Add
+            Tambah
           </Button>
         </div>
         {keywords.length > 0 && (
@@ -723,7 +723,7 @@ function BotControlPanel({
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          Add specific keywords. The AI strategy will expand these with related terms.
+          Tambahkan kata kunci spesifik. Strategi AI akan memperluasnya dengan istilah terkait.
         </p>
       </div>
 
@@ -734,17 +734,17 @@ function BotControlPanel({
         <div className="flex items-center justify-between">
           <label className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Database className="size-4 text-emerald-600" />
-            Databases
+            Database
             <Badge variant="secondary" className="text-[10px] font-mono">
               {selectedDatabases.length}/{DATABASE_LIST.length}
             </Badge>
           </label>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="text-xs h-7" onClick={selectAllDatabases}>
-              Select All
+              Pilih Semua
             </Button>
             <Button variant="ghost" size="sm" className="text-xs h-7" onClick={deselectAllDatabases}>
-              Deselect All
+              Batalkan Semua
             </Button>
           </div>
         </div>
@@ -811,7 +811,7 @@ function BotControlPanel({
           className="flex items-center gap-2 text-sm font-semibold text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors w-full"
         >
           <Filter className="size-4 text-emerald-600" />
-          Advanced Settings
+          Pengaturan Lanjutan
           <motion.div
             animate={{ rotate: advancedOpen ? 180 : 0 }}
             transition={{ duration: 0.2 }}
@@ -835,7 +835,7 @@ function BotControlPanel({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Max Results per Database
+                        Maks. Hasil per Database
                       </label>
                       <span className="text-xs font-bold text-foreground tabular-nums font-mono">
                         {maxResults}
@@ -859,7 +859,7 @@ function BotControlPanel({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Min Score Threshold
+                        Batas Skor Minimum
                       </label>
                       <span className="text-xs font-bold text-foreground tabular-nums font-mono">
                         {minScore}
@@ -874,8 +874,8 @@ function BotControlPanel({
                       className="[&_[data-slot=slider-range]]:bg-teal-500 [&_[data-slot=slider-thumb]]:border-teal-500"
                     />
                     <div className="flex justify-between text-[10px] text-muted-foreground/60">
-                      <span>0 (include all)</span>
-                      <span>100 (best only)</span>
+                      <span>0 (semua)</span>
+                      <span>100 (terbaik saja)</span>
                     </div>
                   </div>
 
@@ -883,10 +883,10 @@ function BotControlPanel({
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Auto-Download PDFs
+                        Unduh Otomatis PDF
                       </label>
                       <p className="text-[10px] text-muted-foreground/60">
-                        Automatically download top PDFs after scoring
+                        Otomatis mengunduh PDF teratas setelah penilaian
                       </p>
                     </div>
                     <Switch
@@ -907,7 +907,7 @@ function BotControlPanel({
                       >
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-medium text-muted-foreground">
-                            Download Limit
+                            Batas Unduhan
                           </label>
                           <span className="text-xs font-bold text-foreground tabular-nums font-mono">
                             {downloadLimit}
@@ -949,14 +949,14 @@ function BotControlPanel({
           className="w-full h-14 text-base font-bold shadow-xl shadow-emerald-600/25 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:via-emerald-600 hover:to-teal-700 text-white transition-all disabled:opacity-40 disabled:shadow-none"
         >
           <Bot className="size-5 mr-2" />
-          Launch Super Bot
+          Jalankan Super Bot
           <ArrowRight className="size-5 ml-2" />
         </Button>
       </motion.div>
 
       {!topic.trim() && (
         <p className="text-xs text-center text-amber-600 dark:text-amber-400">
-          Please enter a research topic to launch the bot
+          Silakan masukkan topik penelitian untuk menjalankan bot
         </p>
       )}
     </div>
@@ -986,18 +986,18 @@ function ProgressDashboard({
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium text-foreground">
             {progress.phase === 'searching'
-              ? `Searching: ${progress.databasesSearched.length}/${progress.totalDatabases} databases`
+              ? `Mencari: ${progress.databasesSearched.length}/${progress.totalDatabases} database`
               : progress.phase === 'scoring'
-                ? 'Scoring & ranking results...'
+                ? 'Menilai & mengurutkan hasil...'
                 : progress.phase === 'downloading'
-                  ? 'Downloading PDFs...'
+                  ? 'Mengunduh PDF...'
                   : progress.phase === 'strategy'
-                    ? 'Generating AI search strategy...'
+                    ? 'Menghasilkan strategi pencarian AI...'
                     : progress.phase === 'uploading'
-                      ? 'Uploading to cloud storage...'
+                      ? 'Mengunggah ke penyimpanan awan...'
                       : progress.phase === 'init'
-                        ? 'Initializing...'
-                        : 'Processing...'}
+                        ? 'Menginisialisasi...'
+                        : 'Memproses...'}
           </span>
           <span className="tabular-nums font-mono text-muted-foreground font-semibold">
             {Math.round(progress.currentPercent)}%
@@ -1033,7 +1033,7 @@ function ProgressDashboard({
         <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
           <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
             <Database className="size-3" />
-            Searched
+            Ditelusuri
           </div>
           <p className="text-lg font-bold text-foreground tabular-nums font-mono">
             <AnimatedCounter value={progress.databasesSearched.length} />
@@ -1045,7 +1045,7 @@ function ProgressDashboard({
         <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
           <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
             <FileText className="size-3" />
-            Results
+            Hasil
           </div>
           <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
             <AnimatedCounter value={progress.resultsFound} />
@@ -1054,7 +1054,7 @@ function ProgressDashboard({
         <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-center">
           <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
             <Clock className="size-3" />
-            Elapsed
+            Waktu
           </div>
           <p className="text-lg font-bold text-foreground tabular-nums font-mono">
             <ElapsedTimer startTime={progress.startTime} />
@@ -1074,7 +1074,7 @@ function ProgressDashboard({
           className="gap-2"
         >
           <Square className="size-4" />
-          Cancel Search
+          Batalkan Pencarian
         </Button>
       </div>
     </div>
@@ -1121,12 +1121,12 @@ function ResultsDashboard({
     const sorted = [...results].sort((a, b) => b.score - a.score);
     const top = new Set(sorted.slice(0, 20).map((r) => r.id));
     setSelectedIds(top);
-    toast.info('Top 20 results selected by score');
+    toast.info('20 hasil teratas dipilih berdasarkan skor');
   }, [results]);
 
   const selectAll = useCallback(() => {
     setSelectedIds(new Set(results.map((r) => r.id)));
-    toast.info('All results selected');
+    toast.info('Semua hasil dipilih');
   }, [results]);
 
   const deselectAll = useCallback(() => {
@@ -1180,7 +1180,7 @@ function ResultsDashboard({
 
   const handleImport = useCallback(() => {
     if (selectedIds.size === 0) {
-      toast.error('No results selected. Please select at least one result.');
+      toast.error('Tidak ada hasil yang dipilih. Silakan pilih setidaknya satu hasil.');
       return;
     }
     onImport(selectedIds);
@@ -1192,25 +1192,25 @@ function ResultsDashboard({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
-            label: 'Total Results',
+            label: 'Total Hasil',
             value: stats.total,
             icon: BarChart3,
             color: 'text-emerald-600 dark:text-emerald-400',
           },
           {
-            label: 'Avg Score',
+            label: 'Rata-rata Skor',
             value: stats.avgScore,
             icon: Target,
             color: 'text-teal-600 dark:text-teal-400',
           },
           {
-            label: 'Open Access %',
+            label: 'Persentase Open Access',
             value: `${stats.oaPercent}%`,
             icon: Unlock,
             color: 'text-violet-600 dark:text-violet-400',
           },
           {
-            label: 'Avg Citations',
+            label: 'Rata-rata Sitasi',
             value: stats.avgCitations,
             icon: BookOpen,
             color: 'text-amber-600 dark:text-amber-400',
@@ -1239,22 +1239,22 @@ function ResultsDashboard({
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={selectTop20} className="text-xs gap-1">
           <Target className="size-3.5" />
-          Select Top 20
+          Pilih 20 Teratas
         </Button>
         <Button variant="ghost" size="sm" onClick={selectAll} className="text-xs gap-1">
-          Select All
+          Pilih Semua
         </Button>
         <Button variant="ghost" size="sm" onClick={deselectAll} className="text-xs gap-1">
-          Deselect All
+          Batalkan Semua
         </Button>
         <div className="ml-auto flex items-center gap-2">
           <Badge variant="secondary" className="text-xs font-mono gap-1">
             <CheckCircle2 className="size-3" />
-            {selectedIds.size} selected
+            {selectedIds.size} terpilih
           </Badge>
           <Badge variant="secondary" className="text-xs font-mono gap-1">
             <Filter className="size-3" />
-            {filteredResults.length} shown
+            {filteredResults.length} ditampilkan
           </Badge>
         </div>
       </div>
@@ -1271,7 +1271,7 @@ function ResultsDashboard({
           )}
         >
           <Filter className="size-3.5" />
-          Filters
+          Filter
           <ChevronDown className={cn('size-3 transition-transform', showFilters && 'rotate-180')} />
         </Button>
         <AnimatePresence>
@@ -1289,7 +1289,7 @@ function ResultsDashboard({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Score Range
+                        Rentang Skor
                       </label>
                       <span className="text-xs font-mono text-foreground">
                         {scoreFilter[0]} – {scoreFilter[1]}
@@ -1309,7 +1309,7 @@ function ResultsDashboard({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Source Database
+                        Database Sumber
                       </label>
                       <div className="flex flex-wrap gap-1.5">
                         <button
@@ -1322,7 +1322,7 @@ function ResultsDashboard({
                               : 'border-border text-muted-foreground hover:bg-muted/50',
                           )}
                         >
-                          All ({results.length})
+                          Semua ({results.length})
                         </button>
                         {uniqueDatabases.map((dbName) => {
                           const count = results.filter((r) => r.databaseName === dbName).length;
@@ -1362,7 +1362,7 @@ function ResultsDashboard({
                                 : 'border-border text-muted-foreground hover:bg-muted/50',
                             )}
                           >
-                            {opt === 'all' ? 'All' : opt === 'yes' ? 'Open Access' : 'Restricted'}
+                            {opt === 'all' ? 'Semua' : opt === 'yes' ? 'Open Access' : 'Terbatas'}
                           </button>
                         ))}
                       </div>
@@ -1372,13 +1372,13 @@ function ResultsDashboard({
                   {/* Sort */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">
-                      Sort By
+                      Urutkan Berdasarkan
                     </label>
                     <div className="flex gap-1.5">
                       {([
-                        { key: 'score' as const, label: 'Score (High → Low)' },
-                        { key: 'year' as const, label: 'Year (Newest)' },
-                        { key: 'citations' as const, label: 'Citations (High → Low)' },
+                        { key: 'score' as const, label: 'Skor (Tinggi → Rendah)' },
+                        { key: 'year' as const, label: 'Tahun (Terbaru)' },
+                        { key: 'citations' as const, label: 'Sitasi (Tinggi → Rendah)' },
                       ]).map((opt) => (
                         <button
                           key={opt.key}
@@ -1412,10 +1412,10 @@ function ResultsDashboard({
             <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
               <Search className="size-8 text-muted-foreground/40" />
               <p className="text-sm font-medium text-muted-foreground">
-                No results match your filters
+                Tidak ada hasil yang cocok dengan filter
               </p>
               <p className="text-xs text-muted-foreground/70">
-                Try adjusting the score range, database, or open access filter
+                Coba sesuaikan rentang skor, database, atau filter Open Access
               </p>
             </CardContent>
           </Card>
@@ -1446,7 +1446,7 @@ function ResultsDashboard({
             className="w-full h-12 text-sm font-bold shadow-lg shadow-emerald-600/20 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:via-emerald-600 hover:to-teal-700 text-white disabled:opacity-40 disabled:shadow-none gap-2"
           >
             <ArrowRight className="size-4" />
-            Import {selectedIds.size} Selected to Article
+            Impor {selectedIds.size} Terpilih ke Artikel
           </Button>
         </motion.div>
         <Button
@@ -1456,7 +1456,7 @@ function ResultsDashboard({
           className="h-12 gap-2"
         >
           <RotateCcw className="size-4" />
-          Run Again
+          Jalankan Ulang
         </Button>
       </div>
     </div>
@@ -1491,24 +1491,26 @@ function ErrorState({
       </div>
 
       <div className="space-y-2 max-w-md">
-        <h3 className="text-lg font-bold text-foreground">Something Went Wrong</h3>
+        <h3 className="text-lg font-bold text-foreground">Terjadi Kesalahan</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">{message}</p>
       </div>
 
       <div className="flex items-center gap-3">
         <Button onClick={onTryAgain} variant="default" className="gap-2">
           <RotateCcw className="size-4" />
-          Try Again
+          Coba Lagi
         </Button>
         <Button
           variant="outline"
           className="gap-2"
           onClick={() => {
-            toast.info('Issue reported. Thank you for your feedback!');
+            const subject = encodeURIComponent('Laporan Masalah Super Bot');
+            const body = encodeURIComponent(`Topik: ${topic}\nDatabase: ${selectedDatabases.join(', ')}\nError: ${errorState?.message || 'Tidak ada detail'}\n\nDeskripsi masalah:\n`);
+            window.open(`mailto:support@mamah.app?subject=${subject}&body=${body}`, '_blank');
           }}
         >
           <AlertCircle className="size-4" />
-          Report Issue
+          Laporkan Masalah
         </Button>
       </div>
     </motion.div>
@@ -1556,7 +1558,7 @@ export default function SuperBotPanel() {
   // ── Launch bot search ────────────────────────────────────────────
   const handleLaunch = useCallback(async () => {
     if (!topic.trim() || selectedDatabases.length === 0) {
-      toast.error('Please provide a topic and select at least one database.');
+      toast.error('Silakan berikan topik dan pilih setidaknya satu database.');
       return;
     }
 
@@ -1576,7 +1578,7 @@ export default function SuperBotPanel() {
       totalDatabases: selectedDatabases.length,
       resultsFound: 0,
       currentPercent: 0,
-      message: 'Connecting to Super Bot engine...',
+      message: 'Menghubungkan ke mesin Super Bot...',
       startTime: Date.now(),
     };
     setBotProgress(initialProgress);
@@ -1628,7 +1630,7 @@ export default function SuperBotPanel() {
                     id: (r.id as string) || `bot-${idx}`,
                     databaseId: (r.databaseId as string) || '',
                     databaseName: (r.databaseName as string) || (r.source as string) || '',
-                    title: (r.title as string) || 'Untitled',
+                    title: (r.title as string) || 'Tanpa Judul',
                     authors: (r.authors as string) || '',
                     year: (r.year as number) ?? null,
                     abstract: (r.abstract as string) ?? null,
@@ -1649,7 +1651,7 @@ export default function SuperBotPanel() {
                 );
                 setPanelState('complete');
                 toast.success(
-                  `Super Bot found ${refs.length} references across ${selectedDatabases.length} databases!`,
+                  `Super Bot menemukan ${refs.length} referensi dari ${selectedDatabases.length} database!`,
                 );
               }
             } catch {
@@ -1661,11 +1663,11 @@ export default function SuperBotPanel() {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         // User cancelled — do not show error state
-        toast.info('Search cancelled');
+        toast.info('Pencarian dibatalkan');
         setPanelState('idle');
         return;
       }
-      const msg = error instanceof Error ? error.message : 'An unexpected error occurred';
+      const msg = error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak terduga';
       setErrorMessage(msg);
       setPanelState('error');
       toast.error(`Bot error: ${msg}`);
@@ -1687,7 +1689,7 @@ export default function SuperBotPanel() {
       setReferences(refs);
       setCurrentStep(3);
       toast.success(
-        `${refs.length} references imported! Proceeding to method selection.`,
+        `${refs.length} referensi diimpor! Melanjutkan ke pemilihan metode.`,
       );
     },
     [botResults, setReferences, setCurrentStep],
@@ -1734,7 +1736,7 @@ export default function SuperBotPanel() {
             Super Bot
           </h2>
           <p className="text-xs text-muted-foreground">
-            AI-powered academic reference search across 14 databases
+            Pencarian referensi akademik berbasis AI di 14 database
           </p>
         </div>
         <Badge
@@ -1747,23 +1749,23 @@ export default function SuperBotPanel() {
             panelState === 'error' && 'border-red-400 text-red-700 bg-red-50 dark:bg-red-900/20 dark:text-red-300',
           )}
         >
-          {panelState === 'idle' && 'Ready'}
+          {panelState === 'idle' && 'Siap'}
           {panelState === 'running' && (
             <span className="inline-flex items-center gap-1">
               <Loader2 className="size-2.5 animate-spin" />
-              Running
+              Berjalan
             </span>
           )}
           {panelState === 'complete' && (
             <span className="inline-flex items-center gap-1">
               <CheckCircle2 className="size-2.5" />
-              Complete
+              Selesai
             </span>
           )}
           {panelState === 'error' && (
             <span className="inline-flex items-center gap-1">
               <XCircle className="size-2.5" />
-              Error
+              Gagal
             </span>
           )}
         </Badge>

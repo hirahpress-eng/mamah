@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkBotHealth } from '@/lib/telegram-storage';
 
+export const maxDuration = 300;
 export async function GET() {
   try {
     const health = await checkBotHealth();

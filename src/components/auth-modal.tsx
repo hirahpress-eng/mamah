@@ -315,7 +315,7 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: AuthModalPro
                         <Input
                           id="login-email"
                           type="email"
-                          placeholder="your@email.com"
+                          placeholder="email@anda.com"
                           className="pl-9 h-9 text-sm"
                           value={formData.email}
                           onChange={(e) => updateField('email', e.target.value)}
@@ -340,6 +340,7 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: AuthModalPro
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
                         >
                           {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         </button>
@@ -354,7 +355,7 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: AuthModalPro
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md"
                       >
                         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5 mr-1" />}
-                        Sign In
+                        Masuk
                       </Button>
                       <Button
                         onClick={handleSignup}
@@ -363,7 +364,7 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: AuthModalPro
                         size="sm"
                       >
                         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-                        Sign Up
+                        Daftar
                       </Button>
                     </div>
                   </div>
@@ -380,7 +381,7 @@ export default function AuthModal({ open, onClose, onAuthSuccess }: AuthModalPro
                     <span>Gratis</span>
                   </div>
                   <Badge variant="secondary" className="text-[10px]">
-                    Secure Login
+                    Login Aman
                   </Badge>
                 </div>
               </CardFooter>

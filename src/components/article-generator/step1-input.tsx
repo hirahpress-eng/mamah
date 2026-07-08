@@ -61,31 +61,31 @@ const containerVariants = {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const POPULAR_SUGGESTIONS = [
-  'Machine Learning',
-  'Climate Change',
-  'Public Health',
-  'Digital Transformation',
-  'Sustainable Development',
-  'Social Media',
-  'Neuroscience',
-  'Renewable Energy',
+  'Pembelajaran Mesin',
+  'Perubahan Iklim',
+  'Kesehatan Masyarakat',
+  'Transformasi Digital',
+  'Pembangunan Berkelanjutan',
+  'Media Sosial',
+  'Neurosains',
+  'Energi Terbarukan',
 ];
 
 const GENERATION_STEPS = [
-  'Analyzing keywords...',
-  'Formulating titles...',
-  'Selecting best options...',
+  'Menganalisis kata kunci...',
+  'Menyarankan judul...',
+  'Memilih opsi terbaik...',
 ];
 
 const MAX_TITLE_CHARS = 300;
 const MAX_IDEA_CHARS = 2000;
 
 const KEYWORD_TOOLTIP_EXAMPLES: Record<number, string> = {
-  1: 'e.g., Machine Learning, Deep Learning, Neural Networks',
-  2: 'e.g., Climate Change, Global Warming, Carbon Emissions',
- 3: 'e.g., Digital Health, Telemedicine, Wearables',
- 4: 'e.g., Big Data, Data Mining, Analytics',
-  5: 'e.g., Renewable Energy, Solar Power, Wind Energy',
+  1: 'cth., Pembelajaran Mesin, Pembelajaran Mendalam, Jaringan Saraf Tiruan',
+  2: 'cth., Perubahan Iklim, Pemanasan Global, Emisi Karbon',
+  3: 'cth., Kesehatan Digital, Telemedisin, Perangkat Wearable',
+  4: 'cth., Big Data, Pertambangan Data, Analitik',
+  5: 'cth., Energi Terbarukan, Energi Surya, Energi Angin',
 };
 
 /** Animated counter hook using requestAnimationFrame */
@@ -157,7 +157,7 @@ function TitleCard({
             <div className="flex items-center gap-2 mb-1">
               <FileText className="size-3.5 text-emerald-500 shrink-0" />
               <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-                Title {index + 1}
+                Judul {index + 1}
               </span>
             </div>
             <p
@@ -373,7 +373,7 @@ function GeneratingOverlay({ steps }: { steps: string[] }) {
         </div>
 
         <div className="space-y-3 text-center">
-          <p className="text-sm font-semibold text-foreground">Generating your titles...</p>
+          <p className="text-sm font-semibold text-foreground">Membuat judul Anda...</p>
 
           <div className="space-y-2">
             {steps.map((step, i) => (
@@ -491,7 +491,7 @@ async function generateFromKeywords(keywords: string[], engineId?: string): Prom
     body: JSON.stringify({ keywords, engineId }),
   });
   if (!res.ok) {
-    toast.error(`Server error (${res.status}). Please try again.`);
+    toast.error(`Kesalahan server (${res.status}). Silakan coba lagi.`);
     return { success: false, error: `HTTP ${res.status}` };
   }
   return res.json();
@@ -504,7 +504,7 @@ async function generateFromTitle(title: string, engineId?: string): Promise<Gene
     body: JSON.stringify({ title, engineId }),
   });
   if (!res.ok) {
-    toast.error(`Server error (${res.status}). Please try again.`);
+    toast.error(`Kesalahan server (${res.status}). Silakan coba lagi.`);
     return { success: false, error: `HTTP ${res.status}` };
   }
   return res.json();
@@ -517,7 +517,7 @@ async function generateFromIdea(idea: string, engineId?: string): Promise<Genera
     body: JSON.stringify({ idea, engineId }),
   });
   if (!res.ok) {
-    toast.error(`Server error (${res.status}). Please try again.`);
+    toast.error(`Kesalahan server (${res.status}). Silakan coba lagi.`);
     return { success: false, error: `HTTP ${res.status}` };
   }
   return res.json();
@@ -581,7 +581,7 @@ export default function Step1Input() {
         next[emptyIndex] = suggestion;
         setKeywords(next);
       } else {
-        toast.info('All keyword slots are filled. Clear one to use this suggestion.', {
+        toast.info('Semua slot kata kunci terisi. Hapus salah satu untuk menggunakan saran ini.', {
           description: `"${suggestion}" not added.`,
         });
       }
@@ -605,7 +605,7 @@ export default function Step1Input() {
         });
       }
     } catch {
-      toast.error('Network error', {
+      toast.error('Kesalahan jaringan', {
         description: 'Could not reach the generation server. Please check your connection and try again.',
       });
     } finally {
@@ -628,7 +628,7 @@ export default function Step1Input() {
         });
       }
     } catch {
-      toast.error('Network error', {
+      toast.error('Kesalahan jaringan', {
         description: 'Could not reach the generation server. Please check your connection and try again.',
       });
     } finally {
@@ -654,7 +654,7 @@ export default function Step1Input() {
         });
       }
     } catch {
-      toast.error('Network error', {
+      toast.error('Kesalahan jaringan', {
         description: 'Could not reach the generation server. Please check your connection and try again.',
       });
     } finally {
@@ -733,7 +733,7 @@ export default function Step1Input() {
             });
           }
         } catch {
-          toast.error('Network error', {
+          toast.error('Kesalahan jaringan', {
             description: 'Could not reach the generation server. Please try again.',
           });
         } finally {
@@ -811,7 +811,7 @@ export default function Step1Input() {
           className="w-full"
         >
           <div className="flex justify-center">
-            <TabsList className="bg-emerald-50/80 dark:bg-emerald-950/30 p-1 h-auto grid grid-cols-3 w-full max-w-lg">
+            <TabsList className="bg-emerald-50/80 dark:bg-emerald-950/30 p-1 h-auto grid grid-cols-3 w-full max-w-lg" aria-label="Pilih metode input">
               {tabConfig.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
@@ -906,7 +906,7 @@ export default function Step1Input() {
                         {isGeneratingStep1 ? (
                           <>
                             <Loader2 className="size-4 animate-spin" />
-                            Generating...
+                            Menghasilkan...
                           </>
                         ) : (
                           <>
@@ -922,7 +922,7 @@ export default function Step1Input() {
                         className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/50 dark:hover:border-emerald-600"
                       >
                         <Layers className="size-4" />
-                        Browse Templates
+                        Jelajahi Template
                       </Button>
                     </div>
                   </CardContent>
@@ -948,17 +948,17 @@ export default function Step1Input() {
                       <div className="flex items-center gap-2 mb-3">
                         <Sparkles className="size-4 text-emerald-500" />
                         <h3 className="text-sm font-semibold text-foreground">
-                          Generated Titles
+                          Judul yang Dihasilkan
                         </h3>
                         <Badge
                           variant="secondary"
                           className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
                         >
-                          {generatedTitles.length} results
+                          {generatedTitles.length} hasil
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground mb-3">
-                        Select one title to proceed to the next step.
+                        Pilih satu judul untuk melanjutkan ke langkah berikutnya.
                       </p>
                       <RadioGroup
                         value={selectedTitle}
@@ -1023,7 +1023,7 @@ export default function Step1Input() {
                       {isGeneratingStep1 ? (
                         <>
                           <Loader2 className="size-4 animate-spin" />
-                          Generating...
+                          Menghasilkan...
                         </>
                       ) : (
                         <>
@@ -1225,13 +1225,13 @@ export default function Step1Input() {
                           <div className="flex items-center gap-2 mb-3">
                             <Type className="size-4 text-emerald-500" />
                             <h3 className="text-sm font-semibold text-foreground">
-                              Suggested Titles
+                              Judul yang Disarankan
                             </h3>
                             <Badge
                               variant="secondary"
                               className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
                             >
-                              {generatedTitles.length} results
+                              {generatedTitles.length} hasil
                             </Badge>
                           </div>
                           <RadioGroup

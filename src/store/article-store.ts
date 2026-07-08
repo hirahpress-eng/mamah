@@ -625,7 +625,8 @@ export const useArticleStore = create<AppState>()(
         })),
         botResults: state.botResults,
         botConfig: state.botConfig,
-        sectionStages: {},
+        // Omit sectionStages — it's transient generation state that should
+        // reset to createEmptyStages() (the initial value) on rehydration
         currentStageIndex: 0,
       }),
     }

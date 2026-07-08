@@ -196,7 +196,7 @@ export default function ArticleHistorySidebar() {
         size="icon"
         onClick={() => setOpen(true)}
         className="size-9 text-muted-foreground hover:text-foreground relative"
-        aria-label="Article history"
+        aria-label="Riwayat artikel"
       >
         <Clock className="size-4" />
         {articleHistory.length > 0 && (

@@ -4,6 +4,7 @@ import { uploadToTelegram } from '@/lib/telegram-storage';
 import { downloadPdfFromUrl } from '@/lib/unified-research-engine';
 import { createSupabaseServerClient } from '@/lib/supabase';
 
+export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const body = await request.json();

@@ -5,6 +5,7 @@ import { downloadFromTelegram, getFileUrl } from '@/lib/telegram-storage';
  * Download PDF from Telegram storage and stream to user.
  * Accepts telegram_file_id and bot_index as query/body params.
  */
+export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const { fileId, botIndex, fileName } = await request.json();

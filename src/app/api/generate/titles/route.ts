@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateWithEngine, DEFAULT_ENGINE, type AIEngineId } from '@/lib/ai-engine';
 import { AI_ENGINES } from '@/lib/ai-engine-config';
 
+export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

@@ -43,18 +43,18 @@ interface MethodInfo {
   details: string;
   icon: LucideIcon;
   bestFor: string;
-  complexity: 'Low' | 'Medium' | 'High';
+  complexity: 'Rendah' | 'Sedang' | 'Tinggi';
   outputLength: string;
 }
 
 const RESEARCH_METHODS: MethodInfo[] = [
-  { id: 'literature-review', title: 'Literature Review', description: 'Traditional qualitative literature review', longDescription: 'A comprehensive overview of existing research, synthesising key findings and identifying themes across selected sources.', details: 'A comprehensive overview of existing research, synthesising key findings and identifying themes across selected sources.', icon: BookOpen, bestFor: 'Broad topic exploration', complexity: 'Low', outputLength: '3,000–5,000 words' },
-  { id: 'systematic-review', title: 'Systematic Review', description: 'PRISMA-guided systematic literature review', longDescription: 'A structured, reproducible review following PRISMA guidelines with explicit search strategy and quality assessment.', details: 'A structured, reproducible review following PRISMA guidelines with explicit search strategy and inclusion criteria.', icon: FlaskConical, bestFor: 'Evidence-based research', complexity: 'High', outputLength: '5,000–8,000 words' },
-  { id: 'meta-analysis', title: 'Meta-Analysis', description: 'Statistical meta-analysis of findings', longDescription: 'Combines quantitative results from multiple studies using statistical methods to derive pooled effect sizes.', details: 'Combines quantitative results from multiple studies using statistical methods to derive pooled effect sizes.', icon: Beaker, bestFor: 'Quantitative synthesis', complexity: 'High', outputLength: '4,000–7,000 words' },
-  { id: 'meta-synthesis', title: 'Meta-Synthesis', description: 'Qualitative meta-synthesis', longDescription: 'Integrates findings from qualitative studies to produce new interpretive insights beyond individual studies.', details: 'Integrates findings from qualitative studies to produce new interpretive insights beyond individual studies.', icon: BrainCircuit, bestFor: 'Qualitative integration', complexity: 'High', outputLength: '4,000–6,000 words' },
-  { id: 'narrative-review', title: 'Narrative Review', description: 'Narrative/thematic review', longDescription: 'A thematic narrative approach that organises literature by concepts or topics with critical discussion.', details: 'A thematic narrative approach that organises literature by concepts or topics with critical discussion.', icon: FileText, bestFor: 'Theoretical papers', complexity: 'Low', outputLength: '3,000–5,000 words' },
-  { id: 'scoping-review', title: 'Scoping Review', description: 'Scoping review methodology', longDescription: 'Maps the breadth of literature on a topic, identifying key concepts, gaps, and types of available evidence.', details: 'Maps the breadth of literature on a topic, identifying key concepts, gaps, and types of available evidence.', icon: Search, bestFor: 'Emerging fields', complexity: 'Medium', outputLength: '4,000–6,000 words' },
-  { id: 'critical-review', title: 'Critical Review', description: 'Critical analysis approach', longDescription: 'Evaluates and critiques existing literature with a focus on methodological rigour, bias, and validity.', details: 'Evaluates and critiques existing literature with a focus on methodological rigour, bias, and validity.', icon: MessageSquareWarning, bestFor: 'Identifying gaps', complexity: 'Medium', outputLength: '3,000–5,000 words' },
+  { id: 'literature-review', title: 'Tinjauan Pustaka', description: 'Tinjauan pustaka kualitatif tradisional', longDescription: 'Ikhtisar komprehensif penelitian yang ada, menyintesis temuan utama dan mengidentifikasi tema dari berbagai sumber terpilih.', details: 'Ikhtisar komprehensif penelitian yang ada, menyintesis temuan utama dan mengidentifikasi tema dari berbagai sumber terpilih.', icon: BookOpen, bestFor: 'Eksplorasi topik luas', complexity: 'Rendah', outputLength: '3.000–5.000 kata' },
+  { id: 'systematic-review', title: 'Tinjauan Sistematis', description: 'Tinjauan pustaka sistematis berpandu PRISMA', longDescription: 'Tinjauan terstruktur dan dapat direplikasi mengikuti pedoman PRISMA dengan strategi pencarian eksplisit dan penilaian kualitas.', details: 'Tinjauan terstruktur dan dapat direplikasi mengikuti pedoman PRISMA dengan strategi pencarian eksplisit dan kriteria inklusi.', icon: FlaskConical, bestFor: 'Penelitian berbasis bukti', complexity: 'Tinggi', outputLength: '5.000–8.000 kata' },
+  { id: 'meta-analysis', title: 'Meta-Analisis', description: 'Meta-analisis statistik atas temuan', longDescription: 'Menggabungkan hasil kuantitatif dari beberapa studi menggunakan metode statistik untuk mendapatkan ukuran efek gabungan.', details: 'Menggabungkan hasil kuantitatif dari beberapa studi menggunakan metode statistik untuk mendapatkan ukuran efek gabungan.', icon: Beaker, bestFor: 'Sintesis kuantitatif', complexity: 'Tinggi', outputLength: '4.000–7.000 kata' },
+  { id: 'meta-synthesis', title: 'Meta-Sintesis', description: 'Meta-sintesis kualitatif', longDescription: 'Mengintegrasikan temuan dari studi kualitatif untuk menghasilkan wawasan interpretatif baru melampaui studi individual.', details: 'Mengintegrasikan temuan dari studi kualitatif untuk menghasilkan wawasan interpretatif baru melampaui studi individual.', icon: BrainCircuit, bestFor: 'Integrasi kualitatif', complexity: 'Tinggi', outputLength: '4.000–6.000 kata' },
+  { id: 'narrative-review', title: 'Tinjauan Naratif', description: 'Tinjauan naratif/tematik', longDescription: 'Pendekatan naratif tematik yang mengorganisasi literatur berdasarkan konsep atau topik dengan diskusi kritis.', details: 'Pendekatan naratif tematik yang mengorganisasi literatur berdasarkan konsep atau topik dengan diskusi kritis.', icon: FileText, bestFor: 'Artikel teoretis', complexity: 'Rendah', outputLength: '3.000–5.000 kata' },
+  { id: 'scoping-review', title: 'Scoping Review', description: 'Metodologi scoping review', longDescription: 'Memetakan cakupan literatur pada suatu topik, mengidentifikasi konsep utama, celah, dan jenis bukti yang tersedia.', details: 'Memetakan cakupan literatur pada suatu topik, mengidentifikasi konsep utama, celah, dan jenis bukti yang tersedia.', icon: Search, bestFor: 'Bidang yang sedang berkembang', complexity: 'Sedang', outputLength: '4.000–6.000 kata' },
+  { id: 'critical-review', title: 'Tinjauan Kritis', description: 'Pendekatan analisis kritis', longDescription: 'Mengevaluasi dan mengkritisi literatur yang ada dengan fokus pada ketat metodologis, bias, dan validitas.', details: 'Mengevaluasi dan mengkritisi literatur yang ada dengan fokus pada ketat metodologis, bias, dan validitas.', icon: MessageSquareWarning, bestFor: 'Mengidentifikasi celah', complexity: 'Sedang', outputLength: '3.000–5.000 kata' },
 ];
 
 const STAGE_ICONS: Record<StageId, LucideIcon> = {
@@ -67,12 +67,12 @@ const STAGE_ICONS: Record<StageId, LucideIcon> = {
 };
 
 const STAGE_DESCRIPTIONS: Record<StageId, string> = {
-  abstract: 'A concise summary covering background, objectives, method, key findings, and conclusions.',
-  introduction: 'Research context, comprehensive literature review, research gaps, and research questions.',
-  methodology: 'Research design, search strategy, inclusion/exclusion criteria, and data analysis approach.',
-  results_discussion: 'Study selection, thematic findings for each RQ, interpretation, and theoretical contributions.',
-  conclusion: 'Synthesis of key findings, contributions, limitations, and future research directions.',
-  bibliography: 'APA 7th Edition formatted reference list of all cited sources.',
+  abstract: 'Ringkasan ringkas yang mencakup latar belakang, tujuan, metode, temuan utama, dan kesimpulan.',
+  introduction: 'Konteks penelitian, tinjauan pustaka komprehensif, celah penelitian, dan pertanyaan penelitian.',
+  methodology: 'Desain penelitian, strategi pencarian, kriteria inklusi/eksklusi, dan pendekatan analisis data.',
+  results_discussion: 'Pemilihan studi, temuan tematik untuk setiap pertanyaan penelitian, interpretasi, dan kontribusi teoretis.',
+  conclusion: 'Sintesis temuan utama, kontribusi, keterbatasan, dan arah penelitian mendatang.',
+  bibliography: 'Daftar referensi berformat APA Edisi ke-7 dari semua sumber yang dikutip.',
 };
 
 const PLACEHOLDER_REGEX = /\[(FIGURE|TABLE):\s*(.+?)\]/gi;
@@ -81,57 +81,57 @@ const PLACEHOLDER_REGEX = /\[(FIGURE|TABLE):\s*(.+?)\]/gi;
 
 const METHOD_WORKFLOWS: Record<string, { step: string; description: string; icon: string }[]> = {
   'literature-review': [
-    { step: 'Research Philosophy', description: 'Define interpretivist/positivist paradigm and justify approach', icon: 'Compass' },
-    { step: 'Literature Search', description: 'Search Scopus, WoS, PubMed with Boolean operators and inclusion criteria', icon: 'Search' },
-    { step: 'Screening & Selection', description: 'Apply inclusion/exclusion criteria, remove duplicates, screen titles/abstracts/full-text', icon: 'Filter' },
-    { step: 'Quality Assessment', description: 'Evaluate study quality using CASP, JBI, or Newcastle-Ottawa scale', icon: 'ShieldCheck' },
-    { step: 'Thematic Analysis', description: 'Code data, identify themes, build thematic map, cross-case comparison', icon: 'GitBranch' },
-    { step: 'Synthesis & Reporting', description: 'Synthesize findings by RQ, compare with existing literature, report per PRISMA', icon: 'FileText' },
+    { step: 'Filsafat Penelitian', description: 'Menentukan paradigma interpretivis/positivistis dan membenarkan pendekatan', icon: 'Compass' },
+    { step: 'Pencarian Literatur', description: 'Mencari di Scopus, WoS, PubMed dengan operator Boolean dan kriteria inklusi', icon: 'Search' },
+    { step: 'Penyaringan & Pemilihan', description: 'Menerapkan kriteria inklusi/eksklusi, menghapus duplikat, menyaring judul/abstrak/teks lengkap', icon: 'Filter' },
+    { step: 'Penilaian Kualitas', description: 'Mengevaluasi kualitas studi menggunakan skala CASP, JBI, atau Newcastle-Ottawa', icon: 'ShieldCheck' },
+    { step: 'Analisis Tematik', description: 'Mengkode data, mengidentifikasi tema, membangun peta tematik, perbandingan lintas kasus', icon: 'GitBranch' },
+    { step: 'Sintesis & Pelaporan', description: 'Menyintesis temuan berdasarkan pertanyaan penelitian, membandingkan dengan literatur yang ada, melapor sesuai PRISMA', icon: 'FileText' },
   ],
   'systematic-review': [
-    { step: 'Protocol Registration', description: 'Register review protocol on PROSPERO, define PICO/PECO framework', icon: 'ClipboardList' },
-    { step: 'Systematic Search', description: 'Comprehensive database search with documented strategy per PRISMA 2020', icon: 'Search' },
-    { step: 'PRISMA Screening', description: 'Identification → Screening → Eligibility → Inclusion with exclusion tracking', icon: 'Filter' },
-    { step: 'Risk of Bias Assessment', description: 'Apply RoB 2, ROBINS-I, or Newcastle-Ottawa for quality evaluation', icon: 'ShieldCheck' },
-    { step: 'Data Extraction', description: 'Standardised extraction form, dual extraction, conflict resolution', icon: 'Table' },
-    { step: 'Narrative/Meta-Analysis', description: 'Narrative synthesis or meta-analysis with forest plots, heterogeneity assessment', icon: 'BarChart3' },
-    { step: 'GRADE Assessment', description: 'Certainty of evidence using GRADE framework for each outcome', icon: 'Award' },
+    { step: 'Registrasi Protokol', description: 'Mendaftarkan protokol tinjauan di PROSPERO, menentukan kerangka PICO/PECO', icon: 'ClipboardList' },
+    { step: 'Pencarian Sistematis', description: 'Pencarian komprehensif di basis data dengan strategi terdokumentasi sesuai PRISMA 2020', icon: 'Search' },
+    { step: 'Penyaringan PRISMA', description: 'Identifikasi → Penyaringan → Kelayakan → Inklusi dengan pelacakan eksklusi', icon: 'Filter' },
+    { step: 'Penilaian Risiko Bias', description: 'Menerapkan RoB 2, ROBINS-I, atau Newcastle-Ottawa untuk evaluasi kualitas', icon: 'ShieldCheck' },
+    { step: 'Ekstraksi Data', description: 'Formulir ekstraksi terstandarisasi, ekstraksi ganda, resolusi konflik', icon: 'Table' },
+    { step: 'Analisis Naratif/Meta-Analisis', description: 'Sintesis naratif atau meta-analisis dengan forest plot, penilaian heterogenitas', icon: 'BarChart3' },
+    { step: 'Penilaian GRADE', description: 'Kepastian bukti menggunakan kerangka GRADE untuk setiap hasil', icon: 'Award' },
   ],
   'scoping-review': [
-    { step: 'Scoping Framework', description: "Apply JBI scoping review methodology or Arksey & O'Malley framework", icon: 'Compass' },
-    { step: 'Search Strategy', description: 'Broad search across multiple databases, grey literature included', icon: 'Search' },
-    { step: 'Study Selection', description: 'Iterative selection process based on relevance to research questions', icon: 'Filter' },
-    { step: 'Data Charting', description: 'Chart key information from selected sources using standardised form', icon: 'Table' },
-    { step: 'Thematic Mapping', description: 'Map concepts, themes, and gaps in the existing literature', icon: 'GitBranch' },
-    { step: 'Stakeholder Consultation', description: 'Optional consultation with stakeholders to validate findings', icon: 'Users' },
+    { step: 'Kerangka Scoping', description: "Menerapkan metodologi scoping review JBI atau kerangka Arksey & O'Malley", icon: 'Compass' },
+    { step: 'Strategi Pencarian', description: 'Pencarian luas di berbagai basis data, termasuk literatur abu-abu', icon: 'Search' },
+    { step: 'Pemilihan Studi', description: 'Proses pemilihan iteratif berdasarkan relevansi dengan pertanyaan penelitian', icon: 'Filter' },
+    { step: 'Pemetaan Data', description: 'Memetakan informasi kunci dari sumber terpilih menggunakan formulir terstandarisasi', icon: 'Table' },
+    { step: 'Pemetaan Tematik', description: 'Memetakan konsep, tema, dan celah dalam literatur yang ada', icon: 'GitBranch' },
+    { step: 'Konsultasi Pemangku Kepentingan', description: 'Konsultasi opsional dengan pemangku kepentingan untuk memvalidasi temuan', icon: 'Users' },
   ],
   'meta-analysis': [
-    { step: 'Research Question (PICO)', description: 'Define Population, Intervention, Comparison, Outcome precisely', icon: 'Target' },
-    { step: 'Systematic Search', description: 'Exhaustive search with reproducible strategy across databases', icon: 'Search' },
-    { step: 'Study Selection & Coding', description: 'Dual independent screening, quality assessment, data coding', icon: 'Filter' },
-    { step: 'Effect Size Calculation', description: "Calculate Cohen's d, odds ratios, risk ratios with 95% CI", icon: 'Calculator' },
-    { step: 'Heterogeneity Analysis', description: 'Q-test, I² statistic, subgroup analysis, meta-regression', icon: 'BarChart3' },
-    { step: 'Publication Bias', description: "Funnel plots, Egger's test, trim-and-fill analysis", icon: 'TrendingDown' },
-    { step: 'Forest Plot & Synthesis', description: 'Generate forest plots, cumulative analysis, sensitivity analysis', icon: 'FileText' },
+    { step: 'Pertanyaan Penelitian (PICO)', description: 'Menentukan Populasi, Intervensi, Perbandingan, Hasil secara spesifik', icon: 'Target' },
+    { step: 'Pencarian Sistematis', description: 'Pencarian menyeluruh dengan strategi yang dapat direplikasi di berbagai basis data', icon: 'Search' },
+    { step: 'Pemilihan & Pengkodean Studi', description: 'Penyaringan independen ganda, penilaian kualitas, pengkodean data', icon: 'Filter' },
+    { step: 'Perhitungan Ukuran Efek', description: "Menghitung Cohen's d, odds ratio, risk ratio dengan CI 95%", icon: 'Calculator' },
+    { step: 'Analisis Heterogenitas', description: 'Uji Q, statistik I², analisis subgroup, meta-regresi', icon: 'BarChart3' },
+    { step: 'Bias Publikasi', description: "Funnel plot, uji Egger's, analisis trim-and-fill", icon: 'TrendingDown' },
+    { step: 'Forest Plot & Sintesis', description: 'Membuat forest plot, analisis kumulatif, analisis sensitivitas', icon: 'FileText' },
   ],
   'content-analysis': [
-    { step: 'Research Design', description: 'Define qualitative content analysis approach (deductive/inductive)', icon: 'Compass' },
-    { step: 'Data Collection', description: 'Collect texts, documents, media for analysis with sampling strategy', icon: 'Database' },
-    { step: 'Coding Framework', description: 'Develop initial codebook, pilot test, refine codes', icon: 'Code' },
-    { step: 'Unit of Analysis', description: 'Define coding units, manifest vs latent content, recording units', icon: 'Ruler' },
-    { step: 'Coding Process', description: "Independent dual coding, inter-coder reliability (Cohen's κ ≥ 0.80)", icon: 'Users' },
-    { step: 'Category Development', description: 'Aggregate codes into categories, define category properties', icon: 'GitBranch' },
-    { step: 'Reporting', description: 'Report findings with quotations, category descriptions, frequency data', icon: 'FileText' },
+    { step: 'Desain Penelitian', description: 'Menentukan pendekatan analisis isi kualitatif (deduktif/induktif)', icon: 'Compass' },
+    { step: 'Pengumpulan Data', description: 'Mengumpulkan teks, dokumen, media untuk analisis dengan strategi pengambilan sampel', icon: 'Database' },
+    { step: 'Kerangka Pengkodean', description: 'Mengembangkan buku kode awal, uji coba, menyempurnakan kode', icon: 'Code' },
+    { step: 'Satuan Analisis', description: 'Menentukan satuan pengkodean, konten manifest vs laten, satuan perekaman', icon: 'Ruler' },
+    { step: 'Proses Pengkodean', description: "Pengkodean ganda independen, reliabilitas antar-pengkode (Cohen's κ ≥ 0,80)", icon: 'Users' },
+    { step: 'Pengembangan Kategori', description: 'Mengagregasi kode menjadi kategori, menentukan properti kategori', icon: 'GitBranch' },
+    { step: 'Pelaporan', description: 'Melaporkan temuan dengan kutipan, deskripsi kategori, data frekuensi', icon: 'FileText' },
   ],
 };
 
 const DEFAULT_WORKFLOW = [
-  { step: 'Research Design', description: 'Define research paradigm, design, and methodological approach', icon: 'Compass' },
-  { step: 'Literature Search', description: 'Systematic search across relevant databases with documented strategy', icon: 'Search' },
-  { step: 'Study Selection', description: 'Apply inclusion/exclusion criteria, screen and select sources', icon: 'Filter' },
-  { step: 'Quality Assessment', description: 'Evaluate methodological quality and risk of bias', icon: 'ShieldCheck' },
-  { step: 'Data Analysis', description: 'Extract, code, and analyse data using appropriate techniques', icon: 'BarChart3' },
-  { step: 'Synthesis & Reporting', description: 'Synthesise findings, discuss implications, report per standards', icon: 'FileText' },
+  { step: 'Desain Penelitian', description: 'Menentukan paradigma, desain, dan pendekatan metodologis penelitian', icon: 'Compass' },
+  { step: 'Pencarian Literatur', description: 'Pencarian sistematis di basis data yang relevan dengan strategi terdokumentasi', icon: 'Search' },
+  { step: 'Pemilihan Studi', description: 'Menerapkan kriteria inklusi/eksklusi, menyaring dan memilih sumber', icon: 'Filter' },
+  { step: 'Penilaian Kualitas', description: 'Mengevaluasi kualitas metodologis dan risiko bias', icon: 'ShieldCheck' },
+  { step: 'Analisis Data', description: 'Mengekstrak, mengkode, dan menganalisis data menggunakan teknik yang sesuai', icon: 'BarChart3' },
+  { step: 'Sintesis & Pelaporan', description: 'Menyintesis temuan, mendiskusikan implikasi, melapor sesuai standar', icon: 'FileText' },
 ];
 
 const WORKFLOW_ICON_MAP: Record<string, LucideIcon> = {
@@ -159,12 +159,12 @@ function ReferencesSummary() {
             <Library className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-foreground">Selected References</h3>
-            <p className="text-sm text-muted-foreground">Review your selected literature sources</p>
+            <h3 className="text-base font-semibold text-foreground">Referensi Terpilih</h3>
+            <p className="text-sm text-muted-foreground">Tinjau sumber literatur yang telah dipilih</p>
           </div>
         </div>
         <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 font-semibold text-sm px-3 py-1">
-          {selectedRefs.length} reference{selectedRefs.length !== 1 ? 's' : ''}
+          {selectedRefs.length} referensi
         </Badge>
       </div>
 
@@ -176,20 +176,20 @@ function ReferencesSummary() {
                 {selectedRefs.length > 0 ? (
                   <>
                     <span className="text-sm text-muted-foreground">
-                      Spanning <span className="font-medium text-foreground">{minYear}–{maxYear}</span>
+                      Rentang <span className="font-medium text-foreground">{minYear}–{maxYear}</span>
                     </span>
                     <Separator orientation="vertical" className="h-4" />
                     <span className="text-sm text-muted-foreground">
-                      {journalCount} journal{journalCount !== 1 ? 's' : ''}
+                      {journalCount} jurnal
                     </span>
                   </>
                 ) : (
-                  <span className="text-sm text-amber-600 dark:text-amber-400">No references selected yet</span>
+                  <span className="text-sm text-amber-600 dark:text-amber-400">Belum ada referensi yang dipilih</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => prevStep()} className="text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30">
-                  <Pencil className="w-3.5 h-3.5" /> Edit References
+                  <Pencil className="w-3.5 h-3.5" /> Edit Referensi
                 </Button>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="text-muted-foreground">
@@ -207,7 +207,7 @@ function ReferencesSummary() {
                   <ScrollArea className="max-h-64">
                     <div className="px-6 py-3 space-y-2">
                       {selectedRefs.length === 0 && (
-                        <p className="text-sm text-muted-foreground py-4 text-center">Go back to Step 2 to search and select references.</p>
+                        <p className="text-sm text-muted-foreground py-4 text-center">Kembali ke Langkah 2 untuk mencari dan memilih referensi.</p>
                       )}
                       {selectedRefs.map((ref, idx) => (
                         <div key={ref.id} className="flex items-start gap-3 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
@@ -244,7 +244,7 @@ function MethodSelectionCard({ method, isSelected, onSelect, isRecommended }: { 
           )}>
           {isRecommended && !isSelected && (
             <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="absolute -top-2 -right-2">
-              <Badge className="bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0 text-[10px] font-bold shadow-sm px-1.5 py-0.5 gap-1"><Star className="w-2.5 h-2.5" />Recommended</Badge>
+              <Badge className="bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0 text-[10px] font-bold shadow-sm px-1.5 py-0.5 gap-1"><Star className="w-2.5 h-2.5" />Direkomendasikan</Badge>
             </motion.div>
           )}
           {isSelected && (
@@ -265,7 +265,7 @@ function MethodSelectionCard({ method, isSelected, onSelect, isRecommended }: { 
             {isSelected && (
               <motion.div initial={{ height: 0, opacity: 0, marginTop: 0 }} animate={{ height: 'auto', opacity: 1, marginTop: 12 }} exit={{ height: 0, opacity: 0, marginTop: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                 <p className="text-xs text-muted-foreground leading-relaxed pl-[52px]">{method.details}</p>
-                <p className="mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 pl-[52px]">Estimated output: <span className="font-semibold tabular-nums">{method.outputLength}</span></p>
+                <p className="mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 pl-[52px]">Estimasi output: <span className="font-semibold tabular-nums">{method.outputLength}</span></p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -283,8 +283,8 @@ function MethodSelection() {
       <div className="flex items-center gap-3 mb-4">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><FlaskConical className="w-5 h-5" /></div>
         <div>
-          <h3 className="text-base font-semibold text-foreground">Research Method</h3>
-          <p className="text-sm text-muted-foreground">Select the methodology for your article</p>
+          <h3 className="text-base font-semibold text-foreground">Metode Penelitian</h3>
+          <p className="text-sm text-muted-foreground">Pilih metodologi untuk artikel Anda</p>
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -323,12 +323,12 @@ function MethodologyWorkflowPanel({ methodId, methodName }: { methodId: string; 
                     <ListOrdered className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground">Methodology Workflow — <span className="text-emerald-600 dark:text-emerald-400">{methodName}</span></h3>
-                    <p className="text-xs text-muted-foreground">{steps.length} steps · Click to {isOpen ? 'collapse' : 'expand'}</p>
+                    <h3 className="text-sm font-semibold text-foreground">Alur Metodologi — <span className="text-emerald-600 dark:text-emerald-400">{methodName}</span></h3>
+                    <p className="text-xs text-muted-foreground">{steps.length} langkah · Klik untuk {isOpen ? 'ciutkan' : 'perluas'}</p>
                   </div>
                 </div>
                 <Badge variant="outline" className="text-[10px] font-medium tabular-nums text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800">
-                  {steps.length} steps
+                  {steps.length} langkah
                 </Badge>
               </button>
             </CollapsibleTrigger>
@@ -363,7 +363,7 @@ function MethodologyWorkflowPanel({ methodId, methodName }: { methodId: string; 
                           {/* Content */}
                           <div className="flex-1 min-w-0 pt-0.5">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">STEP {i + 1}</span>
+                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">LANGKAH {i + 1}</span>
                             </div>
                             <p className="text-sm font-semibold text-foreground mt-0.5 leading-snug">{s.step}</p>
                             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.description}</p>
@@ -413,8 +413,8 @@ function VisualPlaceholderCard({ placeholder, onGenerate, stageId }: { placehold
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 capitalize">{placeholder.type}</span>
-              {placeholder.generated && <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[10px]">Generated</Badge>}
-              {placeholder.error && <Badge variant="outline" className="text-red-600 border-red-300 text-[10px]">Error</Badge>}
+              {placeholder.generated && <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[10px]">Dibuat</Badge>}
+              {placeholder.error && <Badge variant="outline" className="text-red-600 border-red-300 text-[10px]">Kesalahan</Badge>}
             </div>
             <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{placeholder.description}</p>
 
@@ -437,7 +437,7 @@ function VisualPlaceholderCard({ placeholder, onGenerate, stageId }: { placehold
             {!placeholder.generated && (
               <Button size="sm" variant="outline" onClick={handleGen} disabled={isGenerating} className="mt-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950/30">
                 {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Icon className="w-3.5 h-3.5 mr-1.5" />}
-                Generate {placeholder.type === 'figure' ? 'Figure' : 'Table'}
+                Buat {placeholder.type === 'figure' ? 'Figur' : 'Tabel'}
               </Button>
             )}
           </div>
@@ -513,12 +513,12 @@ function StageNavItem({ stage, index, isActive, onClick }: { stage: SectionStage
           <div className="flex items-center gap-1.5 mt-0.5">
             {stage.targetWords > 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
-                {stage.targetWords.toLocaleString()} words
+                {stage.targetWords.toLocaleString()} kata
               </Badge>
             )}
             {stage.status === 'done' && stage.wordCount > 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">
-                {stage.wordCount.toLocaleString()} actual
+                {stage.wordCount.toLocaleString()} aktual
               </Badge>
             )}
           </div>
@@ -564,9 +564,9 @@ function StageGenerationArea({
         </div>
         <h2 className="text-xl font-bold text-foreground mb-2">{stage.label}</h2>
         <p className="text-sm text-muted-foreground max-w-md mb-2">{STAGE_DESCRIPTIONS[stage.id]}</p>
-        {stage.targetWords > 0 && <p className="text-xs text-muted-foreground mb-8">Target: <span className="font-semibold text-foreground">{stage.targetWords.toLocaleString()} words</span></p>}
+        {stage.targetWords > 0 && <p className="text-xs text-muted-foreground mb-8">Target: <span className="font-semibold text-foreground">{stage.targetWords.toLocaleString()} kata</span></p>}
         <Button size="lg" onClick={onGenerate} className={cn('h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 gap-2')}>
-          <Play className="w-5 h-5" /> Generate {stage.label}
+          <Play className="w-5 h-5" /> Buat {stage.label}
         </Button>
       </motion.div>
     );
@@ -578,10 +578,10 @@ function StageGenerationArea({
         <motion.div className="relative mb-6" animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
           <Loader2 className="w-12 h-12 text-emerald-500" />
         </motion.div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Generating {stage.label}...</h2>
-        <p className="text-sm text-muted-foreground max-w-md mb-6">{statusText || `AI is writing your ${stage.label.toLowerCase()} section. This may take a moment.`}</p>
+        <h2 className="text-xl font-bold text-foreground mb-2">Membuat {stage.label}...</h2>
+        <p className="text-sm text-muted-foreground max-w-md mb-6">{statusText || `AI sedang menulis bagian ${stage.label.toLowerCase()} Anda. Ini mungkin memakan waktu sebentar.`}</p>
         <Button variant="outline" size="sm" onClick={onCancel} className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/30 gap-2">
-          <XCircle className="w-4 h-4" /> Cancel
+          <XCircle className="w-4 h-4" /> Batal
         </Button>
       </motion.div>
     );
@@ -591,11 +591,11 @@ function StageGenerationArea({
     return (
       <motion.div key={`${stage.id}-error`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="flex flex-col items-center justify-center py-16 text-center">
         <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-500 mb-6"><AlertCircle className="w-8 h-8" /></div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Generation Failed</h2>
-        <p className="text-sm text-muted-foreground max-w-md mb-2">{stage.error || 'An unexpected error occurred.'}</p>
+        <h2 className="text-xl font-bold text-foreground mb-2">Pembuatan Gagal</h2>
+        <p className="text-sm text-muted-foreground max-w-md mb-2">{stage.error || 'Terjadi kesalahan yang tidak diharapkan.'}</p>
         <div className="flex gap-3 mt-4">
-          <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back</Button>
-          <Button onClick={onRegenerate} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white gap-2"><RotateCcw className="w-4 h-4" /> Retry</Button>
+          <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Kembali</Button>
+          <Button onClick={onRegenerate} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white gap-2"><RotateCcw className="w-4 h-4" /> Coba Lagi</Button>
         </div>
       </motion.div>
     );
@@ -610,12 +610,12 @@ function StageGenerationArea({
           <div>
             <h2 className="text-lg font-bold text-foreground">{stage.label}</h2>
             <div className="flex items-center gap-2 mt-0.5">
-              <Badge variant="outline" className="text-xs">{stage.wordCount.toLocaleString()} words</Badge>
+              <Badge variant="outline" className="text-xs">{stage.wordCount.toLocaleString()} kata</Badge>
               {stage.targetWords > 0 && <span className="text-xs text-muted-foreground">/ {stage.targetWords.toLocaleString()} target</span>}
             </div>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> Regenerate</Button>
+        <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> Buat Ulang</Button>
       </div>
       <Separator />
       <ScrollArea className="max-h-[60vh]">
@@ -628,7 +628,7 @@ function StageGenerationArea({
       {!isLastStage && (
         <div className="flex justify-end pt-2">
           <Button onClick={onNext} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white gap-2">
-            Next: {STAGE_DEFINITIONS[stageIndex + 1]?.label} <ArrowRight className="w-4 h-4" />
+            Selanjutnya: {STAGE_DEFINITIONS[stageIndex + 1]?.label} <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       )}
@@ -651,13 +651,13 @@ function CompileView({ onRegenerateAll, onCompile }: { onRegenerateAll: () => vo
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-4">
           <GraduationCap className="w-8 h-8" />
         </motion.div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">All Sections Complete!</h2>
-        <p className="text-muted-foreground">Your article sections have been generated. Review and compile below.</p>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Semua Bagian Selesai!</h2>
+        <p className="text-muted-foreground">Bagian artikel Anda telah dibuat. Tinjau dan susun di bawah.</p>
       </div>
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Section Summary</CardTitle>
+          <CardTitle className="text-base">Ringkasan Bagian</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -667,7 +667,7 @@ function CompileView({ onRegenerateAll, onCompile }: { onRegenerateAll: () => vo
                 <div key={stage.id} className="flex items-center gap-3 text-sm">
                   <Icon className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span className="flex-1 text-foreground font-medium">{stage.label}</span>
-                  <Badge variant="outline" className="text-xs tabular-nums">{stage.wordCount.toLocaleString()} words</Badge>
+                  <Badge variant="outline" className="text-xs tabular-nums">{stage.wordCount.toLocaleString()} kata</Badge>
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 </div>
               );
@@ -676,17 +676,17 @@ function CompileView({ onRegenerateAll, onCompile }: { onRegenerateAll: () => vo
           <Separator className="my-4" />
           <div className="flex items-center justify-between text-sm font-semibold">
             <span>Total</span>
-            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 font-semibold">{totalWords.toLocaleString()} words</Badge>
+            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 font-semibold">{totalWords.toLocaleString()} kata</Badge>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <Button size="lg" onClick={onCompile} className={cn('flex-1 h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 gap-2')}>
-          <Sparkles className="w-5 h-5" /> Compile Article <ArrowRight className="w-5 h-5" />
+          <Sparkles className="w-5 h-5" /> Susun Artikel <ArrowRight className="w-5 h-5" />
         </Button>
         <Button size="lg" variant="outline" onClick={onRegenerateAll} className="gap-2 h-12">
-          <RotateCcw className="w-4 h-4" /> Regenerate All
+          <RotateCcw className="w-4 h-4" /> Buat Ulang Semua
         </Button>
       </div>
     </motion.div>
@@ -747,13 +747,13 @@ export default function Step3Method() {
 
   const handleStartGeneration = useCallback(() => {
     if (!canGenerate) {
-      toast.error('Please select at least 5 references.');
+      toast.error('Pilih minimal 5 referensi.');
       return;
     }
     resetStages();
     setCurrentStageIndex(0);
     setView('generating');
-    toast.success('Generation started! Generate each section step by step.');
+    toast.success('Pembuatan dimulai! Buat setiap bagian satu per satu.');
   }, [canGenerate, resetStages, setCurrentStageIndex]);
 
   const handleGenerateStage = useCallback(async () => {
@@ -770,7 +770,7 @@ export default function Step3Method() {
       visualPlaceholders: [],
       startedAt: new Date().toISOString(),
     });
-    setStatusText(`Preparing to generate ${currentStage.label}...`);
+    setStatusText(`Mempersiapkan pembuatan ${currentStage.label}...`);
 
     try {
       // 1. POST to create a generation job (returns immediately)
@@ -792,7 +792,7 @@ export default function Step3Method() {
 
       const postData = await postRes.json();
       if (!postData.success) {
-        throw new Error(postData.error || 'Failed to generate section');
+        throw new Error(postData.error || 'Gagal membuat bagian');
       }
 
       // Synchronous mode: result is directly in the response
@@ -807,17 +807,17 @@ export default function Step3Method() {
           })),
           completedAt: new Date().toISOString(),
         });
-        toast.success(`${currentStage.label} generated successfully!`);
+        toast.success(`${currentStage.label} berhasil dihasilkan!`);
         return;
       }
 
       // Legacy job mode: poll for result (fallback for older servers)
       if (!postData.jobId) {
-        throw new Error('No result or jobId in response');
+        throw new Error('Tidak ada hasil dalam respons');
       }
 
       const jobId = postData.jobId;
-      setStatusText(`Generation job started, waiting for ${currentStage.label}...`);
+      setStatusText(`Tugas pembuatan dimulai, menunggu ${currentStage.label}...`);
 
       const POLL_INTERVAL = 3000;
       const MAX_POLL_TIME = 10 * 60 * 1000;
@@ -831,10 +831,10 @@ export default function Step3Method() {
         const pollRes = await fetch(`/api/article/generate-section?jobId=${jobId}`, {
           signal: abort.signal,
         });
-        if (!pollRes.ok) throw new Error(`Poll returned HTTP ${pollRes.status}`);
+        if (!pollRes.ok) throw new Error(`Poll mengembalikan HTTP ${pollRes.status}`);
         const pollData = await pollRes.json();
 
-        if (!pollData.success) throw new Error(pollData.error || 'Polling failed');
+        if (!pollData.success) throw new Error(pollData.error || 'Polling gagal');
 
         if (pollData.status === 'done' && pollData.result) {
           updateStage(currentStage.id, {
@@ -847,25 +847,25 @@ export default function Step3Method() {
             })),
             completedAt: new Date().toISOString(),
           });
-          toast.success(`${currentStage.label} generated successfully!`);
+          toast.success(`${currentStage.label} berhasil dihasilkan!`);
           return;
         }
 
         if (pollData.status === 'error') {
-          throw new Error(pollData.error || 'Generation failed on server');
+          throw new Error(pollData.error || 'Pembuatan gagal di server');
         }
       }
 
-      throw new Error('Generation timed out after 10 minutes');
+      throw new Error('Pembuatan batas waktu habis setelah 10 menit');
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         updateStage(currentStage.id, { status: 'pending', error: undefined });
-        toast.info(`${currentStage.label} generation cancelled.`);
+        toast.info(`${currentStage.label} pembuatan dibatalkan.`);
         return;
       }
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : 'Kesalahan tidak diketahui';
       updateStage(currentStage.id, { status: 'error', error: message });
-      toast.error(`Failed to generate ${currentStage.label}: ${message}`);
+      toast.error(`Gagal menghasilkan ${currentStage.label}: ${message}`);
     } finally {
       abortRef.current = null;
     }
@@ -926,8 +926,8 @@ export default function Step3Method() {
 
       const postData = await postRes.json();
       if (!postData.success) {
-        failPlaceholder(postData.error || 'Failed to generate visual');
-        toast.error(postData.error || 'Failed to generate visual');
+        failPlaceholder(postData.error || 'Gagal membuat visual');
+        toast.error(postData.error || 'Gagal membuat visual');
         return;
       }
 
@@ -937,14 +937,14 @@ export default function Step3Method() {
           p.id === placeholderId ? { ...p, generated: true, data: postData.result.data, error: undefined } : p
         );
         updateStage(stage.id, { visualPlaceholders: updatedPlaceholders });
-        toast.success(`${placeholder.type === 'figure' ? 'Figure' : 'Table'} generated!`);
+        toast.success(`${placeholder.type === 'figure' ? 'Figur' : 'Tabel'} berhasil dibuat!`);
         return;
       }
 
       // Legacy job mode: poll for result
       if (!postData.jobId) {
-        failPlaceholder('No result or jobId in response');
-        toast.error('No result or jobId in response');
+        failPlaceholder('Tidak ada hasil dalam respons');
+        toast.error('Tidak ada hasil dalam respons');
         return;
       }
 
@@ -962,15 +962,15 @@ export default function Step3Method() {
           signal: abort.signal,
         });
         if (!pollRes.ok) {
-          failPlaceholder(`Poll returned HTTP ${pollRes.status}`);
-          toast.error(`Poll returned HTTP ${pollRes.status}`);
+          failPlaceholder(`Poll mengembalikan HTTP ${pollRes.status}`);
+          toast.error(`Poll mengembalikan HTTP ${pollRes.status}`);
           return;
         }
         const pollData = await pollRes.json();
 
         if (!pollData.success) {
-          failPlaceholder(pollData.error || 'Polling failed');
-          toast.error(pollData.error || 'Polling failed');
+          failPlaceholder(pollData.error || 'Polling gagal');
+          toast.error(pollData.error || 'Polling gagal');
           return;
         }
 
@@ -979,22 +979,22 @@ export default function Step3Method() {
             p.id === placeholderId ? { ...p, generated: true, data: pollData.result.data, error: undefined } : p
           );
           updateStage(stage.id, { visualPlaceholders: updatedPlaceholders });
-          toast.success(`${placeholder.type === 'figure' ? 'Figure' : 'Table'} generated!`);
+          toast.success(`${placeholder.type === 'figure' ? 'Figur' : 'Tabel'} berhasil dibuat!`);
           return;
         }
 
         if (pollData.status === 'error') {
-          failPlaceholder(pollData.error || 'Generation failed');
-          toast.error(pollData.error || 'Generation failed');
+          failPlaceholder(pollData.error || 'Pembuatan gagal');
+          toast.error(pollData.error || 'Pembuatan gagal');
           return;
         }
       }
 
-      failPlaceholder('Visual generation timed out');
-      toast.error('Visual generation timed out');
+      failPlaceholder('Batas waktu pembuatan visual habis');
+      toast.error('Batas waktu pembuatan visual habis');
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : 'Kesalahan tidak diketahui';
       failPlaceholder(message);
       toast.error(message);
     }
@@ -1003,7 +1003,7 @@ export default function Step3Method() {
   const handleCompile = useCallback(() => {
     compileArticleFromStages();
     nextStep();
-    toast.success('Article compiled! Moving to preview.');
+    toast.success('Artikel selesai disusun! Beralih ke pratinjau.');
   }, [compileArticleFromStages, nextStep]);
 
   const handleRegenerateAll = useCallback(() => {
@@ -1027,7 +1027,7 @@ export default function Step3Method() {
           </div>
         </div>
         <div className="flex items-center justify-center gap-8 text-[10px] font-medium text-muted-foreground -mt-1">
-          <span>Define</span><span>References</span><span className="text-emerald-600 dark:text-emerald-400">Generate</span>
+          <span>Tentukan</span><span>Referensi</span><span className="text-emerald-600 dark:text-emerald-400">Buat</span>
         </div>
 
         <ReferencesSummary />
@@ -1082,7 +1082,7 @@ export default function Step3Method() {
         </section>
         <Separator />
 
-        {/* Additional Instructions */}
+        {/* Instruksi Tambahan */}
         <section>
           <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><Settings className="w-5 h-5" /></div>
@@ -1103,23 +1103,23 @@ export default function Step3Method() {
           <Card className="bg-gradient-to-br from-muted/50 to-muted/30 border-dashed">
             <CardContent className="pt-0 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div><span className="text-muted-foreground">Method</span><p className="font-medium text-foreground mt-0.5 capitalize">{researchMethod.replace(/-/g, ' ')}</p></div>
-                <div><span className="text-muted-foreground">References</span><p className="font-medium text-foreground mt-0.5">{selectedRefs.length} selected</p></div>
-                <div><span className="text-muted-foreground">Engine</span><p className="font-medium text-foreground mt-0.5">{AI_ENGINES.find((e) => e.id === selectedEngine)?.name}</p></div>
+                <div><span className="text-muted-foreground">Metode</span><p className="font-medium text-foreground mt-0.5 capitalize">{researchMethod.replace(/-/g, ' ')}</p></div>
+                <div><span className="text-muted-foreground">Referensi</span><p className="font-medium text-foreground mt-0.5">{selectedRefs.length} dipilih</p></div>
+                <div><span className="text-muted-foreground">Mesin</span><p className="font-medium text-foreground mt-0.5">{AI_ENGINES.find((e) => e.id === selectedEngine)?.name}</p></div>
               </div>
               {!canGenerate && (
                 <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3">
-                  <p className="text-sm text-amber-700 dark:text-amber-400"><MessageSquareWarning className="w-4 h-4 inline mr-1.5 -mt-0.5" />Please select at least <strong>5 references</strong> before generating.</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400"><MessageSquareWarning className="w-4 h-4 inline mr-1.5 -mt-0.5" />Silakan pilih minimal <strong>5 referensi</strong> sebelum membuat.</p>
                 </div>
               )}
               {canGenerate && (
                 <div className="flex items-center gap-2 rounded-lg bg-emerald-50/60 border border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-800/30 px-3 py-2">
                   <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="text-xs text-emerald-700 dark:text-emerald-300">Sections will be generated one at a time. You can review and regenerate each before proceeding.</span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-300">Bagian akan dibuat satu per satu. Anda dapat meninjau dan membuat ulang setiap bagian sebelum melanjutkan.</span>
                 </div>
               )}
               <Button size="lg" disabled={!canGenerate} onClick={handleStartGeneration} className={cn('w-full h-14 text-base font-semibold relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300')}>
-                <Play className="w-5 h-5" /> Start Generation <ArrowRight className="w-5 h-5" />
+                <Play className="w-5 h-5" /> Mulai Pembuatan <ArrowRight className="w-5 h-5" />
                 <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" animate={{ x: ['-100%', '100%'] }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} />
               </Button>
             </CardContent>
@@ -1129,8 +1129,8 @@ export default function Step3Method() {
 
         {/* Navigation */}
         <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back to References</Button>
-          <span className="text-xs text-muted-foreground">Step 3 of 5</span>
+          <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Kembali ke Referensi</Button>
+          <span className="text-xs text-muted-foreground">Langkah 3 dari 5</span>
         </div>
       </div>
     );
@@ -1145,8 +1145,8 @@ export default function Step3Method() {
         </div>
         <Separator />
         <div className="flex items-center justify-between py-4">
-          <Button variant="outline" onClick={() => setView('generating')} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back to Sections</Button>
-          <span className="text-xs text-muted-foreground">Step 3 of 5</span>
+          <Button variant="outline" onClick={() => setView('generating')} className="gap-2"><ArrowLeft className="w-4 h-4" /> Kembali ke Bagian</Button>
+          <span className="text-xs text-muted-foreground">Langkah 3 dari 5</span>
         </div>
       </div>
     );
@@ -1161,16 +1161,16 @@ export default function Step3Method() {
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"><GraduationCap className="w-5 h-5" /></div>
             <div>
-              <h2 className="text-lg font-bold text-foreground">Section Generation</h2>
-              <p className="text-xs text-muted-foreground">Generate your article section by section</p>
+              <h2 className="text-lg font-bold text-foreground">Pembuatan Bagian</h2>
+              <p className="text-xs text-muted-foreground">Buat artikel Anda bagian demi bagian</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              {sectionStages.filter((s) => s.status === 'done').length}/{sectionStages.length} done
+              {sectionStages.filter((s) => s.status === 'done').length}/{sectionStages.length} selesai
             </Badge>
             <Button variant="ghost" size="sm" onClick={() => setView('config')} className="text-muted-foreground gap-1.5 text-xs">
-              <Settings className="w-3.5 h-3.5" /> Settings
+              <Settings className="w-3.5 h-3.5" /> Pengaturan
             </Button>
           </div>
         </div>
@@ -1190,7 +1190,7 @@ export default function Step3Method() {
                 <Separator className="my-3" />
                 <div className="px-1">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                    <span>Overall Progress</span>
+                    <span>Progres Keseluruhan</span>
                     <span>{sectionStages.filter((s) => s.status === 'done').length}/{sectionStages.length}</span>
                   </div>
                   <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -1230,8 +1230,8 @@ export default function Step3Method() {
       {/* Footer */}
       <Separator className="mt-6" />
       <div className="flex items-center justify-between py-4">
-        <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Back to References</Button>
-        <span className="text-xs text-muted-foreground">Step 3 of 5</span>
+        <Button variant="outline" onClick={() => useArticleStore.getState().prevStep()} className="gap-2"><ArrowLeft className="w-4 h-4" /> Kembali ke Referensi</Button>
+        <span className="text-xs text-muted-foreground">Langkah 3 dari 5</span>
       </div>
     </div>
   );

@@ -33,6 +33,7 @@ interface StatusResponse {
 
 const BOT_SERVICE_PORT = 3035;
 
+export const maxDuration = 300;
 export async function GET() {
   const startTime = Date.now();
 

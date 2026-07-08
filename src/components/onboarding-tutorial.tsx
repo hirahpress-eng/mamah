@@ -49,14 +49,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 1,
     icon: BookOpen,
-    title: 'Define Your Research',
+    title: 'Tentukan Riset Anda',
     description:
-      'Start by defining your research topic. You can enter keywords, a title, or a full research idea — Mamah will help you generate the rest.',
+      'Mulai dengan menentukan topik riset Anda. Anda bisa memasukkan kata kunci, judul, atau ide riset lengkap — Mamah akan membantu menghasilkan sisanya.',
     highlights: [
-      'Keywords mode: Enter 5 keywords to get 5 title suggestions',
-      'Title mode: Paste a title to extract relevant keywords',
-      'Idea mode: Describe your idea for both keywords and titles',
-      'Browse pre-built Research Templates to get started fast',
+      'Mode Kata Kunci: Masukkan 5 kata kunci untuk mendapatkan 5 saran judul',
+      'Mode Judul: Tempelkan judul untuk mengekstrak kata kunci yang relevan',
+      'Mode Ide: Jelaskan ide Anda untuk mendapatkan kata kunci dan judul',
+      'Jelajahi Templat Riset yang sudah tersedia untuk memulai dengan cepat',
     ],
     accentColor: 'text-emerald-600 dark:text-emerald-400',
     gradientFrom: 'from-emerald-500',
@@ -65,14 +65,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 2,
     icon: Library,
-    title: 'Find References',
+    title: 'Temukan Referensi',
     description:
-      'Search and curate up to 50 academic references. Filter by type, search within results, and select the most relevant sources for your article.',
+      'Cari dan kurasi hingga 50 referensi akademis. Filter berdasarkan jenis, cari dalam hasil, dan pilih sumber yang paling relevan untuk artikel Anda.',
     highlights: [
-      'AI-powered search generates diverse reference types',
-      'Filter by Scopus, SINTA, Books, and Theory sources',
-      'Select all or pick individual references',
-      'Aim for a balanced mix of recent and foundational works',
+      'Pencarian berbasis AI menghasilkan berbagai jenis referensi',
+      'Filter berdasarkan sumber Scopus, SINTA, Buku, dan Teori',
+      'Pilih semua atau pilih referensi individual',
+      'Targetkan campuran seimbang karya terbaru dan fundamental',
     ],
     accentColor: 'text-teal-600 dark:text-teal-400',
     gradientFrom: 'from-teal-500',
@@ -81,14 +81,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 3,
     icon: FlaskConical,
-    title: 'Generate Article',
+    title: 'Hasilkan Artikel',
     description:
-      'Choose your research method and generate a full IMRAD-structured article. The AI writes each section based on your references and instructions.',
+      'Pilih metode riset Anda dan hasilkan artikel berstruktur IMRAD lengkap. AI menulis setiap bagian berdasarkan referensi dan instruksi Anda.',
     highlights: [
-      '7 research methods including Literature Review and Meta-Analysis',
-      'Add custom instructions for targeted output',
-      'Animated progress tracking during generation',
-      'Articles up to 7,750 words with proper IMRAD structure',
+      '7 metode riset termasuk Tinjauan Pustaka dan Meta-Analisis',
+      'Tambahkan instruksi kustom untuk output yang lebih tepat sasaran',
+      'Pelacakan progres animasi saat penghasilan berlangsung',
+      'Artikel hingga 7.750 kata dengan struktur IMRAD yang tepat',
     ],
     accentColor: 'text-cyan-600 dark:text-cyan-400',
     gradientFrom: 'from-cyan-500',
@@ -97,14 +97,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 4,
     icon: FileText,
-    title: 'Review & Export',
+    title: 'Tinjau & Ekspor',
     description:
-      'Review your generated article section by section. Check word counts, search within content, and export in your preferred format.',
+      'Tinjau artikel yang dihasilkan bagian per bagian. Periksa jumlah kata, cari dalam konten, dan ekspor dalam format pilihan Anda.',
     highlights: [
-      'Table of Contents with completion indicators',
-      'Search within article content with Ctrl+F',
-      'Section word counts with progress bars',
-      'Export to DOCX, PDF, Markdown, or plain text',
+      'Daftar Isi dengan indikator penyelesaian',
+      'Cari dalam konten artikel dengan Ctrl+F',
+      'Jumlah kata per bagian dengan bilah progres',
+      'Ekspor ke DOCX, PDF, Markdown, atau teks biasa',
     ],
     accentColor: 'text-emerald-600 dark:text-emerald-400',
     gradientFrom: 'from-emerald-500',
@@ -113,14 +113,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 5,
     icon: Wand2,
-    title: 'Polish & Publish',
+    title: 'Poles & Terbitkan',
     description:
-      'Refine your article to publication quality. Configure 8 polish options, compare before/after, and export the final version.',
+      'Sempurnakan artikel Anda hingga kualitas publikasi. Konfigurasi 8 opsi polesan, bandingkan sebelum/sesudah, dan ekspor versi akhir.',
     highlights: [
-      '8 configurable polish options for targeted refinement',
-      'Before/after comparison with change highlighting',
-      'Auto-Polish for one-click full refinement',
-      'Quality score ring and publication readiness metrics',
+      '8 opsi polesan yang dapat dikonfigurasi untuk penyempurnaan tertarget',
+      'Perbandingan sebelum/sesudah dengan sorotan perubahan',
+      'Poles Otomatis untuk penyempurnaan lengkap satu klik',
+      'Cincin skor kualitas dan metrik kesiapan publikasi',
     ],
     accentColor: 'text-teal-600 dark:text-teal-400',
     gradientFrom: 'from-teal-500',
@@ -242,7 +242,7 @@ function ProgressDots({ current, total, onDotClick }: { current: number; total: 
                     : 'rgb(203, 213, 225)',
             }}
             whileHover={{ scale: 1.2 }}
-            aria-label={`Go to step ${i + 1}`}
+            aria-label={`Ke langkah ${i + 1}`}
           >
             {i === current && (
               <motion.div
@@ -354,7 +354,7 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
 
         {/* Screen reader accessible title */}
         <DialogTitle className="sr-only">
-          Mamah Tutorial — Step {currentStep + 1} of {totalSteps}
+          Tutorial Mamah — Langkah {currentStep + 1} dari {totalSteps}
         </DialogTitle>
         <DialogDescription className="sr-only">
           {step.title}: {step.description}
@@ -365,7 +365,7 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
           <button
             onClick={handleSkip}
             className="absolute top-4 right-4 size-7 flex items-center justify-center rounded-full text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
-            aria-label="Close tutorial"
+            aria-label="Tutup tutorial"
           >
             <X className="size-4" />
           </button>
@@ -396,7 +396,7 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
               <div className="text-center">
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <GraduationCap className="size-3.5" />
-                  Tutorial — Step {currentStep + 1} of {totalSteps}
+                  Tutorial — Langkah {currentStep + 1} dari {totalSteps}
                 </span>
               </div>
 
@@ -451,7 +451,7 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
                   onClick={handleSkip}
                   className="text-muted-foreground hover:text-foreground text-xs"
                 >
-                  Skip Tutorial
+                  Lewati Tutorial
                 </Button>
               ) : (
                 <Button
@@ -461,7 +461,7 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <ChevronLeft className="size-4" />
-                  Back
+                  Kembali
                 </Button>
               )}
             </div>
@@ -474,11 +474,11 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
               {isLastStep ? (
                 <>
                   <CheckCircle2 className="size-4" />
-                  Got it!
+                  Mengerti!
                 </>
               ) : (
                 <>
-                  Next
+                  Selanjutnya
                   <ChevronRight className="size-4" />
                 </>
               )}
@@ -493,7 +493,7 @@ export function OnboardingTutorial({ open, onOpenChange }: OnboardingTutorialPro
               className="size-3.5"
             />
             <span className="text-xs text-muted-foreground">
-              Don&apos;t show this tutorial again
+              Jangan tampilkan tutorial ini lagi
             </span>
           </label>
         </div>

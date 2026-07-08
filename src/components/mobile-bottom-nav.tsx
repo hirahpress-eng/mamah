@@ -23,7 +23,7 @@ export default function MobileBottomNav({
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
-      aria-label="Mobile navigation"
+      aria-label="Navigasi bawah"
     >
       {/* Emerald gradient top border */}
       <div
@@ -39,27 +39,27 @@ export default function MobileBottomNav({
           <button
             onClick={onHome}
             className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            aria-label="Home"
+            aria-label="Beranda"
           >
             <Home className="size-5" />
-            <span className="text-[10px] leading-none">Home</span>
+            <span className="text-[10px] leading-none">Beranda</span>
           </button>
 
           {/* History */}
           <button
             onClick={onHistory}
             className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            aria-label="Article history"
+            aria-label="Riwayat artikel"
           >
             <History className="size-5" />
-            <span className="text-[10px] leading-none">History</span>
+            <span className="text-[10px] leading-none">Riwayat</span>
           </button>
 
           {/* Theme Toggle */}
           <button
             onClick={onThemeToggle}
             className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={isDark ? 'Mode terang' : 'Mode gelap'}
           >
             {isDark ? (
               <Sun className="size-5" />
@@ -67,7 +67,7 @@ export default function MobileBottomNav({
               <Moon className="size-5" />
             )}
             <span className="text-[10px] leading-none">
-              {isDark ? 'Light' : 'Dark'}
+              {isDark ? 'Terang' : 'Gelap'}
             </span>
           </button>
 
@@ -75,7 +75,7 @@ export default function MobileBottomNav({
           <button
             onClick={onAuth}
             className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-            aria-label={isLoggedIn ? 'Profile' : 'Sign in'}
+            aria-label={isLoggedIn ? 'Profil' : 'Masuk'}
           >
             {isLoggedIn ? (
               <UserCircle className="size-5" />
@@ -83,7 +83,7 @@ export default function MobileBottomNav({
               <LogIn className="size-5" />
             )}
             <span className="text-[10px] leading-none">
-              {isLoggedIn ? 'Profile' : 'Sign In'}
+              {isLoggedIn ? 'Profil' : 'Masuk'}
             </span>
           </button>
         </div>

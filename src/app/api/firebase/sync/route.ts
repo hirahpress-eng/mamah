@@ -9,6 +9,7 @@ import {
 // Body: { article: GeneratedArticle, userId?: string, docId?: string }
 // Response: { success, id?, error? }
 
+export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

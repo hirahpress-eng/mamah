@@ -43,6 +43,7 @@ function toCsvRow(row: Record<string, string | number | undefined | null>): stri
   return Object.values(row).map(escapeCsvField).join(',');
 }
 
+export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const body = await request.json();

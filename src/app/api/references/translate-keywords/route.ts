@@ -1,4 +1,4 @@
-import { generateWithEngine, DEFAULT_ENGINE } from '@/lib/ai-engine';
+import { generateWithEngine, DEFAULT_ENGINE, UNAVAILABLE_PATTERNS } from '@/lib/ai-engine';
 import type { AIEngineId } from '@/lib/ai-engine';
 import { extractJson } from '@/lib/extract-json';
 
@@ -64,6 +64,7 @@ Return ONLY valid JSON. No markdown fences.`;
 // POST: Translate keywords synchronously (Vercel-compatible, no in-memory jobs)
 // ---------------------------------------------------------------------------
 
+export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -100,13 +101,6 @@ export async function POST(request: Request) {
       maxTokens: 8192,
     })) || '';
 
-    // Detect AI engine fallback
-    const UNAVAILABLE_PATTERNS = [
-      /all ai engines are currently unavailable/i,
-      /engines are currently unavailable/i,
-      /api key not valid/i,
-      /try again later/i,
-    ];
     const isUnavailable = UNAVAILABLE_PATTERNS.some(p => p.test(rawResult));
 
     if (isUnavailable || !rawResult || rawResult.trim().length === 0) {
@@ -142,7 +136,7 @@ export async function POST(request: Request) {
       ...parsed,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Internal server error';
+    const message = process.env.NODE_ENV === 'production' ? 'Terjadi kesalahan internal' : (error instanceof Error ? error.message : 'Internal server error');
     console.error('[translate-keywords] POST error:', error);
     return Response.json(
       { success: false, error: message },

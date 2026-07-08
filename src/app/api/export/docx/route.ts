@@ -206,6 +206,7 @@ function formatReferenceParagraph(ref: ArticleReference, index: number): Paragra
 
 // ── POST handler ─────────────────────────────────────────────────────────────
 
+export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   try {
     const body: ExportArticle = await request.json();

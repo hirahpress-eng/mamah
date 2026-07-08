@@ -26,7 +26,6 @@ import {
   Info,
   Keyboard,
   Search,
-  Plus,
   History,
   Target,
   HelpCircle,
@@ -94,11 +93,11 @@ const MODE_TITLES: Record<string, string> = {
 };
 
 const STEPS = [
-  { id: 1, label: 'Define Research', icon: BookOpen, shortLabel: 'Research' },
-  { id: 2, label: 'References', icon: Library, shortLabel: 'References' },
-  { id: 3, label: 'Method & Generate', icon: FlaskConical, shortLabel: 'Generate' },
-  { id: 4, label: 'Article Output', icon: FileText, shortLabel: 'Output' },
-  { id: 5, label: 'Polish & Layout', icon: Wand2, shortLabel: 'Polish' },
+  { id: 1, label: 'Tentukan Riset', icon: BookOpen, shortLabel: 'Riset' },
+  { id: 2, label: 'Referensi', icon: Library, shortLabel: 'Referensi' },
+  { id: 3, label: 'Metode & Tulis', icon: FlaskConical, shortLabel: 'Tulis' },
+  { id: 4, label: 'Hasil Artikel', icon: FileText, shortLabel: 'Hasil' },
+  { id: 5, label: 'Sempurnakan', icon: Wand2, shortLabel: 'Rapi' },
 ] as const;
 
 // ─── Step Navigation Component ─────────────────────────────────────
@@ -108,7 +107,7 @@ function StepNavigation({ currentStep }: { currentStep: number }) {
   const progressPercent = Math.max(0, ((currentStep - 1) / (STEPS.length - 1)) * 100);
 
   return (
-    <nav className="w-full" aria-label="Article generation steps">
+    <nav className="w-full" aria-label="Langkah pembuatan artikel">
       {/* Desktop horizontal stepper */}
       <div className="hidden md:flex items-center justify-between w-full">
         {STEPS.map((step, index) => {
@@ -276,8 +275,8 @@ function SocialProofSection() {
   const stats = [
     { value: 4, suffix: '', label: 'Tim Penulis', display: '4' },
     { value: 8, suffix: '+', label: 'Database Akademik', display: '8+' },
-    { value: 7, suffix: 'th', label: 'Edition', display: 'APA 7th', prefix: 'Format ' },
-    { value: 3, suffix: '', label: 'Export Format', display: 'PDF, DOCX, MD' },
+    { value: 7, suffix: '', label: 'Format APA Edisi ke-7', display: 'APA 7' },
+    { value: 3, suffix: '', label: 'Format Ekspor', display: 'PDF, DOCX, MD' },
   ];
 
   const testimonials = [
@@ -354,9 +353,6 @@ function SocialProofSection() {
         <h2 className="text-center text-lg sm:text-xl font-bold text-foreground mb-6 sm:mb-8">
           Dipercaya oleh Ribuan Penulis Akademik
         </h2>
-        <p className="text-xs text-muted-foreground text-center -mt-1 mb-6 sm:mb-8">
-          * Testimoni di bawah merupakan contoh ilustrasi
-        </p>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
           {testimonials.map((t, i) => (
             <motion.div
@@ -410,13 +406,13 @@ function HowItWorksSection() {
       number: '02',
       icon: Search,
       title: 'Cari & Analisis Referensi',
-      description: 'Sistem menemukan hingga 50 referensi ilmiah relevan, menerjemahkan kata kunci, dan menyusun daftar pustaka APA 7th edition.',
+      description: 'Sistem menemukan hingga 50 referensi ilmiah relevan, menerjemahkan kata kunci, dan menyusun daftar pustaka APA edisi ke-7.',
     },
     {
       number: '03',
       icon: Wand2,
-      title: 'Generate & Export Artikel',
-      description: 'Tim AI menulis artikel IMRAD lengkap — abstrak, pendahuluan, metode, hasil & diskusi, kesimpulan. Export ke PDF atau DOCX.',
+      title: 'Tulis & Ekspor Artikel',
+      description: 'Tim AI menulis artikel IMRAD lengkap — abstrak, pendahuluan, metode, hasil & diskusi, kesimpulan. Ekspor ke PDF atau DOCX.',
     },
   ];
 
@@ -492,23 +488,23 @@ function FAQSection() {
   const faqs = [
     {
       question: 'Apakah Mamah gratis digunakan?',
-      answer: 'Ya! Mamah menyediakan paket gratis dengan batas generate per hari. Untuk kebutuhan lebih intensif, tersedia paket Pro dengan unlimited generation, prioritas tim penulis, dan fitur eksklusif lainnya.',
+      answer: 'Ya! Mamah menyediakan paket gratis dengan batas pembuatan per hari. Untuk kebutuhan lebih intensif, tersedia paket Pro dengan pembuatan tanpa batas, prioritas tim penulis, dan fitur eksklusif lainnya.',
     },
     {
-      question: 'Berapa lama waktu yang dibutuhkan untuk generate satu artikel?',
-      answer: 'Artikel ilmiah IMRAD biasanya selesai dalam 1-3 menit, tergantung panjang dan kompleksitas topik. Anda bisa memilih dari 4 tim penulis dan menyesuaikan setiap bagian sebelum export.',
+      question: 'Berapa lama waktu yang dibutuhkan untuk membuat satu artikel?',
+      answer: 'Artikel ilmiah IMRAD biasanya selesai dalam 1-3 menit, tergantung panjang dan kompleksitas topik. Anda bisa memilih dari 4 tim penulis dan menyesuaikan setiap bagian sebelum ekspor.',
     },
     {
       question: 'Apakah referensi yang dihasilkan valid dan bisa dipertanggungjawabkan?',
-      answer: 'Mamah mencari referensi dari sumber ilmiah terpercaya. Namun, kami sangat menyarankan untuk selalu memverifikasi setiap referensi yang digunakan. Hasil generate sebaiknya ditinjau dan disesuaikan oleh penulis sebelum dipublikasikan.',
+      answer: 'Mamah mencari referensi dari sumber ilmiah terpercaya. Namun, kami sangat menyarankan untuk selalu memverifikasi setiap referensi yang digunakan. Hasil pembuatan sebaiknya ditinjau dan disesuaikan oleh penulis sebelum dipublikasikan.',
     },
     {
-      question: 'Format apa saja yang didukung untuk export?',
-      answer: 'Saat ini Mamah mendukung export ke PDF (dengan layout publikasi siap cetak) dan DOCX (format Microsoft Word yang mudah diedit lebih lanjut). Format APA 7th edition digunakan untuk sitasi dan daftar pustaka.',
+      question: 'Format apa saja yang didukung untuk ekspor?',
+      answer: 'Saat ini Mamah mendukung ekspor ke PDF (dengan layout publikasi siap cetak) dan DOCX (format Microsoft Word yang mudah diedit lebih lanjut). Format APA edisi ke-7 digunakan untuk sitasi dan daftar pustaka.',
     },
     {
       question: 'Apa saja langkah dalam membuat artikel ilmiah?',
-      answer: 'Mamah menggunakan alur 5 langkah: (1) Definisi riset — masukkan judul, kata kunci, dan pilih tim penulis. (2) Referensi — cari dan pilih dari 50+ referensi ilmiah. (3) Generate — tim AI menulis setiap bagian artikel. (4) Review — tinjau dan beri catatan per bagian. (5) Polish — perbaiki dan finalisasi sebelum export.',
+      answer: 'Mamah menggunakan alur 5 langkah: (1) Definisi riset — masukkan judul, kata kunci, dan pilih tim penulis. (2) Referensi — cari dan pilih dari 50+ referensi ilmiah. (3) Tulis — tim AI menulis setiap bagian artikel. (4) Tinjau — tinjau dan beri catatan per bagian. (5) Sempurnakan — perbaiki dan finalisasi sebelum ekspor.',
     },
     {
       question: 'Apakah data dan konten saya aman?',
@@ -576,11 +572,11 @@ function PricingSection() {
       icon: FileText,
       popular: false,
       features: [
-        '3 generate per hari',
+        '3 pembuatan per hari',
         'Artikel Ilmiah IMRAD',
         'Pencarian referensi dasar',
-        'Export PDF',
-        'Format APA 7th Edition',
+        'Ekspor PDF',
+        'Format APA edisi ke-7',
       ],
       cta: 'Mulai Gratis',
       ctaVariant: 'outline' as const,
@@ -593,16 +589,16 @@ function PricingSection() {
       icon: Crown,
       popular: true,
       features: [
-        'Generate unlimited',
+        'Pembuatan tanpa batas',
         'Semua 4 tim penulis',
         '50 referensi per pencarian',
-        'Export PDF, DOCX & Markdown',
+        'Ekspor PDF, DOCX & Markdown',
         'Polish otomatis',
-        'Prioritas processing',
+        'Prioritas pemrosesan',
         'Fitur Reviewer Notes',
-        'Export CSV referensi (SLR)',
+        'Ekspor CSV referensi (SLR)',
       ],
-      cta: 'Segera Hadir',
+      cta: 'Segera Tersedia',
       ctaVariant: 'default' as const,
     },
     {
@@ -615,9 +611,9 @@ function PricingSection() {
       features: [
         'Semua fitur Pro',
         'Multi-user (10-100+)',
-        'Dedicated support',
+        'Dukungan khusus',
         'Template kustom',
-        'Lisensi bulk discount',
+        'Diskon lisensi massal',
         'Pelatihan penggunaan',
       ],
       cta: 'Hubungi Kami',
@@ -660,7 +656,7 @@ function PricingSection() {
               transition={{ duration: 0.45, delay: index * 0.1 }}
               className={`relative rounded-2xl p-5 sm:p-6 flex flex-col ${
                 plan.popular
-                  ? 'glass-card ring-2 ring-emerald-500/50 dark:ring-emerald-400/40 shadow-lg shadow-emerald-500/10'
+                  ? 'glass-card shadow-lg shadow-emerald-500/10'
                   : 'glass-card'
               }`}
             >
@@ -751,7 +747,7 @@ function WelcomeBanner() {
   const features = [
     {
       icon: Sparkles,
-      title: 'Generate Judul Penelitian',
+      title: 'Buat Judul Penelitian',
       description: 'Dapatkan saran judul akademik berkualitas dari kata kunci atau ide Anda',
     },
     {
@@ -769,7 +765,7 @@ function WelcomeBanner() {
   const trustBadges = [
     { label: '4 Tim Penulis', icon: BookOpen },
     { label: 'Format APA 7th', icon: Shield },
-    { label: 'Export DOCX & PDF', icon: FileCheck },
+    { label: 'Ekspor PDF & DOCX', icon: FileCheck },
     { label: 'Multi-Tim Penulis', icon: Zap },
   ];
 
@@ -997,37 +993,37 @@ const STEP_TIPS: Record<number, { icon: typeof Info; title: string; tips: string
       'Campurkan sumber: artikel jurnal, buku, dan sumber teori',
       'Prioritaskan publikasi terbaru (5 tahun terakhir) untuk relevansi',
       'Gunakan filter untuk mempersempit berdasarkan jenis, tahun, atau topik',
-      'Pilih minimal 5 referensi untuk melanjutkan ke tahap generate',
+      'Pilih minimal 5 referensi untuk melanjutkan ke tahap pembuatan',
     ],
   },
   3: {
     icon: FlaskConical,
-    title: 'Tips Generate Artikel',
+    title: 'Tips Membuat Artikel',
     tips: [
       'Literature Review direkomendasikan untuk sebagian besar artikel akademik',
       'Tambahkan instruksi khusus untuk output yang lebih terarah',
-      'Generate artikel biasanya memakan waktu 1-3 menit',
-      'Periksa referensi Anda sebelum generate untuk hasil terbaik',
+      'Pembuatan artikel biasanya memakan waktu 1-3 menit',
+      'Periksa referensi Anda sebelum memulai untuk hasil terbaik',
     ],
   },
   4: {
     icon: FileText,
-    title: 'Tips Review Artikel',
+    title: 'Tips Tinjau Artikel',
     tips: [
       'Gunakan Ctrl+F untuk mencari dalam konten artikel',
       'Periksa Daftar Isi untuk status kelengkapan setiap bagian',
-      'Buka setiap bagian untuk review detail',
-      'Export ke DOCX, PDF, atau Markdown untuk pengeditan offline',
+      'Buka setiap bagian untuk tinjauan detail',
+      'Ekspor ke DOCX, PDF, atau Markdown untuk pengeditan offline',
     ],
   },
   5: {
     icon: Wand2,
-    title: 'Tips Polish',
+    title: 'Tips Sempurnakan',
     tips: [
       'Gunakan Auto-Polish untuk mengaktifkan semua perbaikan sekaligus',
       'Bandingkan sebelum/sesudah untuk melihat peningkatan kualitas',
       'Setiap proses polish membangun versi sebelumnya',
-      'Export artikel polish akhir ke format yang Anda inginkan',
+      'Ekspor artikel yang sudah disempurnakan ke format yang Anda inginkan',
     ],
   },
 };
@@ -1062,7 +1058,7 @@ function StepTipsBar({ step }: { step: number }) {
               <button
                 onClick={() => setDismissed(true)}
                 className="ml-2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                aria-label="Dismiss tips"
+                aria-label="Tutup tips"
               >
                 <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -1129,7 +1125,7 @@ function WordCountGoalBar({ article }: { article: GeneratedArticle }) {
               />
             </div>
             <span className="text-[11px] font-medium tabular-nums text-muted-foreground whitespace-nowrap">
-              {totalWords.toLocaleString()} / {WORD_COUNT_TARGET.toLocaleString()} target
+              {totalWords.toLocaleString()} / {WORD_COUNT_TARGET.toLocaleString()} target kata
               <span className="ml-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
                 ({percent}%)
               </span>
@@ -1195,7 +1191,7 @@ function KeyboardShortcutsSection({
         className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group w-full sm:w-auto"
       >
         <Keyboard className="size-3.5 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
-        <span>Keyboard Shortcuts</span>
+        <span>Pintasan Keyboard</span>
         <motion.div
           animate={{ rotate: effectiveOpen ? 180 : 0 }}
           transition={{ duration: 0.25, ease: 'easeInOut' }}
@@ -1244,54 +1240,6 @@ function KeyboardShortcutsSection({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── Mobile Quick Actions ──────────────────────────────────────────
-
-function MobileQuickActions() {
-  const { resetAll, setCurrentStep } = useArticleStore();
-  const { setTheme, resolvedTheme } = useTheme();
-
-  return (
-    <div className="flex md:hidden items-center justify-center gap-2 mt-3 pt-3 border-t border-border/30">
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => {
-          resetAll();
-          toast.success('Artikel baru dimulai');
-        }}
-        className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
-        aria-label="New Article"
-      >
-        <Plus className="size-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => {
-          setCurrentStep(4);
-          toast.info('Lihat riwayat artikel di sidebar');
-        }}
-        className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
-        aria-label="View History"
-      >
-        <History className="size-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => {
-          setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-        }}
-        className="size-9 text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 dark:hover:border-emerald-700"
-        aria-label="Toggle Theme"
-      >
-        <Sun className="size-4 dark:hidden" />
-        <Moon className="size-4 hidden dark:block" />
-      </Button>
     </div>
   );
 }
@@ -1449,7 +1397,7 @@ export default function ArticleGeneratorApp() {
                 className="rounded-lg shadow-sm"
                 priority
               />
-              <div className="hidden sm:block">
+              <div>
                 <h1 className="text-sm font-bold tracking-tight leading-none text-gradient-emerald">
                   Mamah
                 </h1>
@@ -1469,7 +1417,7 @@ export default function ArticleGeneratorApp() {
                   className="text-muted-foreground hover:text-foreground gap-1.5"
                 >
                   <ArrowLeft className="size-3.5" />
-                  <span className="hidden sm:inline text-xs">Modes</span>
+                  <span className="hidden sm:inline text-xs">Mode</span>
                 </Button>
               )}
               {/* Help / Tutorial Button (Step 1 only, article mode) */}
@@ -1479,7 +1427,7 @@ export default function ArticleGeneratorApp() {
                   size="icon"
                   onClick={() => setTutorialOpen(true)}
                   className="size-9 text-muted-foreground hover:text-emerald-600"
-                  aria-label="Open tutorial"
+                  aria-label="Buka tutorial"
                 >
                   <HelpCircle className="size-4" />
                 </Button>
@@ -1507,7 +1455,7 @@ export default function ArticleGeneratorApp() {
                       toast.success('Berhasil logout');
                     }}
                     className="size-9"
-                    aria-label="Sign out"
+                    aria-label="Keluar"
                   >
                     <LogOut className="size-4 text-muted-foreground" />
                   </Button>
@@ -1518,9 +1466,10 @@ export default function ArticleGeneratorApp() {
                   size="sm"
                   onClick={() => setAuthModalOpen(true)}
                   className="text-muted-foreground hover:text-emerald-600 gap-1.5"
+                  aria-label="Masuk"
                 >
                   <LogIn className="size-3.5" />
-                  <span className="hidden sm:inline text-xs">Sign In</span>
+                  <span className="hidden sm:inline text-xs">Masuk</span>
                 </Button>
               )}
 
@@ -1533,7 +1482,7 @@ export default function ArticleGeneratorApp() {
                 size="icon"
                 onClick={toggleTheme}
                 className="size-9 text-muted-foreground hover:text-foreground"
-                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                aria-label={isDark ? 'Mode terang' : 'Mode gelap'}
               >
                 <AnimatePresence mode="wait" initial={false}>
                   {isDark ? (
@@ -1572,7 +1521,7 @@ export default function ArticleGeneratorApp() {
                   size="icon"
                   onClick={() => setStatsOpen(true)}
                   className="size-9 text-muted-foreground hover:text-emerald-600"
-                  aria-label="Open article statistics"
+                  aria-label="Buka statistik artikel"
                 >
                   <BarChart3 className="size-4" />
                 </Button>
@@ -1597,7 +1546,7 @@ export default function ArticleGeneratorApp() {
                   className="text-muted-foreground hover:text-destructive"
                 >
                   <RotateCcw className="size-4 sm:mr-1" />
-                  <span className="hidden sm:inline">New Article</span>
+                  <span className="hidden sm:inline">Artikel Baru</span>
                 </Button>
               )}
             </div>
@@ -1842,7 +1791,7 @@ export default function ArticleGeneratorApp() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
             {/* Left: copyright & version */}
             <div className="flex items-center gap-2">
-              <p>© {new Date().getFullYear()} <span className="font-semibold text-foreground">HirahPress</span>. Hak cipta dilindungi.</p>
+              <p>© {new Date().getFullYear()}{' '}<span className="font-semibold text-foreground">HirahPress</span>. Hak cipta dilindungi.</p>
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
                 {APP_VERSION}
               </Badge>
@@ -1880,9 +1829,6 @@ export default function ArticleGeneratorApp() {
               </Link>
             </div>
           </div>
-
-          {/* Quick Actions — mobile only */}
-          <MobileQuickActions />
         </div>
       </footer>
 
@@ -1890,7 +1836,7 @@ export default function ArticleGeneratorApp() {
       <MobileBottomNav
         onHome={selectedMode !== null ? handleBackToModes : () => {}}
         onHistory={() => {
-          const historyBtn = document.querySelector('[aria-label="Article history"]') as HTMLButtonElement | null;
+          const historyBtn = document.querySelector('[aria-label="Riwayat artikel"]') as HTMLButtonElement | null;
           if (historyBtn) historyBtn.click();
         }}
         onThemeToggle={toggleTheme}

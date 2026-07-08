@@ -276,7 +276,7 @@ function TypeDistributionBar({ references }: { references: Reference[] }) {
       className="space-y-2"
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Reference Types</span>
+        <span className="text-xs font-medium text-muted-foreground">Tipe Referensi</span>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {distribution.map((d, i) => {
             const config = getTypeConfig(d.type);
@@ -410,7 +410,7 @@ function ReferenceDetailModal({
     if (!reference.doi) return;
     navigator.clipboard.writeText(reference.doi).then(() => {
       setDoiCopied(true);
-      toast.success('DOI copied to clipboard');
+      toast.success('DOI disalin ke clipboard');
       setTimeout(() => setDoiCopied(false), 2000);
     });
   }, [reference.doi]);
@@ -494,7 +494,7 @@ function ReferenceDetailModal({
                   onClick={handleCopyDoi}
                   className="shrink-0 h-7 gap-1 text-xs px-2"
                 >
-                  {doiCopied ? <span className="text-emerald-600">Copied!</span> : <><Copy className="size-3" /> Copy DOI</>}
+                  {doiCopied ? <span className="text-emerald-600">Disalin!</span> : <><Copy className="size-3" /> Salin DOI</>}
                 </Button>
               </div>
             )}
@@ -753,10 +753,10 @@ function ReferenceCard({
 /* ─── Filter types ─── */
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'relevance', label: 'Relevance' },
-  { value: 'year-desc', label: 'Year (Newest)' },
-  { value: 'year-asc', label: 'Year (Oldest)' },
-  { value: 'author', label: 'Author Name' },
+  { value: 'relevance', label: 'Relevansi' },
+  { value: 'year-desc', label: 'Tahun (Terbaru)' },
+  { value: 'year-asc', label: 'Tahun (Terlama)' },
+  { value: 'author', label: 'Nama Penulis' },
 ];
 
 /* ─── Main component ─── */
@@ -834,15 +834,15 @@ export default function Step2References() {
   /* ─── Multi-type filter toggle helper ─── */
 
   const TYPE_FILTER_OPTIONS: { value: string; label: string }[] = [
-    { value: 'all', label: 'All Types' },
-    { value: 'Journal Article', label: 'Journal Articles' },
-    { value: 'Conference Paper', label: 'Conference Papers' },
-    { value: 'Book', label: 'Books' },
-    { value: 'Preprint', label: 'Preprints' },
-    { value: 'Thesis', label: 'Theses' },
+    { value: 'all', label: 'Semua Tipe' },
+    { value: 'Journal Article', label: 'Artikel Jurnal' },
+    { value: 'Conference Paper', label: 'Paper Konferensi' },
+    { value: 'Book', label: 'Buku' },
+    { value: 'Preprint', label: 'Preprint' },
+    { value: 'Thesis', label: 'Tesis' },
     { value: 'Skripsi', label: 'Skripsi' },
     { value: 'Disertasi', label: 'Disertasi' },
-    { value: 'Report', label: 'Reports' },
+    { value: 'Report', label: 'Laporan' },
   ];
 
   function toggleTypeFilter(type: string) {
@@ -977,14 +977,14 @@ export default function Step2References() {
         boolData = booleanResult.value;
         setGeneratedBoolean(boolData);
       } else {
-        toast.warning('Auto Boolean generation skipped — using default');
+        toast.warning('Pembuatan Boolean otomatis dilewati — menggunakan bawaan');
       }
 
       let transData: any = null;
       if (translateResult.status === 'fulfilled') {
         transData = translateResult.value;
       } else {
-        toast.warning('Translation skipped — searching in English only');
+        toast.warning('Translasi dilewati — mencari hanya dalam bahasa Inggris');
       }
 
       // ── Phase 2: Build all query variants ──
@@ -1102,7 +1102,7 @@ export default function Step2References() {
 
       if (Array.isArray(pollResult.references)) {
         setReferences(pollResult.references);
-        toast.success(`Found ${pollResult.references.length} references across 5 languages`);
+        toast.success(`Ditemukan ${pollResult.references.length} referensi dari 5 bahasa`);
 
         if (pollResult.meta?.isRealData) {
           setIsRealData(true);
@@ -1122,14 +1122,14 @@ export default function Step2References() {
       setIsSearchingReferences(false);
       setIsGeneratingBoolean(false);
       setIsTranslating(false);
-      toast.error('Search failed. Please try again.');
+      toast.error('Pencarian gagal. Silakan coba lagi.');
     }
   }, [effectiveTitle, effectiveKeywords, yearRange, booleanMode, includeKeywords, excludeKeywords, selectedTypes, searchLanguages, setReferences, setIsSearchingReferences, setReferenceSearchProgress]);
 
   /* ─── Select all handler with toast ─── */
   const handleSelectAll = useCallback(() => {
     selectAllReferences();
-    toast.info('All references selected');
+    toast.info('Semua referensi dipilih');
   }, [selectAllReferences]);
 
   /* ─── Open detail modal ─── */
@@ -1142,7 +1142,7 @@ export default function Step2References() {
   const handleExportBibTeX = useCallback(() => {
     const selectedRefs = references.filter((r) => r.isSelected);
     if (selectedRefs.length === 0) {
-      toast.error('No references selected to export');
+      toast.error('Tidak ada referensi yang dipilih untuk diekspor');
       return;
     }
     const bibtex = selectedRefs.map(referenceToBibtex).join('\n\n');
@@ -1155,7 +1155,7 @@ export default function Step2References() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${selectedRefs.length} reference${selectedRefs.length !== 1 ? 's' : ''} as BibTeX`);
+    toast.success(`${selectedRefs.length} referensi diekspor sebagai BibTeX`);
   }, [references]);
 
   /* ─── Toggle expand ─── */
@@ -1251,10 +1251,10 @@ export default function Step2References() {
           <div className="min-w-0 space-y-2">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               <BookOpen className="size-4 text-emerald-600" />
-              Step 2 — Reference Selection
+              Langkah 2 — Pemilihan Referensi
             </div>
             <h2 className="text-xl font-bold leading-tight tracking-tight md:text-2xl">
-              {effectiveTitle || 'Select a title in Step 1'}
+              {effectiveTitle || 'Pilih judul di Langkah 1'}
             </h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -1266,7 +1266,7 @@ export default function Step2References() {
                 className="hidden sm:inline-flex gap-1.5"
               >
                 <FileDown className="size-4" />
-                <span>Export BibTeX</span>
+                <span>Ekspor BibTeX</span>
               </Button>
             )}
             {hasResults && references.length > 0 && (
@@ -1286,7 +1286,7 @@ export default function Step2References() {
                 className="inline-flex gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-900/30"
               >
                 <Database className="size-4" />
-                <span className="hidden sm:inline">Export CSV SLR</span>
+                <span className="hidden sm:inline">Ekspor CSV SLR</span>
                 <span className="sm:hidden">CSV</span>
               </Button>
             )}
@@ -1296,7 +1296,7 @@ export default function Step2References() {
               onClick={() => setCurrentStep(1)}
             >
               <ArrowLeft className="size-4" />
-              <span className="hidden sm:inline">Edit Selection</span>
+              <span className="hidden sm:inline">Edit Pilihan</span>
             </Button>
           </div>
         </div>
@@ -1325,8 +1325,8 @@ export default function Step2References() {
           >
             <CheckSquare className="size-4 text-emerald-600" />
             <span>
-              <strong className="text-foreground font-mono tabular-nums">{animatedSelected}</strong> of{' '}
-              <strong className="text-foreground font-mono tabular-nums">{animatedTotal}</strong> references selected
+              <strong className="text-foreground font-mono tabular-nums">{animatedSelected}</strong> dari{' '}
+              <strong className="text-foreground font-mono tabular-nums">{animatedTotal}</strong> referensi dipilih
             </span>
           </motion.div>
         )}
@@ -1347,11 +1347,11 @@ export default function Step2References() {
               </Badge>
               <span className='text-muted-foreground text-xs'>→</span>
               <Badge variant='secondary' className='bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300 gap-1'>
-                Deduped: {searchMeta.afterDedupe ?? '—'}
+                Dedupe: {searchMeta.afterDedupe ?? '—'}
               </Badge>
               <span className='text-muted-foreground text-xs'>→</span>
               <Badge variant='secondary' className='bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300 gap-1'>
-                Final: {references.length}
+                Akhir: {references.length}
               </Badge>
             </>
           ) : (
@@ -1360,7 +1360,7 @@ export default function Step2References() {
               className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1.5 px-2.5 py-1"
             >
               <Library className="size-3" />
-              {totalCount} references
+              {totalCount} referensi
             </Badge>
           )}
           <Badge
@@ -1368,14 +1368,14 @@ export default function Step2References() {
             className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1.5 px-2.5 py-1"
           >
             <CheckSquare className="size-3" />
-            {selectedCount} selected
+            {selectedCount} dipilih
           </Badge>
           <Badge
             variant="secondary"
             className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 gap-1.5 px-2.5 py-1"
           >
             <Layers className="size-3" />
-            {new Set(references.map((r) => r.refType)).size} types
+            {new Set(references.map((r) => r.refType)).size} tipe
           </Badge>
           {sourceDistribution.databases > 0 && (
             <Badge
@@ -1383,7 +1383,7 @@ export default function Step2References() {
               className="bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 gap-1.5 px-2.5 py-1"
             >
               <Database className="size-3" />
-              {sourceDistribution.databases} databases
+              {sourceDistribution.databases} database
             </Badge>
           )}
         </motion.div>
@@ -1402,12 +1402,12 @@ export default function Step2References() {
             <Info className="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
             <div className="min-w-0">
               <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                Reference Search Tips
+                Tips Pencarian Referensi
               </p>
               <ul className="mt-1 space-y-0.5 text-[11px] text-blue-600 dark:text-blue-400">
-                <li>• All results come from real academic databases with verifiable DOIs</li>
-                <li>• Mix reference types for comprehensive coverage</li>
-                <li>• Select at least 5 for article generation</li>
+                <li>• Semua hasil berasal dari database akademik nyata dengan DOI yang dapat diverifikasi</li>
+                <li>• Campurkan tipe referensi untuk cakupan yang komprehensif</li>
+                <li>• Pilih setidaknya 5 untuk pembuatan artikel</li>
               </ul>
             </div>
           </div>
@@ -1421,10 +1421,10 @@ export default function Step2References() {
             <EmptyStateIllustration />
             <div className="space-y-2 max-w-sm">
               <h3 className="text-lg font-semibold">
-                Discover Relevant Academic References
+                Temukan Referensi Akademik yang Relevan
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Auto-generates Boolean search queries, translates keywords into <strong className="text-foreground">5 major research languages</strong> (English, Chinese, Spanish, German, French), and searches across <strong className="text-foreground">11 academic databases</strong> including Scopus, Semantic Scholar, OpenAlex, PubMed, and more to find verified references with real DOIs.
+                Otomatis membuat kueri pencarian Boolean, menerjemahkan kata kunci ke <strong className="text-foreground">5 bahasa penelitian utama</strong> (Inggris, Mandarin, Spanyol, Jerman, Prancis), dan mencari di <strong className="text-foreground">11 database akademik</strong> termasuk Scopus, Semantic Scholar, OpenAlex, PubMed, dan lainnya untuk menemukan referensi terverifikasi dengan DOI asli.
               </p>
             </div>
             <div className="flex flex-col items-center gap-3 w-full max-w-xs">
@@ -1435,12 +1435,12 @@ export default function Step2References() {
                 disabled={!effectiveTitle.trim()}
               >
                 <Search className="size-5" />
-                Search References
+                Cari Referensi
                 <ArrowRight className="size-4" />
               </Button>
               {!effectiveTitle.trim() && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Complete Step 1 first to enable reference search
+                  Selesaikan Langkah 1 terlebih dahulu
                 </p>
               )}
             </div>
@@ -1460,14 +1460,14 @@ export default function Step2References() {
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-sm">
-                    Auto-generating Boolean search queries...
+                    Otomatis membuat kueri pencarian Boolean...
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    AI is creating optimal AND/OR/combined queries with synonym expansion
+                    AI sedang membuat kueri AND/OR/kombinasi optimal dengan ekspansi sinonim
                   </p>
                 </div>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300 shrink-0">
-                  Phase 1/3
+                  Fase 1/3
                 </Badge>
               </div>
             )}
@@ -1480,10 +1480,10 @@ export default function Step2References() {
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-sm">
-                    Translating keywords to 5 research languages...
+                    Menerjemahkan kata kunci ke 5 bahasa penelitian...
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    English, Chinese, Spanish, German, French — including title translations
+                    Inggris, Mandarin, Spanyol, Jerman, Prancis — termasuk terjemahan judul
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -1494,7 +1494,7 @@ export default function Step2References() {
                   ))}
                 </div>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-300 shrink-0">
-                  {isGeneratingBoolean ? 'Phase 1/3' : 'Phase 2/3'}
+                  {isGeneratingBoolean ? 'Fase 1/3' : 'Fase 2/3'}
                 </Badge>
               </div>
             )}
@@ -1508,14 +1508,14 @@ export default function Step2References() {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-sm">
-                      {searchStatusMessage || 'Searching 11 academic databases with all query variants...'}
+                      {searchStatusMessage || 'Mencari di 11 database akademik dengan semua varian kueri...'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Original keywords + Boolean queries + title in 5 languages
+                      Kata kunci asli + kueri Boolean + judul dalam 5 bahasa
                     </p>
                   </div>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300 shrink-0">
-                    Phase 3/3
+                    Fase 3/3
                   </Badge>
                 </div>
                 <Progress value={referenceSearchProgress} className="h-2 [&>div]:bg-emerald-500" />
@@ -1527,7 +1527,7 @@ export default function Step2References() {
                 <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
                   <p className="mb-2 text-[11px] font-medium text-muted-foreground">
                     <Database className="mr-1 inline size-3" />
-                    Searching databases:
+                    Mencari di database:
                   </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
                     {SEARCH_DATABASES.map((db, i) => (
@@ -1589,7 +1589,7 @@ export default function Step2References() {
             >
               <span className="text-base leading-none">✅</span>
               <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                All references are verified from real academic databases. DOIs link to actual papers.
+                Semua referensi terverifikasi dari database akademik nyata. DOI mengarah ke paper asli.
               </p>
             </motion.div>
           )}
@@ -1609,13 +1609,13 @@ export default function Step2References() {
                   <div className="flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
                     <Lightbulb className="size-3.5 shrink-0" />
                     <span>
-                      <strong>Tip:</strong> Click a card to view details, or use the checkbox to select directly
+                      <strong>Tips:</strong> Klik kartu untuk melihat detail, atau gunakan checkbox untuk memilih langsung
                     </span>
                     <MousePointerClick className="size-3 shrink-0" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs text-xs">
-                  <p>Click a reference card to view full details. Use the checkbox to select/deselect.</p>
+                  <p>Klik kartu referensi untuk melihat detail lengkap. Gunakan checkbox untuk memilih/membatalkan pilihan.</p>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -1634,9 +1634,9 @@ export default function Step2References() {
               ) : (
                 <Search className="size-4" />
               )}
-              Search Again
+              Cari Lagi
             </Button>
-            {/* On mobile: show "Refine" button, on desktop: show "Filters" with toggle */}
+            {/* On mobile: show "Perbaiki" button, on desktop: show "Filter" with toggle */}
             <Button
               variant="outline"
               size="sm"
@@ -1647,7 +1647,7 @@ export default function Step2References() {
               )}
             >
               <Filter className="size-4" />
-              Refine
+              Perbaiki
               <ChevronDown
                 className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
               />
@@ -1662,7 +1662,7 @@ export default function Step2References() {
               )}
             >
               <Filter className="size-4" />
-              Filters
+              Filter
               <ChevronDown
                 className={cn('size-3 transition-transform', showFilters && 'rotate-180')}
               />
@@ -1670,11 +1670,11 @@ export default function Step2References() {
             <div className="ml-auto flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={handleSelectAll} className="text-xs">
                 <CheckSquare className="size-3.5" />
-                Select All
+                Pilih Semua
               </Button>
               <Button variant="ghost" size="sm" onClick={deselectAllReferences} className="text-xs">
                 <Square className="size-3.5" />
-                Deselect All
+                Batalkan Semua
               </Button>
             </div>
           </div>
@@ -1693,11 +1693,11 @@ export default function Step2References() {
                   <CardContent className="space-y-5 p-4">
                     {/* Include/Exclude Keywords */}
                     <div className="space-y-3">
-                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Keyword Criteria</label>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kriteria Kata Kunci</label>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
-                          <span className="text-xs font-medium text-muted-foreground">Must Include</span>
+                          <span className="text-xs font-medium text-muted-foreground">Harus Memuat</span>
                         </div>
                         <div className='flex items-center gap-2 flex-wrap'>
                           {includeKeywords.map((kw, i) => (
@@ -1705,12 +1705,12 @@ export default function Step2References() {
                               <ShieldCheck className='size-3' /> {kw} <X className='size-3' />
                             </Badge>
                           ))}
-                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-emerald-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setIncludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-emerald-500 outline-none px-1 py-0.5 w-24' placeholder='Tambah kata kunci...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setIncludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
                         </div>
 
                         <div className="flex items-center gap-2">
                           <ShieldAlert className="size-3.5 text-red-600 shrink-0" />
-                          <span className="text-xs font-medium text-muted-foreground">Must Exclude</span>
+                          <span className="text-xs font-medium text-muted-foreground">Harus Mengecualikan</span>
                         </div>
                         <div className='flex items-center gap-2 flex-wrap'>
                           {excludeKeywords.map((kw, i) => (
@@ -1718,7 +1718,7 @@ export default function Step2References() {
                               <ShieldAlert className='size-3' /> {kw} <X className='size-3' />
                             </Badge>
                           ))}
-                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-red-500 outline-none px-1 py-0.5 w-24' placeholder='Add keyword...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setExcludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
+                          <input className='text-xs bg-transparent border-b border-dashed border-muted-foreground/30 focus:border-red-500 outline-none px-1 py-0.5 w-24' placeholder='Tambah kata kunci...' onKeyDown={(e) => { if (e.key === 'Enter' && e.currentTarget.value.trim()) { setExcludeKeywords(prev => [...prev, e.currentTarget.value.trim()]); e.currentTarget.value = ''; } }} />
                         </div>
                       </div>
                     </div>
@@ -1728,7 +1728,7 @@ export default function Step2References() {
                     {/* Boolean Mode + Sort */}
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                        <label className="text-xs font-medium text-muted-foreground">Urutkan</label>
                         <Select value={sortBy} onValueChange={setSortBy}>
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Relevance" />
@@ -1744,13 +1744,13 @@ export default function Step2References() {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">Boolean Mode</label>
+                        <label className="text-xs font-medium text-muted-foreground">Mode Boolean</label>
                         <div className='flex items-center gap-2'>
                           <div className='flex rounded-lg border p-0.5'>
                             <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'OR' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('OR')}>OR</button>
                             <button className={`px-3 py-1.5 text-xs rounded-md transition-colors ${booleanMode === 'AND' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`} onClick={() => setBooleanMode('AND')}>AND</button>
                           </div>
-                          <span className='text-[11px] text-muted-foreground'>{booleanMode === 'OR' ? 'Any keyword matches' : 'All keywords required'}</span>
+                          <span className='text-[11px] text-muted-foreground'>{booleanMode === 'OR' ? 'Cocokkan salah satu kata kunci' : 'Semua kata kunci diperlukan'}</span>
                         </div>
                       </div>
                     </div>
@@ -1758,7 +1758,7 @@ export default function Step2References() {
                     {/* Multi-select Reference Type Filter */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Reference Type
+                        Tipe Referensi
                       </label>
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
                         {TYPE_FILTER_OPTIONS.map((opt) => {
@@ -1810,7 +1810,7 @@ export default function Step2References() {
                     {/* Year range */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Year Range: {yearRange[0]} – {yearRange[1]}
+                        Rentang Tahun: {yearRange[0]} – {yearRange[1]}
                       </label>
                       <Slider
                         value={yearRange}
@@ -1825,12 +1825,12 @@ export default function Step2References() {
                     {/* Search within */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-muted-foreground">
-                        Search Within Results
+                        Cari dalam Hasil
                       </label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          placeholder="Search by title, author, journal..."
+                          placeholder="Cari berdasarkan judul, penulis, jurnal..."
                           value={searchText}
                           onChange={(e) => setSearchText(e.target.value)}
                           className="pl-9"
@@ -1841,7 +1841,7 @@ export default function Step2References() {
                     {/* Search with Criteria button + Filter result count */}
                     <div className='flex items-center justify-between'>
                       <div className="text-xs text-muted-foreground">
-                        Showing {filteredReferences.length} of {totalCount} references
+                        Menampilkan {filteredReferences.length} dari {totalCount} referensi
                       </div>
                       <Button
                         size='sm'
@@ -1851,7 +1851,7 @@ export default function Step2References() {
                         className='gap-1.5 text-xs h-7'
                       >
                         <Search className='size-3' />
-                        Search with Criteria
+                        Cari dengan Kriteria
                       </Button>
                     </div>
                   </CardContent>
@@ -1874,8 +1874,8 @@ export default function Step2References() {
                       <Brain className="size-3.5 text-violet-600" />
                     </div>
                     <div>
-                      <span className="text-sm font-medium">Auto-Generated Boolean Queries</span>
-                      <p className="text-[11px] text-muted-foreground">AI-optimized search queries with synonym expansion</p>
+                      <span className="text-sm font-medium">Kueri Boolean Hasil Otomatis</span>
+                      <p className="text-[11px] text-muted-foreground">Kueri pencarian yang dioptimalkan AI dengan ekspansi sinonim</p>
                     </div>
                   </div>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300">
@@ -1888,7 +1888,7 @@ export default function Step2References() {
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">AND</span>
-                        <span className="text-[11px] text-muted-foreground">All terms required</span>
+                        <span className="text-[11px] text-muted-foreground">Semua istilah diperlukan</span>
                       </div>
                       <div className="space-y-1">
                         {generatedBoolean.booleanQueries.and.map((q: string, i: number) => (
@@ -1902,7 +1902,7 @@ export default function Step2References() {
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">OR</span>
-                        <span className="text-[11px] text-muted-foreground">Any term matches</span>
+                        <span className="text-[11px] text-muted-foreground">Cocokkan salah satu istilah</span>
                       </div>
                       <div className="space-y-1">
                         {generatedBoolean.booleanQueries.or.map((q: string, i: number) => (
@@ -1916,7 +1916,7 @@ export default function Step2References() {
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="inline-flex items-center rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">COMBINED</span>
-                        <span className="text-[11px] text-muted-foreground">Complex Boolean - most precise</span>
+                        <span className="text-[11px] text-muted-foreground">Boolean kompleks — paling presisi</span>
                       </div>
                       <div className="space-y-1">
                         {generatedBoolean.booleanQueries.combined.map((q: string, i: number) => (
@@ -1930,7 +1930,7 @@ export default function Step2References() {
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5">
                         <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">EXPANDED</span>
-                        <span className="text-[11px] text-muted-foreground">AI-discovered related terms</span>
+                        <span className="text-[11px] text-muted-foreground">Istilah terkait yang ditemukan AI</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {generatedBoolean.expandedKeywords.map((k: string, i: number) => (
@@ -1952,8 +1952,8 @@ export default function Step2References() {
                   <Languages className="size-3.5 text-teal-600" />
                 </div>
                 <div>
-                  <span className="text-sm font-medium">5-Language Auto-Search</span>
-                  <p className="text-[11px] text-muted-foreground">Keywords and title auto-translated and searched in all 5 languages</p>
+                  <span className="text-sm font-medium">Pencarian Otomatis 5 Bahasa</span>
+                  <p className="text-[11px] text-muted-foreground">Kata kunci dan judul diterjemahkan dan dicari otomatis dalam 5 bahasa</p>
                 </div>
               </div>
               <Badge className="bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800 gap-1 px-2.5 py-1 text-[10px]">
@@ -1963,11 +1963,11 @@ export default function Step2References() {
             <div className="border-t border-border/40 px-4 pb-4 pt-3">
               <div className="flex flex-wrap gap-2">
                 {[
-                  { name: 'English', code: 'en', flag: '🇬🇧', desc: 'International standard' },
-                  { name: 'Chinese', code: 'zh', flag: '🇨🇳', desc: '#1 Scopus output' },
-                  { name: 'Spanish', code: 'es', flag: '🇪🇸', desc: 'Growing Q1-Q4' },
-                  { name: 'German', code: 'de', flag: '🇩🇪', desc: 'Top 3 research' },
-                  { name: 'French', code: 'fr', flag: '🇫🇷', desc: 'Major output' },
+                  { name: 'English', code: 'en', flag: '🇬🇧', desc: 'Standar internasional' },
+                  { name: 'Chinese', code: 'zh', flag: '🇨🇳', desc: '#1 Output Scopus' },
+                  { name: 'Spanish', code: 'es', flag: '🇪🇸', desc: 'Pertumbuhan Q1-Q4' },
+                  { name: 'German', code: 'de', flag: '🇩🇪', desc: 'Top 3 riset' },
+                  { name: 'French', code: 'fr', flag: '🇫🇷', desc: 'Output utama' },
                 ].map((lang) => {
                   const isActive = searchLanguages.includes(lang.name);
                   return (
@@ -1997,7 +1997,7 @@ export default function Step2References() {
               </div>
               <p className="mt-3 text-[11px] text-muted-foreground">
                 <Globe className="inline size-3 mr-1" />
-                Searching with: original keywords + Boolean queries + translated title variants across all active languages
+                Mencari dengan: kata kunci asli + kueri Boolean + varian judul terjemahan di semua bahasa aktif
               </p>
             </div>
           </Card>
@@ -2008,9 +2008,9 @@ export default function Step2References() {
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
                   <Search className="size-8 text-muted-foreground/40" />
-                  <p className="text-sm font-medium text-muted-foreground">No references match your filters</p>
+                  <p className="text-sm font-medium text-muted-foreground">Tidak ada referensi yang cocok dengan filter</p>
                   <p className="text-xs text-muted-foreground/70">
-                    Try adjusting the type, year range, or search text
+                    Coba sesuaikan tipe, rentang tahun, atau teks pencarian
                   </p>
                 </CardContent>
               </Card>
@@ -2050,10 +2050,10 @@ export default function Step2References() {
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-2">
                   <Brain className="size-4 text-violet-600" />
-                  <span className="text-sm font-medium">Theory Detection</span>
+                  <span className="text-sm font-medium">Deteksi Teori</span>
                   {theories && (
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300">
-                      {theories.dominantParadigm || 'Detected'}
+                      {theories.dominantParadigm || 'Terdeteksi'}
                     </Badge>
                   )}
                 </div>
@@ -2083,7 +2083,7 @@ export default function Step2References() {
                       // Synchronous mode: result is directly in the response
                       if (postData.grandTheories || postData.dominantParadigm) {
                         setTheories(postData);
-                        toast.success('Theory detection complete');
+                        toast.success('Deteksi teori selesai');
                       } else if (postData.jobId) {
                         // Legacy job mode: poll for result
                         const pollResult = await new Promise<any>((resolve, reject) => {
@@ -2103,12 +2103,12 @@ export default function Step2References() {
                           setTimeout(() => { clearInterval(pInterval); reject(new Error('Theory detection timed out')); }, 90_000);
                         });
                         setTheories(pollResult);
-                        toast.success('Theory detection complete');
+                        toast.success('Deteksi teori selesai');
                       } else {
                         throw new Error('Invalid response from theory detection');
                       }
                     } catch {
-                      toast.error('Theory detection failed. Please try again.');
+                      toast.error('Deteksi teori gagal. Silakan coba lagi.');
                     } finally {
                       setIsDetectingTheories(false);
                     }
@@ -2121,7 +2121,7 @@ export default function Step2References() {
                   ) : (
                     <FlaskConical className="size-3.5" />
                   )}
-                  {theories ? 'Re-detect Theories' : 'Detect Theories'}
+                  {theories ? 'Deteksi Ulang Teori' : 'Deteksi Teori'}
                 </Button>
               </div>
 
@@ -2130,7 +2130,7 @@ export default function Step2References() {
                   <div className="px-4 pb-4">
                     <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
                       <Loader2 className="size-4 animate-spin text-violet-600" />
-                      <span className="text-xs text-muted-foreground">Analyzing theoretical frameworks across references...</span>
+                      <span className="text-xs text-muted-foreground">Menganalisis kerangka teori dari referensi...</span>
                     </div>
                   </div>
                 ) : theories ? (
@@ -2265,12 +2265,12 @@ export default function Step2References() {
                 </div>
                 <div>
                   <p className="text-sm font-medium leading-tight">
-                    {selectedCount} reference{selectedCount !== 1 ? 's' : ''} selected
+                    {selectedCount} referensi dipilih
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {selectedCount < 5
-                      ? `Select at least ${5 - selectedCount} more to proceed`
-                      : 'Ready to proceed'}
+                      ? `Pilih setidaknya ${5 - selectedCount} lagi untuk melanjutkan`
+                      : 'Siap melanjutkan'}
                   </p>
                 </div>
               </div>
@@ -2284,7 +2284,7 @@ export default function Step2References() {
                 className="hidden sm:inline-flex"
               >
                 <Search className="size-4" />
-                Search More
+                Cari Lagi
               </Button>
               <Button
                 size="sm"
@@ -2292,7 +2292,7 @@ export default function Step2References() {
                 disabled={selectedCount < 5}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40"
               >
-                Proceed to Method Selection
+                Lanjut ke Pemilihan Metode
                 <ArrowRight className="size-4" />
               </Button>
             </div>

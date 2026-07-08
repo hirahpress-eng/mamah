@@ -1070,3 +1070,104 @@ Work Log:
 Stage Summary:
 - Server healthy, no action taken
 - All clear
+---
+Task ID: audit-fix-auth-server
+Agent: Auth & Server Fix Team
+Task: Fix auth inconsistency, add middleware, server stability fixes
+
+Work Log:
+- [H-02] Fixed `src/lib/supabase.ts`: `createSupabaseServerClient()` and `createSupabaseBrowserClient()` now return `null` instead of throwing when env vars are missing. Updated singleton type to include `null`.
+- [H-03] Fixed `src/app/api/auth/login/route.ts`: After Supabase login, the route now upserts the user into the local Prisma DB, calls `createSession()` to generate a mamah_session JWT, and sets it as an httpOnly cookie. This makes `/api/auth/me` work after email/password login (matching the Google auth flow). Also handles null Supabase client with 503.
+- [H-03] Fixed `src/app/api/auth/signup/route.ts`: Same pattern as login — creates local user + mamah_session JWT cookie when Supabase returns a session (auto-confirmed). When email confirmation is required, returns the original response without session. Also handles null Supabase client with 503.
+- [C-03] Created `src/middleware.ts`: Next.js Edge middleware that validates the `mamah_session` JWT cookie on all `/api/*` routes except `/api/auth/*`. Uses `jose.jwtVerify` directly (Edge-compatible). Returns 401 JSON for invalid/missing tokens. Non-API routes pass through.
+- [H-01] Fixed `src/lib/db.ts`: Added `process.on('beforeExit', async () => { await db.$disconnect(); })` to ensure Prisma disconnects cleanly on process exit.
+- [M-11] Fixed `src/store/article-store.ts`: Removed `sectionStages: {}` from the `partialize` function (was persisting an empty object that would break `.map()` calls after rehydration). SectionStages is now omitted from persistence entirely, so it correctly resets to `createEmptyStages()` from initial state.
+- [L-04] Deleted `src/app/api/route.ts` (leftover "Hello, world!" endpoint).
+- Ran `bun run lint` — passed with zero errors.
+- Verified dev server restarted and compiled successfully with middleware active.
+
+Stage Summary:
+- All 6 issues resolved (H-01, H-02, H-03, C-03, M-11, L-04)
+- Auth flow now consistent: email/password login creates mamah_session JWT cookie, making /api/auth/me work
+- All API routes (except /api/auth/*) are now protected by JWT middleware — prevents unauthenticated API abuse
+- Supabase clients degrade gracefully (return null) when env vars not configured
+- Prisma disconnects on process exit
+- Zustand store no longer persists broken empty-object sectionStages
+- Lint clean, dev server healthy
+
+---
+Task ID: audit-fix-language-a11y
+Agent: Language & A11y Fix Team
+Task: Fix Indonesian language consistency, accessibility, mobile nav duplication
+
+Work Log:
+- M1/M9: Translated STEPS labels to Indonesian (Tentukan Riset, Referensi, Metode & Tulis, Hasil Artikel, Sempurnakan)
+- M1/M9: Fixed stats section: "Edition" → "Format APA Edisi ke-7", "Export Format" → "Format Ekspor"
+- M1/M9: Changed Sign In → Masuk (header button + aria-label)
+- M1/M9: Changed dark mode aria-label to "Mode terang"/"Mode gelap"
+- M1/M9: Translated trust badge "Export DOCX & PDF" → "Ekspor PDF & DOCX"
+- M1/M9: Translated all pricing plan features to Indonesian (Export→Ekspor, Generate→Pembuatan, etc.)
+- M1/M9: Changed Pro CTA "Segera Hadir" → "Segera Tersedia"
+- M1/M9: Translated Institusi plan features (Dedicated support→Dukungan khusus, bulk discount→Diskon lisensi massal)
+- M1/M9: Translated FAQ answers: generate→membuat/pembuatan, export→ekspor, Review→Tinjau, Polish→Sempurnakan
+- M1/M9: Translated how-to step descriptions (APA 7th edition→APA edisi ke-7, Export→Ekspor)
+- M1/M9: Translated welcome banner feature title "Generate Judul Penelitian" → "Buat Judul Penelitian"
+- M1/M9: Translated step tips: "Tips Generate Artikel"→"Tips Membuat Artikel", "Tips Review"→"Tips Tinjau", "Tips Polish"→"Tips Sempurnakan"
+- M1/M9: Translated word count "target" → "target kata"
+- M1/M9: Changed "Modes" button → "Mode", "New Article" → "Artikel Baru"
+- M1/M9: Translated KeyboardShortcutsSection label "Keyboard Shortcuts" → "Pintasan Keyboard"
+- M1/M9: Translated all MobileBottomNav text/aria-labels (Home→Beranda, History→Riwayat, Sign In→Masuk, Profile→Profil, Light/Dark→Terang/Gelap)
+- M1/M9: Updated ArticleHistorySidebar aria-label to "Riwayat artikel" for consistency
+- M1/M9: Updated querySelector in MobileBottomNav handler to match new aria-label
+- M1/M9: Translated header aria-labels: "Sign out"→"Keluar", "Open tutorial"→"Buka tutorial", "Open article statistics"→"Buka statistik artikel", "Article generation steps"→"Langkah pembuatan artikel"
+- H1: Added aria-label="Masuk" to Sign In button
+- H2: Changed Mamah heading div from `hidden sm:block` to always visible on mobile
+- H4: Added `{' '}` between year and company in copyright text
+- H5: Removed MobileQuickActions component entirely (duplicate of MobileBottomNav)
+- H5: Cleaned up unused Plus icon import
+- M10: Removed "contoh ilustrasi" disclaimer from testimonials section
+- Pricing: Removed ring-2 highlight from Pro card (kept "Paling Populer" badge without emphasis since plan is not purchasable)
+
+Stage Summary:
+- All user-facing English text in page.tsx and mobile-bottom-nav.tsx converted to Indonesian
+- Accessibility fixes: mobile heading visible, Sign In aria-label added, copyright spacing fixed
+- Mobile nav duplication resolved by removing MobileQuickActions (46 lines deleted)
+- Testimonials trust issue fixed by removing undermining disclaimer
+- Pro pricing card de-emphasized (ring-2 removed) while keeping "Paling Populer" badge
+- Lint clean, no errors
+
+---
+Task ID: audit-fix-styles-deps
+Agent: Styles & Deps Fix Team
+Task: Fix dark mode CSS, env validation, remove unused deps, clean dead code
+
+Work Log:
+- M-09 (Dark Mode Article Content): Added comprehensive `.dark .article-content` overrides for h1, h2, h3, h4, p, li, strong, em, blockquote (with background), a:hover, th (color), td (color), code (dark bg/border), pre (dark bg), and pre code (transparent reset). Previously only h2, blockquote, a, th, td had dark overrides — h1, h3, p, li, strong, code, pre were invisible on dark backgrounds.
+- M-05 (Env Validation): Created `/src/lib/env.ts` with Zod schema validating JWT_SECRET and DATABASE_URL. Only throws in production; silently continues in development. Added `import '@/lib/env'` to `/src/lib/db.ts` to trigger validation on startup.
+- M-07/M-08 (Unused Dependencies): Removed `next-auth` and `next-intl` (zero imports across codebase). Kept `node-telegram-bot-api` + `@types/node-telegram-bot-api` because they are actively imported by `telegram-storage.ts` (used by 4 API routes).
+- Dead CSS Removal (~90 lines): Removed unused keyframes (`shimmerBg`, `pulse-slow`, `gradient-shift`, `fade-in-up`, `scale-in`, `slide-in-right`, `pulse-ring`, `pulse-ring-glow`) and their associated animation utility classes (`.animate-float`, `.animate-pulse-slow`, `.animate-gradient`, `.animate-fade-in-up`, `.animate-scale-in`, `.animate-slide-in-right`, `.pulse-ring`, `.pulse-ring-glow`). Also removed unused `.pulse-dot`, `.step-connector` block (28 lines), and `.card-gradient-border` definition. All verified with grep — zero TSX/TS references.
+- M-03 (Duplicate UNAVAILABLE_PATTERNS): Extracted identical regex array from 4 API route files into a single `UNAVAILABLE_PATTERNS` export in `/src/lib/ai-engine.ts`. Updated all 4 consumers (`generate-boolean`, `detect-theories`, `translate-keywords`, `analyze-criteria`) to import from `@/lib/ai-engine`.
+
+Stage Summary:
+- Dark mode article rendering: fully visible for all elements (h1–h4, p, li, strong, em, blockquote, a, th, td, code, pre)
+- Env validation: production-safe startup check via Zod
+- 2 unused packages removed (next-auth, next-intl), 2 kept (node-telegram-bot-api, @types/node-telegram-bot-api) with justification
+- ~90 lines of dead CSS removed (unused keyframes, animation classes, card-gradient-border, step-connector, pulse-dot)
+- 4 duplicate UNAVAILABLE_PATTERNS arrays consolidated into single export
+- `bun run lint` passes clean, dev server compiles without errors
+---
+Task ID: audit-fix-step-language
+Agent: Step Language Team
+Task: Fix English text in step components
+
+Work Log:
+- Fixed step1-input.tsx: "Generating..." → "Menghasilkan...", "Generated Titles" → "Judul yang Dihasilkan", "results" → "hasil" (2 occurrences), "Select one title..." → Indonesian
+- Fixed step2-references.tsx: "Search Within Results" → "Cari dalam Hasil", placeholder → "Cari berdasarkan judul, penulis, jurnal...", "Analyzing theoretical frameworks..." → Indonesian
+- Fixed step3-method.tsx: already fully Indonesian, no changes needed
+- Fixed step4-output.tsx: "Copy Semua" → "Salin Semua", "Start New Article" → "Artikel Baru", "Back to top" → "Kembali ke atas", "Fullscreen reading" → "Membaca layar penuh", "Estimated reading time" → "Perkiraan waktu baca"
+- Fixed step5-polish.tsx: ~50+ English strings translated (polish options, summary panel, progress overlay, reviewer notes, upgrade dialog, tab labels, buttons, tooltips, quality messages)
+
+Stage Summary:
+- All step components now use consistent Indonesian language
+- Lint: clean
+

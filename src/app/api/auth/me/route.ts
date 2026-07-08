@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/lib/db';
 
 // Get current authenticated user
+export const maxDuration = 300;
 export async function GET() {
   try {
     const session = await getSession();

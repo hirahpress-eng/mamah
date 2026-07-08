@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { createSession, getSessionCookieName } from '@/lib/session';
 
 // Google OAuth token verification & user creation
+export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const { credential } = await request.json();

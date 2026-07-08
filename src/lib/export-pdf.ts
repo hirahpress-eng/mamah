@@ -286,8 +286,9 @@ export async function exportToPdf(article: GeneratedArticle): Promise<void> {
   const blob = await buildPdf(article);
 
   // Build filename: {sanitised_title}_article.pdf
+  // Only strip control chars and filesystem-unsafe chars — preserve Unicode/Indonesian
   const sanitisedTitle = article.title
-    .replace(/[^a-zA-Z0-9\s-]/g, '')
+    .replace(/[/\\?%*:|"<>]/g, '')
     .replace(/\s+/g, '_')
     .substring(0, 60)
     .toLowerCase();

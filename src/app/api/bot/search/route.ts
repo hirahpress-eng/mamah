@@ -49,7 +49,7 @@ function createSSEStream(
           total: results.length,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message = process.env.NODE_ENV === 'production' ? 'Terjadi kesalahan pencarian' : (error instanceof Error ? error.message : 'Unknown error');
         sendEvent('error', {
           type: 'error',
           success: false,
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     return Response.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'An unexpected error occurred',
+        error: process.env.NODE_ENV === 'production' ? 'Terjadi kesalahan internal' : (error instanceof Error ? error.message : 'An unexpected error occurred'),
       },
       { status: 500 },
     );

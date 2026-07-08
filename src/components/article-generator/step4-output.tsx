@@ -145,9 +145,9 @@ function buildPlainText(article: NonNullable<ReturnType<typeof useArticleStore.g
 
   lines.push(article.title);
   lines.push('');
-  lines.push(`Keywords: ${article.keywords.join(', ')}`);
+  lines.push(`Kata Kunci: ${article.keywords.join(', ')}`);
   lines.push('');
-  lines.push(`Total Word Count: ${article.totalWordCount}`);
+  lines.push(`Jumlah Kata Total: ${article.totalWordCount}`);
   lines.push('');
   lines.push('─'.repeat(60));
   lines.push('');
@@ -513,13 +513,13 @@ function SectionCard({
                     size="icon"
                     className="size-8"
                     onClick={() => {
-                      toast.info(`Regenerate ${meta.label}? Section regeneration coming soon!`);
+                      toast.info(`Buat ulang ${meta.label}? Pembuatan ulang bagian segera hadir!`);
                     }}
                   >
                     <RefreshCw className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Regenerate Section</TooltipContent>
+                <TooltipContent>Buat Ulang Bagian</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider delayDuration={300}>
@@ -538,7 +538,7 @@ function SectionCard({
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Copy Section</TooltipContent>
+                <TooltipContent>Salin Bagian</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider delayDuration={300}>
@@ -560,7 +560,7 @@ function SectionCard({
                     </Button>
                   </CollapsibleTrigger>
                 </TooltipTrigger>
-                <TooltipContent>{isExpanded ? 'Collapse' : 'Expand'}</TooltipContent>
+                <TooltipContent>{isExpanded ? 'Perkecil' : 'Perluas'}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </CardAction>
@@ -610,7 +610,7 @@ function ReferencesCard({
       const text = references.map((ref, i) => formatReference(ref, i)).join('\n\n');
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      toast.success('References copied to clipboard');
+      toast.success('Referensi disalin ke clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Failed to copy references');
@@ -644,7 +644,7 @@ function ReferencesCard({
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Copy References</TooltipContent>
+                <TooltipContent>Salin Referensi</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider delayDuration={300}>
@@ -666,7 +666,7 @@ function ReferencesCard({
                     </Button>
                   </CollapsibleTrigger>
                 </TooltipTrigger>
-                <TooltipContent>{isExpanded ? 'Collapse' : 'Expand'}</TooltipContent>
+                <TooltipContent>{isExpanded ? 'Perkecil' : 'Perluas'}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </CardAction>
@@ -788,10 +788,10 @@ function TableOfContents({
   ];
 
   return (
-    <nav aria-label="Table of Contents">
+    <nav aria-label="Daftar Isi">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
         <List className="size-4 text-emerald-600" />
-        Table of Contents
+        Daftar Isi
       </h3>
       <ScrollArea className="max-h-[calc(100vh-14rem)]">
         <ul className="space-y-0.5">
@@ -905,7 +905,7 @@ function BackToTopButton() {
                   <ArrowUp className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Back to top</TooltipContent>
+              <TooltipContent>Kembali ke atas</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </motion.div>
@@ -1017,7 +1017,7 @@ export default function Step4Output() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Article downloaded as text file');
+    toast.success('Artikel diunduh sebagai file teks');
   }, [article]);
 
   // ── Print ──
@@ -1031,10 +1031,10 @@ export default function Step4Output() {
     setIsExportingPdf(true);
     try {
       await exportToPdf(article);
-      toast.success('Article downloaded as PDF');
+      toast.success('Artikel diunduh sebagai PDF');
     } catch (err) {
       console.error('PDF export error:', err);
-      toast.error('Failed to generate PDF. Please try again.');
+      toast.error('Gagal membuat PDF. Silakan coba lagi.');
     } finally {
       setIsExportingPdf(false);
     }
@@ -1085,14 +1085,14 @@ export default function Step4Output() {
   // ── Start new ──
   const handleStartNew = useCallback(() => {
     resetAll();
-    toast.success('Ready for a new article');
+    toast.success('Siap untuk artikel baru');
   }, [resetAll]);
 
   // ── Generate first article (navigate to step 1) ──
   const handleGenerateFirst = useCallback(() => {
     resetAll();
     setCurrentStep(1);
-    toast.info('Navigate to Step 1 to generate your article');
+    toast.info('Pergi ke Langkah 1 untuk membuat artikel Anda');
   }, [resetAll, setCurrentStep]);
 
   // ── Word count progress ──
@@ -1216,9 +1216,9 @@ export default function Step4Output() {
             </div>
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">No Article Generated Yet</h2>
+            <h2 className="text-2xl font-bold text-foreground">Belum Ada Artikel yang Dihasilkan</h2>
             <p className="text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Complete the previous steps to generate your academic article. Start by defining your research topic, finding references, and configuring your generation method.
+              Selesaikan langkah sebelumnya untuk membuat artikel akademik Anda. Mulai dengan menentukan topik riset, menemukan referensi, dan mengonfigurasi metode pembuatan artikel.
             </p>
           </div>
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
@@ -1228,12 +1228,12 @@ export default function Step4Output() {
               onClick={handleGenerateFirst}
             >
               <Sparkles className="size-4" />
-              Generate Your First Article
+              Hasilkan Artikel Pertama Anda
               <ArrowRight className="size-4" />
             </Button>
           </motion.div>
           <p className="text-xs text-muted-foreground">
-            You&apos;ll be taken to Step 1 to begin
+            Anda akan diarahkan ke Langkah 1 untuk memulai
           </p>
         </motion.div>
       </div>
@@ -1393,7 +1393,7 @@ export default function Step4Output() {
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Download as PDF</TooltipContent>
+                      <TooltipContent>Unduh sebagai PDF</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   {/* Copy All */}
@@ -1413,7 +1413,7 @@ export default function Step4Output() {
                           )}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Copy Semua</TooltipContent>
+                      <TooltipContent>Salin Semua</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                   {/* Dark/Light Toggle */}
@@ -1434,7 +1434,7 @@ export default function Step4Output() {
                             )}
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>{resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
+                        <TooltipContent>{resolvedTheme === 'dark' ? 'Mode terang' : 'Mode gelap'}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
@@ -1494,7 +1494,7 @@ export default function Step4Output() {
                       <ChevronsDown className="size-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Expand all sections</TooltipContent>
+                  <TooltipContent>Perluas semua bagian</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               <TooltipProvider delayDuration={300}>
@@ -1510,7 +1510,7 @@ export default function Step4Output() {
                       <ChevronsUp className="size-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Collapse all sections</TooltipContent>
+                  <TooltipContent>Perkecil semua bagian</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
 
@@ -1518,26 +1518,26 @@ export default function Step4Output() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Download className="size-4" />
-                    <span className="hidden sm:inline">Export</span>
+                    <span className="hidden sm:inline">Ekspor</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="flex items-center gap-2">
                     <Download className="size-4" />
-                    Export Options
+                    Opsi Ekspor
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleDownloadText} className="gap-3">
                     <FileText className="size-4" />
                     <div className="flex flex-col">
-                      <span>Download as Text</span>
-                      <span className="text-[10px] text-muted-foreground">Plain text (.txt)</span>
+                      <span>Unduh sebagai Teks</span>
+                      <span className="text-[10px] text-muted-foreground">Teks biasa (.txt)</span>
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { if (article) { exportToMarkdown(article); toast.success('Article downloaded as Markdown'); } }} className="gap-3">
+                  <DropdownMenuItem onClick={() => { if (article) { exportToMarkdown(article); toast.success('Artikel diunduh sebagai Markdown'); } }} className="gap-3">
                     <FileDown className="size-4" />
                     <div className="flex flex-col">
-                      <span>Download as Markdown</span>
+                      <span>Unduh sebagai Markdown</span>
                       <span className="text-[10px] text-muted-foreground">Markdown (.md)</span>
                     </div>
                   </DropdownMenuItem>
@@ -1548,16 +1548,16 @@ export default function Step4Output() {
                       <FileText className="size-4" />
                     )}
                     <div className="flex flex-col">
-                      <span>{isExportingPdf ? 'Generating PDF...' : 'Download as PDF'}</span>
-                      <span className="text-[10px] text-muted-foreground">PDF document (.pdf)</span>
+                      <span>{isExportingPdf ? 'Membuat PDF...' : 'Unduh sebagai PDF'}</span>
+                      <span className="text-[10px] text-muted-foreground">Dokumen PDF (.pdf)</span>
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handlePrint} className="gap-3">
                     <Printer className="size-4" />
                     <div className="flex flex-col">
-                      <span>Print Article</span>
-                      <span className="text-[10px] text-muted-foreground">Open print dialog</span>
+                      <span>Cetak Artikel</span>
+                      <span className="text-[10px] text-muted-foreground">Buka dialog cetak</span>
                     </div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -1585,7 +1585,7 @@ export default function Step4Output() {
                     <Maximize2 className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Fullscreen reading</TooltipContent>
+                <TooltipContent>Membaca layar penuh</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -1594,7 +1594,7 @@ export default function Step4Output() {
           <div className="sticky top-16 z-10 bg-background/90 backdrop-blur-sm -mx-6 px-6 py-3 space-y-2 border-b border-border/30 print:hidden">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Total Word Count
+                Jumlah Kata Total
               </span>
               <span className="font-semibold tabular-nums text-foreground">
                 {animatedWordCount.toLocaleString()} / {MAX_WORD_COUNT.toLocaleString()}
@@ -1607,13 +1607,13 @@ export default function Step4Output() {
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
                 {article.totalWordCount >= MAX_WORD_COUNT
-                  ? '✅ Target word count reached'
+                  ? '✅ Jumlah kata target tercapai'
                   : `${(MAX_WORD_COUNT - animatedWordCount).toLocaleString()} words remaining to target`}
               </p>
               {/* ── Reading Time Estimate ── */}
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="size-3" />
-                <span>Estimated reading time: <strong className="text-foreground">{readingTime} min</strong></span>
+                <span>Perkiraan waktu baca: <strong className="text-foreground">{readingTime} menit</strong></span>
               </div>
             </div>
           </div>
@@ -1667,7 +1667,7 @@ export default function Step4Output() {
                   <Button variant="outline" className="w-full justify-between">
                     <span className="flex items-center gap-2">
                       <List className="size-4" />
-                      Jump to Section
+                      Lompat ke Bagian
                     </span>
                     <ChevronUp className="size-4 rotate-180" />
                   </Button>
@@ -1775,7 +1775,7 @@ export default function Step4Output() {
                 onClick={handleDownloadText}
               >
                 <Download className="size-4" />
-                Download as Text
+                Unduh sebagai Teks
               </Button>
               <Button
                 variant="ghost"
@@ -1783,7 +1783,7 @@ export default function Step4Output() {
                 className="w-full sm:w-auto text-muted-foreground"
                 onClick={handleStartNew}
               >
-                Start New Article
+                Artikel Baru
               </Button>
             </div>
           </main>

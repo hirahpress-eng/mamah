@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
+import { createSession, getSessionCookieName } from '@/lib/session';
+import { db } from '@/lib/db';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 6;
 
+export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     const { email, password, fullName } = await request.json();
@@ -32,6 +35,13 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseServerClient();
 
+    if (!supabase) {
+      return NextResponse.json(
+        { success: false, error: 'Email signup belum dikonfigurasi' },
+        { status: 503 }
+      );
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -46,6 +56,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
+    // If user session is returned, the account is auto-confirmed (or email confirmation is off)
+    // Create local user and session only when session exists
+    if (data.session && data.user) {
+      let user = await db.user.findUnique({ where: { email: data.user.email! } });
+
+      if (!user) {
+        user = await db.user.create({
+          data: {
+            email: data.user.email!,
+            name: fullName || email.split('@')[0],
+            role: 'user',
+            authProvider: 'email',
+            subscriptionTier: 'free',
+          },
+        });
+      }
+
+      const sessionToken = await createSession({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        role: user.role,
+        subscriptionTier: user.subscriptionTier,
+      });
+
+      const response = NextResponse.json({
+        success: true,
+        user: { id: user.id, email: user.email, name: user.name },
+      });
+
+      response.cookies.set(getSessionCookieName(), sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+      });
+
+      return response;
+    }
+
+    // Email confirmation required — no session yet
     return NextResponse.json({
       success: true,
       user: { id: data.user?.id, email: data.user?.email },

@@ -92,14 +92,14 @@ interface PolishStep {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_POLISH_OPTIONS: PolishOption[] = [
-  { id: 'structural', label: 'Structural Polish', description: 'Reorganise paragraphs for logical flow', icon: Layers, enabled: true },
-  { id: 'tone', label: 'Academic Tone', description: 'Enhance formal British English academic language', icon: BookOpen, enabled: true },
-  { id: 'citations', label: 'Citation Polish', description: 'Verify and enhance APA 7 citations', icon: Quote, enabled: true },
-  { id: 'coherence', label: 'Coherence Enhancement', description: 'Improve transitions between sections', icon: GitBranch, enabled: true },
-  { id: 'clarity', label: 'Clarity Enhancement', description: 'Simplify complex sentences', icon: Eye, enabled: true },
-  { id: 'vocabulary', label: 'Vocabulary Enhancement', description: 'Upgrade academic vocabulary', icon: Lightbulb, enabled: true },
-  { id: 'grammar', label: 'Grammar & Syntax', description: 'Fix grammar and syntax issues', icon: SpellCheck, enabled: true },
-  { id: 'formatting', label: 'Formatting', description: 'Ensure consistent formatting throughout', icon: AlignLeft, enabled: true },
+  { id: 'structural', label: 'Polesan Struktural', description: 'Mengoptimalkan struktur paragraf, hierarki heading, dan alur bagian untuk keterbacaan akademik yang lebih baik.', icon: Layers, enabled: true },
+  { id: 'tone', label: 'Nada Akademik', description: 'Meningkatkan bahasa ke register akademik formal sambil mempertahankan ketepatan teknis.', icon: BookOpen, enabled: true },
+  { id: 'citations', label: 'Peningkatan Sitasi', description: 'Memperbaiki sitasi dalam teks, format referensi, dan konsistensi bibliografi.', icon: Quote, enabled: true },
+  { id: 'coherence', label: 'Koherensi & Alur', description: 'Memperkuat koneksi logis antar paragraf dan ide.', icon: GitBranch, enabled: true },
+  { id: 'clarity', label: 'Peningkatan Kejelasan', description: 'Menyederhanakan kalimat kompleks dan meningkatkan skor keterbacaan.', icon: Eye, enabled: true },
+  { id: 'vocabulary', label: 'Peningkatan Kosakata', description: 'Mengganti kata umum dengan alternatif akademik.', icon: Lightbulb, enabled: true },
+  { id: 'grammar', label: 'Tata Bahasa & Sintaksis', description: 'Memperbaiki kesalahan tata bahasa dan meningkatkan konstruksi kalimat.', icon: SpellCheck, enabled: true },
+  { id: 'formatting', label: 'Format & Tata Letak', description: 'Menyesuaikan format untuk memenuhi pedoman pengiriman jurnal.', icon: AlignLeft, enabled: true },
 ];
 
 const SECTION_LABELS: Record<string, string> = {
@@ -524,7 +524,7 @@ function SectionComparison({
         {hasChanges && (
           <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800 text-[10px] px-1.5 py-0">
             <Sparkles className="size-2.5 mr-0.5" />
-            {changeCount} {changeCount === 1 ? 'improvement' : 'improvements'}
+            {changeCount} {changeCount === 1 ? 'perbaikan' : 'perbaikan'}
           </Badge>
         )}
       </h4>
@@ -534,7 +534,7 @@ function SectionComparison({
           <div className="rounded-lg border bg-muted/30 p-3 min-h-[200px] overflow-y-auto">
             <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-muted-foreground/40" />
-              Original
+              Asli
             </p>
             <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/80">
               {renderTextWithHighlight(originalContent, searchQuery)}
@@ -543,7 +543,7 @@ function SectionComparison({
           <div className={`rounded-lg border p-3 min-h-[200px] overflow-y-auto ${hasChanges ? 'border-l-[2px] border-l-emerald-500 border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
             <p className="text-xs font-medium text-emerald-600 mb-2 flex items-center gap-1.5">
               <span className={`size-1.5 rounded-full ${hasChanges ? 'bg-emerald-500' : 'bg-emerald-500/40'}`} />
-              Polished
+              Hasil Polesan
             </p>
             <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
               {renderTextWithHighlight(polishedContent, searchQuery)}
@@ -553,7 +553,7 @@ function SectionComparison({
       ) : viewMode === 'original' ? (
         <div className="rounded-lg border bg-muted/30 p-3">
           <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-            <Badge variant="outline" className="text-[10px] py-0 px-1.5">Viewing Original</Badge>
+            <Badge variant="outline" className="text-[10px] py-0 px-1.5">Melihat Asli</Badge>
           </p>
           <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/80">
             {renderTextWithHighlight(originalContent, searchQuery)}
@@ -562,7 +562,7 @@ function SectionComparison({
       ) : (
         <div className={`rounded-lg border p-3 ${hasChanges ? 'border-l-[2px] border-l-emerald-500 border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
           <p className="text-xs font-medium text-emerald-600 mb-2 flex items-center gap-1.5">
-            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-600">Viewing Polished</Badge>
+            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-600">Melihat Hasil Pemolesan</Badge>
           </p>
           <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
             {renderTextWithHighlight(polishedContent, searchQuery)}
@@ -596,9 +596,9 @@ function PolishProgressOverlay({
           <Sparkles className="size-3 text-amber-400 absolute -top-0.5 -right-0.5" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-foreground">Polishing in progress...</p>
+          <p className="text-sm font-semibold text-foreground">Sedang memperbaiki...</p>
           <p className="text-xs text-muted-foreground">
-            Processing: {steps[currentStepIndex]?.label ?? 'Preparing...'}
+            Memproses: {steps[currentStepIndex]?.label ?? 'Mempersiapkan...'}
           </p>
         </div>
       </div>
@@ -627,7 +627,7 @@ function PolishProgressOverlay({
             <span className="truncate">{step.label}</span>
             {step.status === 'completed' && (
               <Badge variant="secondary" className="ml-auto text-[10px] shrink-0">
-                Done
+                Selesai
               </Badge>
             )}
           </div>
@@ -636,7 +636,7 @@ function PolishProgressOverlay({
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <ClockIcon />
-        <span>Estimated time remaining: ~{estimatedSeconds}s</span>
+        <span>Perkiraan waktu tersisa: ~{estimatedSeconds} detik</span>
       </div>
     </div>
   );
@@ -655,14 +655,14 @@ function ClockIcon() {
 
 function ChangeSummaryPanel({ summary, animateScores = false }: { summary: ChangeSummary; animateScores?: boolean }) {
   const categories = [
-    { label: 'Structural', count: summary.structuralChanges, icon: Layers },
-    { label: 'Tone', count: summary.toneImprovements, icon: BookOpen },
-    { label: 'Citations', count: summary.citationFixes, icon: Quote },
-    { label: 'Coherence', count: summary.coherenceEdits, icon: GitBranch },
-    { label: 'Clarity', count: summary.clarityEdits, icon: Eye },
-    { label: 'Vocabulary', count: summary.vocabularyUpgrades, icon: Lightbulb },
-    { label: 'Grammar', count: summary.grammarFixes, icon: SpellCheck },
-    { label: 'Formatting', count: summary.formattingFixes, icon: AlignLeft },
+    { label: 'Struktural', count: summary.structuralChanges, icon: Layers },
+    { label: 'Nada', count: summary.toneImprovements, icon: BookOpen },
+    { label: 'Sitasi', count: summary.citationFixes, icon: Quote },
+    { label: 'Koherensi', count: summary.coherenceEdits, icon: GitBranch },
+    { label: 'Kejelasan', count: summary.clarityEdits, icon: Eye },
+    { label: 'Kosakata', count: summary.vocabularyUpgrades, icon: Lightbulb },
+    { label: 'Tata Bahasa', count: summary.grammarFixes, icon: SpellCheck },
+    { label: 'Format', count: summary.formattingFixes, icon: AlignLeft },
   ];
 
   const safeTotal = Number(summary.totalChanges) || 0;
@@ -675,24 +675,24 @@ function ChangeSummaryPanel({ summary, animateScores = false }: { summary: Chang
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Award className="size-5 text-emerald-500" />
-          Polish Summary
+          Ringkasan Perbaikan
         </CardTitle>
         <CardDescription>
-          <span className="text-emerald-600 font-semibold">{animatedTotal}</span> improvements applied across{' '}
-          {activeCategories} categories
+          <span className="text-emerald-600 font-semibold">{animatedTotal}</span> perbaikan diterapkan pada{' '}
+          {activeCategories} kategori
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Quality Score Rings */}
         <div className="flex items-center justify-center gap-4">
-          <QualityScoreRing score={summary.qualityBefore} label="Before" size={80} animate={animateScores} />
+          <QualityScoreRing score={summary.qualityBefore} label="Sebelum" size={80} animate={animateScores} />
           <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-1 text-emerald-500">
               <ChevronRight className="size-5" />
             </div>
-            <span className="text-xs text-muted-foreground">+{summary.qualityAfter - summary.qualityBefore} pts</span>
+            <span className="text-xs text-muted-foreground">+{summary.qualityAfter - summary.qualityBefore} poin</span>
           </div>
-          <QualityScoreRing score={summary.qualityAfter} label="After" size={80} animate={animateScores} />
+          <QualityScoreRing score={summary.qualityAfter} label="Sesudah" size={80} animate={animateScores} />
         </div>
 
         <Separator />
@@ -701,7 +701,7 @@ function ChangeSummaryPanel({ summary, animateScores = false }: { summary: Chang
         <div className="space-y-2.5">
           <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
             <Sparkles className="size-3" />
-            Changes by category
+            Perubahan per kategori
           </p>
           <div className="space-y-1.5">
             {categories.map((cat) => {
@@ -744,7 +744,7 @@ function ChangeSummaryPanel({ summary, animateScores = false }: { summary: Chang
               <div className="min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">{cat.label}</p>
                 <p className={`text-xs ${cat.count > 0 ? 'text-emerald-600' : 'text-muted-foreground/50'}`}>
-                  {cat.count} {cat.count === 1 ? 'change' : 'changes'}
+                  {cat.count} perubahan
                 </p>
               </div>
             </div>
@@ -754,7 +754,7 @@ function ChangeSummaryPanel({ summary, animateScores = false }: { summary: Chang
         {/* Key improvements */}
         {summary.details?.length > 0 && (
           <div className="space-y-1.5 max-h-64 overflow-y-auto">
-            <p className="text-xs font-medium text-muted-foreground">Key improvements:</p>
+            <p className="text-xs font-medium text-muted-foreground">Perbaikan utama:</p>
             {summary.details.map((detail, idx) => (
               <div key={idx} className="flex items-start gap-2 text-xs text-foreground/80">
                 <CheckCircle2 className="size-3 text-emerald-500 mt-0.5 shrink-0" />
@@ -897,7 +897,7 @@ export default function Step5Polish() {
   const generateReviewerNotes = useCallback(async () => {
     if (!generatedArticle) return;
     setIsGeneratingReview(true);
-    setReviewStatusMessage('Running peer review analysis...');
+    setReviewStatusMessage('Menjalankan analisis peer review...');
     setReviewerNotes(null);
     setShowReviewerNotes(true);
 
@@ -1278,7 +1278,7 @@ export default function Step5Polish() {
     setPolishSteps([]);
     setCurrentStepIndex(0);
     setScoresHaveAnimated(false);
-    toast.info('Polish reset — you can adjust options and re-run.');
+    toast.info('Perbaikan direset — Anda dapat menyesuaikan opsi dan menjalankan ulang.');
   }, [setPolishedArticle]);
 
   // ── No article guard ──
@@ -1289,15 +1289,15 @@ export default function Step5Polish() {
           <FileCheck className="size-8 text-muted-foreground" />
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold">No Article to Polish</h2>
+          <h2 className="text-xl font-semibold">Tidak Ada Artikel untuk Diperbaiki</h2>
           <p className="text-muted-foreground text-sm max-w-md">
-            Generate an article first in the previous steps, then return here to polish it to
-            publication-ready quality.
+            Buat artikel terlebih dahulu di langkah sebelumnya, lalu kembali ke sini untuk memperbaikinya
+            hingga kualitas siap terbit.
           </p>
         </div>
         <Button variant="outline" onClick={prevStep} className="mt-2">
           <ArrowLeft className="size-4" />
-          Back to Article Generation
+          Kembali ke Pembuatan Artikel
         </Button>
       </div>
     );
@@ -1318,16 +1318,16 @@ export default function Step5Polish() {
                 <Wand2 className="size-5 text-emerald-600" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight">Article Polish &amp; Layout</h1>
+                <h1 className="text-xl font-bold tracking-tight">Perbaikan & Tata Letak Artikel</h1>
                 <p className="text-sm text-muted-foreground">
-                  Refine your article to publication-ready quality
+                  Perbaiki artikel Anda hingga kualitas siap terbit
                 </p>
               </div>
               {/* ── Polish History Badge ── */}
               {polishCount > 0 && (
                 <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800 ml-2">
                   <Wand2 className="size-3 mr-1" />
-                  Polish #{polishCount}
+                  Perbaikan #{polishCount}
                 </Badge>
               )}
             </div>
@@ -1338,7 +1338,7 @@ export default function Step5Polish() {
             {hasPolished && (
               <div className="flex items-center gap-3 px-4 py-2 rounded-lg border bg-muted/30">
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Before</p>
+                  <p className="text-xs text-muted-foreground">Sebelum</p>
                   <p className="text-sm font-semibold">{originalWordCount.toLocaleString()}</p>
                 </div>
                 <div className="flex flex-col items-center">
@@ -1351,7 +1351,7 @@ export default function Step5Polish() {
                   </span>
                 </div>
                 <div className="text-left">
-                  <p className="text-xs text-muted-foreground">After</p>
+                  <p className="text-xs text-muted-foreground">Sesudah</p>
                   <p className="text-sm font-bold text-emerald-600">{polishedWordCount.toLocaleString()}</p>
                 </div>
               </div>
@@ -1360,7 +1360,7 @@ export default function Step5Polish() {
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg border bg-muted/30">
                 <FileCheck className="size-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Word count</p>
+                  <p className="text-xs text-muted-foreground">Jumlah Kata</p>
                   <p className="text-sm font-semibold">{originalWordCount.toLocaleString()}</p>
                 </div>
               </div>
@@ -1403,10 +1403,10 @@ export default function Step5Polish() {
                     </div>
                     <div className="text-left flex-1">
                       <p className="font-bold text-sm bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
-                        ⚡ Upgrade to CONSILIUM PROFESSORUM
+                        ⚡ Tingkatkan ke CONSILIUM PROFESSORUM
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Rewrite your article using a consortium of 20 top-world professors for Scopus Q1 quality
+                        Tulis ulang artikel Anda menggunakan konsorsium 20 profesor top dunia untuk kualitas Scopus Q1
                       </p>
                     </div>
                     <Sparkles className="size-5 text-emerald-500 shrink-0" />
@@ -1415,7 +1415,7 @@ export default function Step5Polish() {
               </motion.div>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs">
-              <p>Rewrite your entire article using a consortium of 20 top-world professors for Scopus Q1 quality</p>
+              <p>Tulis ulang seluruh artikel Anda menggunakan konsorsium 20 profesor top dunia untuk kualitas Scopus Q1</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -1433,13 +1433,13 @@ export default function Step5Polish() {
               <DialogDescription asChild>
                 <div className="space-y-3 pt-2">
                   <p>
-                    This will rewrite <strong>ALL sections</strong> of your article to CONSILIUM
-                    PROFESSORUM Scopus Q1 standard.
+                    Ini akan menulis ulang <strong>SEMUA bagian</strong> artikel Anda ke standar
+                    CONSILIUM PROFESSORUM Scopus Q1.
                   </p>
                   <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
                     <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
                       <Zap className="size-4" />
-                      The process takes 3–5 minutes. Continue?
+                      Proses ini memakan waktu 3–5 menit. Lanjutkan?
                     </div>
                   </div>
                 </div>
@@ -1447,14 +1447,14 @@ export default function Step5Polish() {
             </DialogHeader>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>
-                Cancel
+                Batal
               </Button>
               <Button
                 onClick={handleUpgrade}
                 className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white hover:opacity-90 shadow-lg"
               >
                 <Crown className="size-4" />
-                Start Upgrade
+                Mulai Peningkatan
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1523,7 +1523,7 @@ export default function Step5Polish() {
                         )}
                         <span className="truncate">{step}</span>
                         {idx < upgradeStepIndex && (
-                          <span className="ml-auto text-[10px] text-emerald-500">Done</span>
+                          <span className="ml-auto text-[10px] text-emerald-500">Selesai</span>
                         )}
                       </div>
                     ))}
@@ -1543,23 +1543,23 @@ export default function Step5Polish() {
           <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="options" className="gap-1.5">
               <Sparkles className="size-3.5" />
-              Polish Options
+              Opsi Perbaikan
             </TabsTrigger>
             {showReviewerNotes && (
               <TabsTrigger value="reviewer-notes" className="gap-1.5">
                 <FileCheck className="size-3.5" />
-                Review Notes
+                Catatan Review
                 {reviewerNotes && <Badge variant="secondary" className="ml-1 text-[10px] px-1.5">{reviewerNotes.overallScore}/10</Badge>}
               </TabsTrigger>
             )}
             <TabsTrigger value="preview" className="gap-1.5">
               <GitCompare className="size-3.5" />
-              Preview
+              Pratinjau
             </TabsTrigger>
             {changeSummary && (
               <TabsTrigger value="summary" className="gap-1.5">
                 <Award className="size-3.5" />
-                Summary
+                Ringkasan
               </TabsTrigger>
             )}
           </TabsList>
@@ -1569,8 +1569,8 @@ export default function Step5Polish() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Select which aspects to polish ({polishOptions.filter((o) => o.enabled).length} of{' '}
-                  {polishOptions.length} enabled)
+                  Pilih aspek yang ingin diperbaiki ({polishOptions.filter((o) => o.enabled).length} dari{' '}
+                  {polishOptions.length} diaktifkan)
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -1579,7 +1579,7 @@ export default function Step5Polish() {
                     onClick={() => toggleAllOptions(true)}
                     className="text-xs h-7"
                   >
-                    Enable all
+                    Aktifkan Semua
                   </Button>
                   <Button
                     variant="ghost"
@@ -1587,7 +1587,7 @@ export default function Step5Polish() {
                     onClick={() => toggleAllOptions(false)}
                     className="text-xs h-7"
                   >
-                    Disable all
+                    Nonaktifkan Semua
                   </Button>
                 </div>
               </div>
@@ -1608,10 +1608,10 @@ export default function Step5Polish() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">
-                    Ready to polish your article
+                    Siap memperbaiki artikel Anda
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {polishOptions.filter((o) => o.enabled).length} aspects selected for improvement
+                    {polishOptions.filter((o) => o.enabled).length} aspek dipilih untuk perbaikan
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1624,9 +1624,9 @@ export default function Step5Polish() {
                     size="lg"
                   >
                     {isGeneratingReview ? (
-                      <><Loader2 className="size-4 animate-spin" /> Reviewing...</>
+                      <><Loader2 className="size-4 animate-spin" /> Mereview...</>
                     ) : (
-                      <><FileCheck className="size-4" /> {reviewerNotes ? 'Re-Review' : 'Peer Review'}</>
+                      <><FileCheck className="size-4" /> {reviewerNotes ? 'Review Ulang' : 'Peer Review'}</>
                     )}
                   </Button>
                   {/* ── Auto-Polish Quick Button ── */}
@@ -1638,7 +1638,7 @@ export default function Step5Polish() {
                     size="lg"
                   >
                     <Zap className="size-4" />
-                    Auto-Polish
+                    Perbaikan Otomatis
                   </Button>
                   <Button
                     onClick={startPolish}
@@ -1649,12 +1649,12 @@ export default function Step5Polish() {
                     {isPolishing ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Polishing...
+                        Memperbaiki...
                       </>
                     ) : (
                       <>
                         <Wand2 className="size-4" />
-                        {reviewerNotes ? 'Polish with Review Notes' : 'Start Polish'}
+                        {reviewerNotes ? 'Perbaiki dengan Catatan Review' : 'Mulai Perbaikan'}
                       </>
                     )}
                   </Button>
@@ -1674,17 +1674,17 @@ export default function Step5Polish() {
                         <FileCheck className="size-5 text-orange-600 dark:text-orange-400" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">Q1 Peer Review Notes</CardTitle>
+                        <CardTitle className="text-lg">Catatan Peer Review Q1</CardTitle>
                         <CardDescription>
                           {isGeneratingReview ? reviewStatusMessage : reviewerNotes
-                            ? `Overall: ${reviewerNotes.overallRecommendation || 'N/A'} (Score: ${reviewerNotes.overallScore ?? 'N/A'}/10)`
-                            : 'Generate critical peer review feedback before polishing'}
+                            ? `Overall: ${reviewerNotes.overallRecommendation || 'N/A'} (Skor: ${reviewerNotes.overallScore ?? 'N/A'}/10)`
+                            : 'Hasilkan umpan balik peer review kritis sebelum memperbaiki'}
                         </CardDescription>
                       </div>
                     </div>
                     {reviewerNotes && (
                       <Badge variant={reviewerNotes.overallScore >= 7 ? 'default' : reviewerNotes.overallScore >= 5 ? 'secondary' : 'destructive'} className="text-sm">
-                        {reviewerNotes.overallScore >= 7 ? 'Acceptable' : reviewerNotes.overallScore >= 5 ? 'Needs Revision' : 'Major Issues'}
+                        {reviewerNotes.overallScore >= 7 ? 'Dapat Diterima' : reviewerNotes.overallScore >= 5 ? 'Perlu Revisi' : 'Masalah Besar'}
                       </Badge>
                     )}
                   </div>
@@ -1693,7 +1693,7 @@ export default function Step5Polish() {
                   {isGeneratingReview && (
                     <div className="flex flex-col items-center justify-center py-8 gap-3">
                       <Loader2 className="size-8 animate-spin text-orange-500" />
-                      <p className="text-sm text-muted-foreground">{reviewStatusMessage || 'Analysing your article...'}</p>
+                      <p className="text-sm text-muted-foreground">{reviewStatusMessage || 'Menganalisis artikel Anda...'}</p>
                     </div>
                   )}
                   {reviewerNotes && !isGeneratingReview && (
@@ -1703,7 +1703,7 @@ export default function Step5Polish() {
                         {reviewerNotes.priorityActions?.length > 0 && (
                           <div className="rounded-lg bg-red-50 dark:bg-red-900/10 p-4 border border-red-200 dark:border-red-800">
                             <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2 flex items-center gap-2">
-                              <AlertTriangle className="size-4" /> Priority Actions Required
+                              <AlertTriangle className="size-4" /> Tindakan Prioritas Diperlukan
                             </h4>
                             <ul className="space-y-1 text-sm text-red-800 dark:text-red-200">
                               {reviewerNotes.priorityActions.map((action: string, i: number) => (
@@ -1729,7 +1729,7 @@ export default function Step5Polish() {
                               <p className="italic text-muted-foreground">{reviewer.overallAssessment}</p>
                               {reviewer.majorIssues?.length > 0 && (
                                 <div>
-                                  <p className="font-medium text-red-600 dark:text-red-400">Major Issues ({reviewer.majorIssues.length})</p>
+                                  <p className="font-medium text-red-600 dark:text-red-400">Masalah Besar ({reviewer.majorIssues.length})</p>
                                   <ul className="mt-1 space-y-1 list-disc list-inside text-muted-foreground">
                                     {reviewer.majorIssues.map((issue: string, i: number) => <li key={i}>{issue}</li>)}
                                   </ul>
@@ -1737,7 +1737,7 @@ export default function Step5Polish() {
                               )}
                               {reviewer.minorIssues?.length > 0 && (
                                 <div>
-                                  <p className="font-medium text-amber-600 dark:text-amber-400">Minor Issues ({reviewer.minorIssues.length})</p>
+                                  <p className="font-medium text-amber-600 dark:text-amber-400">Masalah Kecil ({reviewer.minorIssues.length})</p>
                                   <ul className="mt-1 space-y-1 list-disc list-inside text-muted-foreground">
                                     {reviewer.minorIssues.map((issue: string, i: number) => <li key={i}>{issue}</li>)}
                                   </ul>
@@ -1745,7 +1745,7 @@ export default function Step5Polish() {
                               )}
                               {reviewer.strengths?.length > 0 && (
                                 <div>
-                                  <p className="font-medium text-emerald-600 dark:text-emerald-400">Strengths</p>
+                                  <p className="font-medium text-emerald-600 dark:text-emerald-400">Kelebihan</p>
                                   <ul className="mt-1 space-y-1 list-disc list-inside text-muted-foreground">
                                     {reviewer.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
                                   </ul>
@@ -1784,10 +1784,10 @@ export default function Step5Polish() {
                       <div className="space-y-1">
                         <CardTitle className="text-base flex items-center gap-2">
                           <GitCompare className="size-4.5 text-emerald-500" />
-                          Before &amp; After Comparison
+                          Perbandingan Sebelum &amp; Sesudah
                         </CardTitle>
                         <CardDescription>
-                          Review changes section by section
+                          Tinjau perubahan bagian per bagian
                         </CardDescription>
                       </div>
                       {/* View mode toggle buttons */}
@@ -1799,7 +1799,7 @@ export default function Step5Polish() {
                           onClick={() => setComparisonViewMode('split')}
                         >
                           <Columns className="size-3" />
-                          Split View
+                          Tampilan Terpisah
                         </Button>
                         <Button
                           variant={comparisonViewMode === 'original' ? 'default' : 'outline'}
@@ -1807,7 +1807,7 @@ export default function Step5Polish() {
                           className={`text-xs h-7 gap-1 ${comparisonViewMode === 'original' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
                           onClick={() => setComparisonViewMode('original')}
                         >
-                          Original
+                          Asli
                         </Button>
                         <Button
                           variant={comparisonViewMode === 'polished' ? 'default' : 'outline'}
@@ -1815,7 +1815,7 @@ export default function Step5Polish() {
                           className={`text-xs h-7 gap-1 ${comparisonViewMode === 'polished' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
                           onClick={() => setComparisonViewMode('polished')}
                         >
-                          Polished
+                          Hasil Polesan
                         </Button>
                       </div>
                     </div>
@@ -1854,10 +1854,9 @@ export default function Step5Polish() {
                       <Sparkles className="size-7 text-muted-foreground" />
                     </div>
                     <div className="space-y-1.5">
-                      <h3 className="text-lg font-semibold">Ready to Polish</h3>
+                      <h3 className="text-lg font-semibold">Siap Memperbaiki</h3>
                       <p className="text-sm text-muted-foreground max-w-md">
-                        Switch to the Polish Options tab to configure your preferences, then start the
-                        polish process to see a side-by-side comparison here.
+                        Beralih ke tab Opsi Perbaikan untuk mengatur preferensi, lalu mulai proses perbaikan untuk melihat perbandingan di sini.
                       </p>
                     </div>
                     <Button
@@ -1865,7 +1864,7 @@ export default function Step5Polish() {
                       onClick={() => setActiveTab('options')}
                       className="mt-2"
                     >
-                      Configure Options
+                      Atur Opsi
                       <ChevronRight className="size-4" />
                     </Button>
                   </CardContent>
@@ -1889,19 +1888,19 @@ export default function Step5Polish() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Star className="size-4.5 text-amber-500" />
-                      Quality Achievement
+                      Pencapaian Kualitas
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-center">
-                      <QualityScoreRing score={changeSummary.qualityAfter} label="Final Score" size={120} animate={scoresHaveAnimated} />
+                      <QualityScoreRing score={changeSummary.qualityAfter} label="Skor Akhir" size={120} animate={scoresHaveAnimated} />
                     </div>
                     <p className="text-center text-sm text-muted-foreground mt-4">
                       {changeSummary.qualityAfter >= 90
-                        ? 'Your article meets high publication standards.'
+                        ? 'Artikel Anda memenuhi standar publikasi tinggi.'
                         : changeSummary.qualityAfter >= 75
-                          ? 'Your article is in good shape with minor improvements possible.'
-                          : 'Consider additional editing to reach publication standards.'}
+                          ? 'Artikel Anda dalam kondisi baik dengan perbaikan kecil yang mungkin dilakukan.'
+                          : 'Pertimbangkan penyuntingan tambahan untuk mencapai standar publikasi.'}
                     </p>
                   </CardContent>
                 </Card>
@@ -1928,12 +1927,12 @@ export default function Step5Polish() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={prevStep} size="sm">
                   <ArrowLeft className="size-4" />
-                  Back
+                  Kembali
                 </Button>
                 {polishCount > 0 && (
                   <Badge variant="secondary" className="text-xs bg-muted/50">
                     <Wand2 className="size-3 mr-1" />
-                    Polish #{polishCount}
+                    Perbaikan #{polishCount}
                   </Badge>
                 )}
               </div>
@@ -1947,8 +1946,8 @@ export default function Step5Polish() {
                   size="sm"
                 >
                   <Copy className="size-3.5" />
-                  <span className="hidden sm:inline">Copy Full Article</span>
-                  <span className="sm:hidden">Copy</span>
+                  <span className="hidden sm:inline">Salin Artikel Lengkap</span>
+                  <span className="sm:hidden">Salin</span>
                 </Button>
 
                 <Button
@@ -1959,8 +1958,8 @@ export default function Step5Polish() {
                   size="sm"
                 >
                   <Download className="size-3.5" />
-                  <span className="hidden sm:inline">Download as Text</span>
-                  <span className="sm:hidden">Download</span>
+                  <span className="hidden sm:inline">Unduh sebagai Teks</span>
+                  <span className="sm:hidden">Unduh</span>
                 </Button>
 
                 <Button
@@ -1968,7 +1967,7 @@ export default function Step5Polish() {
                   onClick={() => {
                     if (article) {
                       exportToMarkdown(article);
-                      toast.success('Article downloaded as Markdown');
+                      toast.success('Artikel diunduh sebagai Markdown');
                     }
                   }}
                   disabled={!article}
@@ -1992,7 +1991,7 @@ export default function Step5Polish() {
                   ) : (
                     <FileText className="size-3.5" />
                   )}
-                  <span className="hidden sm:inline">{isExportingPdf ? 'Generating PDF...' : 'PDF'}</span>
+                  <span className="hidden sm:inline">{isExportingPdf ? 'Membuat PDF...' : 'PDF'}</span>
                   <span className="sm:hidden">{isExportingPdf ? '...' : 'PDF'}</span>
                 </Button>
 
@@ -2004,8 +2003,8 @@ export default function Step5Polish() {
                     size="sm"
                   >
                     <RefreshCw className="size-3.5" />
-                    <span className="hidden sm:inline">Regenerate</span>
-                    <span className="sm:hidden">Redo</span>
+                    <span className="hidden sm:inline">Buat Ulang</span>
+                    <span className="sm:hidden">Ulangi</span>
                   </Button>
                 )}
 
@@ -2016,7 +2015,7 @@ export default function Step5Polish() {
                     size="sm"
                   >
                     <CheckCircle2 className="size-3.5" />
-                    Accept &amp; Export
+                    Terima &amp; Ekspor
                   </Button>
                 )}
               </div>

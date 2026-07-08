@@ -87,6 +87,7 @@ function safeBoolean(value: unknown, fallback: boolean): boolean {
 
 // ── POST handler ──────────────────────────────────────────────────────────────
 
+export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   try {
     // ── Parse & validate ───────────────────────────────────────────────
@@ -181,9 +182,11 @@ Return ONLY a valid JSON object. No explanation, no markdown fencing, no extra t
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to generate search strategy. Please try again.',
+          process.env.NODE_ENV === 'production'
+            ? 'Gagal membuat strategi pencarian. Silakan coba lagi.'
+            : error instanceof Error
+              ? error.message
+              : 'Failed to generate search strategy. Please try again.',
       },
       { status: 500 },
     );

@@ -1026,7 +1026,7 @@ export async function searchReferences(
       .filter((q) => q.length > 0)
       .slice(0, MAX_TRANSLATED_QUERIES);
 
-    console.log(`[ref-search] Translated phase: ${picked.length}/${options.translatedQueries.length} queries, 4 fast DBs`);
+    // Debug: translated phase started
 
     // Only the fastest, most reliable databases for translated queries
     const fastSearchFns: Array<{
@@ -1059,7 +1059,7 @@ export async function searchReferences(
 
     for (let i = 0; i < allWork.length; i += TRANSLATED_CONCURRENCY) {
       if (Date.now() > phaseDeadline) {
-        console.log(`[ref-search] Translated phase timed out after ${completedBatches}/${totalBatches} batches`);
+        // Translated phase timed out
         break;
       }
       // Create and execute promises lazily for this batch only
@@ -1071,7 +1071,7 @@ export async function searchReferences(
       completedBatches++;
     }
 
-    console.log(`[ref-search] Translated phase done: ${translatedRefs.length} refs from ${completedBatches}/${totalBatches} batches`);
+    // Translated phase complete
     allRefs = allRefs.concat(translatedRefs);
   }
 

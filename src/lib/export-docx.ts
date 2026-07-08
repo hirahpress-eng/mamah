@@ -19,8 +19,9 @@ export async function exportToDocx(article: GeneratedArticle): Promise<void> {
   const blob = await response.blob();
 
   // Build filename: {sanitised_title}_article.docx
+  // Only strip filesystem-unsafe chars — preserve Unicode/Indonesian
   const sanitisedTitle = article.title
-    .replace(/[^a-zA-Z0-9\s-]/g, '')
+    .replace(/[/\\?%*:|"<>]/g, '')
     .replace(/\s+/g, '_')
     .substring(0, 60)
     .toLowerCase();

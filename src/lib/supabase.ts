@@ -3,11 +3,12 @@ import type { Database } from './supabase-types';
 
 // ── Server-side Supabase Client ────────────────────────────────────────────────
 export function createSupabaseServerClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
+    console.warn('[supabase] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY, returning null');
+    return null;
   }
 
   return createClient<Database>(supabaseUrl, supabaseServiceKey, {
@@ -20,11 +21,12 @@ export function createSupabaseServerClient() {
 
 // ── Client-side Supabase (for middleware / SSR) ────────────────────────────────
 export function createSupabaseBrowserClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables');
+    console.warn('[supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY, returning null');
+    return null;
   }
 
   return createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -37,7 +39,7 @@ export function createSupabaseBrowserClient() {
 
 // ── Singleton for server-side (lazy — won't throw until actually called) ─────────
 const globalForSupabase = globalThis as unknown as {
-  supabaseServer: ReturnType<typeof createSupabaseServerClient> | undefined;
+  supabaseServer: ReturnType<typeof createSupabaseServerClient> | null | undefined;
 };
 
 export function getSupabaseServer() {

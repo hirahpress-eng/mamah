@@ -70,11 +70,11 @@ export default function PromoBanner({ onCtaClick }: PromoBannerProps) {
               <p className="text-xs sm:text-sm font-medium text-white/95 truncate">
                 <Sparkles className="inline size-3 sm:size-3.5 mr-1 -mt-0.5 text-amber-200" />
                 <span className="hidden sm:inline">
-                  Akses fitur Pro — unlimited generasi, export premium, dan
-                  prioritas AI.
+                  Akses fitur Pro — generasi tanpa batas, ekspor premium, dan
+                  prioritas penulis.
                 </span>
                 <span className="sm:hidden">
-                  Coba fitur Pro — unlimited & export premium!
+                  Coba fitur Pro — tanpa batas & ekspor premium!
                 </span>{' '}
                 <span className="text-amber-200 font-semibold">
                   Segera Hadir!

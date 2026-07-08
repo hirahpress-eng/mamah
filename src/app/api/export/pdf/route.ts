@@ -273,6 +273,7 @@ async function generatePdfBuffer(article: ExportArticle): Promise<Uint8Array> {
 
 // ── POST handler ─────────────────────────────────────────────────────────────
 
+export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   try {
     const body: ExportArticle = await request.json();
