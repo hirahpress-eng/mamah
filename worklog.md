@@ -952,3 +952,20 @@ Work Log:
 Stage Summary:
 - Server healthy, no action taken
 - All clear
+---
+Task ID: cron-257797-202607080939
+Agent: Auto-Recovery Monitor
+Task: Routine health check (Job ID: 257797)
+
+Work Log:
+- Dev server was DOWN (pgrep returned exit code 1)
+- First restart attempt with `bun run dev` produced empty log file (0 bytes) — process died silently
+- dmesg confirmed OOM kill: next-server (pid 24676) killed, ~2GB RSS consumed
+- Restarted with `NODE_OPTIONS="--max-old-space-size=1536" npx next dev -p 3000`
+- Server started successfully: Ready in 1129ms
+- GET / returned 200 in 11.5s (compile: 10.8s, render: 652ms)
+- No compilation errors
+
+Stage Summary:
+- Server recovered from OOM kill, now running with 1.5GB memory cap
+- All clear
