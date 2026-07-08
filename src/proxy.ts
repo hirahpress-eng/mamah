@@ -10,7 +10,7 @@ function isPublicApi(pathname: string): boolean {
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only check /api/* routes
@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
 
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    console.error('[middleware] JWT_SECRET not set');
+    console.error('[proxy] JWT_SECRET not set');
     return NextResponse.json(
       { success: false, error: 'Server configuration error' },
       { status: 500 }
